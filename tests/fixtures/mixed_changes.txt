@@ -1,0 +1,40 @@
+Resource and property changes are indicated with these symbols:
+  - Delete
+  ~ Modify
+  + Create
+
+The deployment will update the following scope:
+
+Scope: /subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-production
+
+  + Microsoft.Storage/storageAccounts/newstorageacct [2023-01-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-production/providers/Microsoft.Storage/storageAccounts/newstorageacct"
+      kind:     "StorageV2"
+      location: "eastus"
+      name:     "newstorageacct"
+      sku.name: "Standard_LRS"
+      type:     "Microsoft.Storage/storageAccounts"
+
+  ~ Microsoft.Web/sites/mywebapp [2022-09-01]
+
+      id:   "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-production/providers/Microsoft.Web/sites/mywebapp"
+      name: "mywebapp"
+      type: "Microsoft.Web/sites"
+
+      ~ properties.siteConfig.appSettings: [
+
+        + [0]:
+
+            name:  "NEW_SETTING"
+            value: "new-value"
+
+        ]
+
+  - Microsoft.KeyVault/vaults/oldkeyvault [2022-07-01]
+
+      id:   "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-production/providers/Microsoft.KeyVault/vaults/oldkeyvault"
+      name: "oldkeyvault"
+      type: "Microsoft.KeyVault/vaults"
+
+Resource changes: 1 to create, 1 to modify, 1 to delete.

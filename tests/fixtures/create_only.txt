@@ -1,0 +1,39 @@
+Resource and property changes are indicated with this symbol:
+  + Create
+
+The deployment will update the following scope:
+
+Scope: /subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-example
+
+  + Microsoft.ApiManagement/service/diagnostics/applicationinsights [2023-03-01-preview]
+
+      id:           "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-example/providers/Microsoft.ApiManagement/service/apim-example/diagnostics/applicationinsights"
+      location:     "eastus"
+      name:         "applicationinsights"
+      properties.alwaysLog:             "allErrors"
+      properties.httpCorrelationProtocol: "Legacy"
+      properties.logClientIp:           true
+      properties.loggerId:              "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-example/providers/Microsoft.ApiManagement/service/apim-example/loggers/appinsights-logger"
+      properties.sampling.percentage:   100
+      properties.sampling.samplingType: "fixed"
+      properties.verbosity:             "information"
+      type:         "Microsoft.ApiManagement/service/diagnostics"
+
+  + Microsoft.ApiManagement/service/policies/policy [2023-03-01-preview]
+
+      id:         "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-example/providers/Microsoft.ApiManagement/service/apim-example/policies/policy"
+      name:       "policy"
+      properties.format: "rawxml"
+      properties.value:  "<policies>...</policies>"
+      type:       "Microsoft.ApiManagement/service/policies"
+
+  + Microsoft.ApiManagement/service/policyFragments/sce-jwt-parsing-and-logging [2025-03-01-preview]
+
+      id:         "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-example/providers/Microsoft.ApiManagement/service/apim-example/policyFragments/sce-jwt-parsing-and-logging"
+      name:       "sce-jwt-parsing-and-logging"
+      properties.description: "Extracts JWT claims from Authorization header"
+      properties.format:      "rawxml"
+      properties.value:       "<fragment>...</fragment>"
+      type:       "Microsoft.ApiManagement/service/policyFragments"
+
+Resource changes: 3 to create.

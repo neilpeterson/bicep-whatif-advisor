@@ -1,0 +1,434 @@
+Resource and property changes are indicated with these symbols:
+  - Delete
+  ~ Modify
+  + Create
+
+The deployment will update the following scope:
+
+Scope: /subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment
+
+  + Microsoft.Storage/storageAccounts/storageacct001 [2023-01-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Storage/storageAccounts/storageacct001"
+      kind:     "StorageV2"
+      location: "eastus"
+      name:     "storageacct001"
+      sku.name: "Standard_LRS"
+      type:     "Microsoft.Storage/storageAccounts"
+
+  + Microsoft.Storage/storageAccounts/storageacct002 [2023-01-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Storage/storageAccounts/storageacct002"
+      kind:     "StorageV2"
+      location: "westus"
+      name:     "storageacct002"
+      sku.name: "Standard_GRS"
+      type:     "Microsoft.Storage/storageAccounts"
+
+  + Microsoft.Web/sites/webapp001 [2022-09-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Web/sites/webapp001"
+      location: "eastus"
+      name:     "webapp001"
+      type:     "Microsoft.Web/sites"
+
+  + Microsoft.Web/sites/webapp002 [2022-09-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Web/sites/webapp002"
+      location: "westus"
+      name:     "webapp002"
+      type:     "Microsoft.Web/sites"
+
+  + Microsoft.Sql/servers/sqlserver001 [2022-05-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Sql/servers/sqlserver001"
+      location: "eastus"
+      name:     "sqlserver001"
+      type:     "Microsoft.Sql/servers"
+
+  + Microsoft.Sql/servers/sqlserver002 [2022-05-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Sql/servers/sqlserver002"
+      location: "westus"
+      name:     "sqlserver002"
+      type:     "Microsoft.Sql/servers"
+
+  + Microsoft.KeyVault/vaults/keyvault001 [2022-07-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.KeyVault/vaults/keyvault001"
+      location: "eastus"
+      name:     "keyvault001"
+      type:     "Microsoft.KeyVault/vaults"
+
+  + Microsoft.KeyVault/vaults/keyvault002 [2022-07-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.KeyVault/vaults/keyvault002"
+      location: "westus"
+      name:     "keyvault002"
+      type:     "Microsoft.KeyVault/vaults"
+
+  + Microsoft.Network/virtualNetworks/vnet001 [2022-07-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Network/virtualNetworks/vnet001"
+      location: "eastus"
+      name:     "vnet001"
+      type:     "Microsoft.Network/virtualNetworks"
+
+  + Microsoft.Network/virtualNetworks/vnet002 [2022-07-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Network/virtualNetworks/vnet002"
+      location: "westus"
+      name:     "vnet002"
+      type:     "Microsoft.Network/virtualNetworks"
+
+  + Microsoft.Compute/virtualMachines/vm001 [2023-03-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Compute/virtualMachines/vm001"
+      location: "eastus"
+      name:     "vm001"
+      type:     "Microsoft.Compute/virtualMachines"
+
+  + Microsoft.Compute/virtualMachines/vm002 [2023-03-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Compute/virtualMachines/vm002"
+      location: "westus"
+      name:     "vm002"
+      type:     "Microsoft.Compute/virtualMachines"
+
+  + Microsoft.ContainerRegistry/registries/acr001 [2023-01-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.ContainerRegistry/registries/acr001"
+      location: "eastus"
+      name:     "acr001"
+      sku.name: "Premium"
+      type:     "Microsoft.ContainerRegistry/registries"
+
+  + Microsoft.ContainerRegistry/registries/acr002 [2023-01-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.ContainerRegistry/registries/acr002"
+      location: "westus"
+      name:     "acr002"
+      sku.name: "Standard"
+      type:     "Microsoft.ContainerRegistry/registries"
+
+  + Microsoft.ApiManagement/service/apim001 [2022-08-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.ApiManagement/service/apim001"
+      location: "eastus"
+      name:     "apim001"
+      sku.name: "Developer"
+      type:     "Microsoft.ApiManagement/service"
+
+  + Microsoft.ApiManagement/service/apim002 [2022-08-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.ApiManagement/service/apim002"
+      location: "westus"
+      name:     "apim002"
+      sku.name: "Standard"
+      type:     "Microsoft.ApiManagement/service"
+
+  + Microsoft.ServiceBus/namespaces/servicebus001 [2022-10-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.ServiceBus/namespaces/servicebus001"
+      location: "eastus"
+      name:     "servicebus001"
+      sku.name: "Standard"
+      type:     "Microsoft.ServiceBus/namespaces"
+
+  + Microsoft.ServiceBus/namespaces/servicebus002 [2022-10-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.ServiceBus/namespaces/servicebus002"
+      location: "westus"
+      name:     "servicebus002"
+      sku.name: "Premium"
+      type:     "Microsoft.ServiceBus/namespaces"
+
+  + Microsoft.EventHub/namespaces/eventhub001 [2022-10-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.EventHub/namespaces/eventhub001"
+      location: "eastus"
+      name:     "eventhub001"
+      sku.name: "Standard"
+      type:     "Microsoft.EventHub/namespaces"
+
+  + Microsoft.EventHub/namespaces/eventhub002 [2022-10-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.EventHub/namespaces/eventhub002"
+      location: "westus"
+      name:     "eventhub002"
+      sku.name: "Basic"
+      type:     "Microsoft.EventHub/namespaces"
+
+  + Microsoft.Insights/components/appinsights001 [2020-02-02]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Insights/components/appinsights001"
+      location: "eastus"
+      name:     "appinsights001"
+      type:     "Microsoft.Insights/components"
+
+  + Microsoft.Insights/components/appinsights002 [2020-02-02]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Insights/components/appinsights002"
+      location: "westus"
+      name:     "appinsights002"
+      type:     "Microsoft.Insights/components"
+
+  + Microsoft.OperationalInsights/workspaces/loganalytics001 [2022-10-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.OperationalInsights/workspaces/loganalytics001"
+      location: "eastus"
+      name:     "loganalytics001"
+      type:     "Microsoft.OperationalInsights/workspaces"
+
+  + Microsoft.OperationalInsights/workspaces/loganalytics002 [2022-10-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.OperationalInsights/workspaces/loganalytics002"
+      location: "westus"
+      name:     "loganalytics002"
+      type:     "Microsoft.OperationalInsights/workspaces"
+
+  + Microsoft.CognitiveServices/accounts/cognitive001 [2023-05-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.CognitiveServices/accounts/cognitive001"
+      location: "eastus"
+      name:     "cognitive001"
+      sku.name: "S0"
+      type:     "Microsoft.CognitiveServices/accounts"
+
+  + Microsoft.CognitiveServices/accounts/cognitive002 [2023-05-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.CognitiveServices/accounts/cognitive002"
+      location: "westus"
+      name:     "cognitive002"
+      sku.name: "S1"
+      type:     "Microsoft.CognitiveServices/accounts"
+
+  + Microsoft.DocumentDB/databaseAccounts/cosmosdb001 [2023-04-15]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.DocumentDB/databaseAccounts/cosmosdb001"
+      location: "eastus"
+      name:     "cosmosdb001"
+      type:     "Microsoft.DocumentDB/databaseAccounts"
+
+  + Microsoft.DocumentDB/databaseAccounts/cosmosdb002 [2023-04-15]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.DocumentDB/databaseAccounts/cosmosdb002"
+      location: "westus"
+      name:     "cosmosdb002"
+      type:     "Microsoft.DocumentDB/databaseAccounts"
+
+  + Microsoft.Cache/redis/redis001 [2023-04-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Cache/redis/redis001"
+      location: "eastus"
+      name:     "redis001"
+      sku.name: "Standard"
+      type:     "Microsoft.Cache/redis"
+
+  + Microsoft.Cache/redis/redis002 [2023-04-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Cache/redis/redis002"
+      location: "westus"
+      name:     "redis002"
+      sku.name: "Premium"
+      type:     "Microsoft.Cache/redis"
+
+  ~ Microsoft.Web/sites/existingapp001 [2022-09-01]
+
+      id:   "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Web/sites/existingapp001"
+      name: "existingapp001"
+      type: "Microsoft.Web/sites"
+
+      ~ properties.siteConfig.appSettings: [
+
+        + [0]:
+
+            name:  "NEW_SETTING_1"
+            value: "value1"
+
+        ]
+
+  ~ Microsoft.Web/sites/existingapp002 [2022-09-01]
+
+      id:   "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Web/sites/existingapp002"
+      name: "existingapp002"
+      type: "Microsoft.Web/sites"
+
+      ~ properties.siteConfig.appSettings: [
+
+        + [0]:
+
+            name:  "NEW_SETTING_2"
+            value: "value2"
+
+        ]
+
+  ~ Microsoft.Storage/storageAccounts/existingstorage001 [2023-01-01]
+
+      id:   "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Storage/storageAccounts/existingstorage001"
+      name: "existingstorage001"
+      type: "Microsoft.Storage/storageAccounts"
+
+      ~ sku.name: "Standard_LRS" => "Standard_GRS"
+
+  ~ Microsoft.Storage/storageAccounts/existingstorage002 [2023-01-01]
+
+      id:   "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Storage/storageAccounts/existingstorage002"
+      name: "existingstorage002"
+      type: "Microsoft.Storage/storageAccounts"
+
+      ~ sku.name: "Standard_GRS" => "Standard_RAGRS"
+
+  ~ Microsoft.Network/virtualNetworks/existingvnet001 [2022-07-01]
+
+      id:   "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Network/virtualNetworks/existingvnet001"
+      name: "existingvnet001"
+      type: "Microsoft.Network/virtualNetworks"
+
+      ~ properties.addressSpace.addressPrefixes[0]: "10.0.0.0/16" => "10.0.0.0/8"
+
+  ~ Microsoft.Network/virtualNetworks/existingvnet002 [2022-07-01]
+
+      id:   "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Network/virtualNetworks/existingvnet002"
+      name: "existingvnet002"
+      type: "Microsoft.Network/virtualNetworks"
+
+      ~ properties.addressSpace.addressPrefixes[0]: "172.16.0.0/16" => "172.16.0.0/12"
+
+  - Microsoft.Storage/storageAccounts/oldstorage001 [2023-01-01]
+
+      id:   "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Storage/storageAccounts/oldstorage001"
+      name: "oldstorage001"
+      type: "Microsoft.Storage/storageAccounts"
+
+  - Microsoft.Storage/storageAccounts/oldstorage002 [2023-01-01]
+
+      id:   "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Storage/storageAccounts/oldstorage002"
+      name: "oldstorage002"
+      type: "Microsoft.Storage/storageAccounts"
+
+  - Microsoft.Web/sites/oldwebapp001 [2022-09-01]
+
+      id:   "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Web/sites/oldwebapp001"
+      name: "oldwebapp001"
+      type: "Microsoft.Web/sites"
+
+  - Microsoft.Web/sites/oldwebapp002 [2022-09-01]
+
+      id:   "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Web/sites/oldwebapp002"
+      name: "oldwebapp002"
+      type: "Microsoft.Web/sites"
+
+  - Microsoft.KeyVault/vaults/oldkeyvault001 [2022-07-01]
+
+      id:   "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.KeyVault/vaults/oldkeyvault001"
+      name: "oldkeyvault001"
+      type: "Microsoft.KeyVault/vaults"
+
+  - Microsoft.KeyVault/vaults/oldkeyvault002 [2022-07-01]
+
+      id:   "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.KeyVault/vaults/oldkeyvault002"
+      name: "oldkeyvault002"
+      type: "Microsoft.KeyVault/vaults"
+
+  - Microsoft.Sql/servers/oldsqlserver001 [2022-05-01]
+
+      id:   "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Sql/servers/oldsqlserver001"
+      name: "oldsqlserver001"
+      type: "Microsoft.Sql/servers"
+
+  - Microsoft.Sql/servers/oldsqlserver002 [2022-05-01]
+
+      id:   "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Sql/servers/oldsqlserver002"
+      name: "oldsqlserver002"
+      type: "Microsoft.Sql/servers"
+
+  + Microsoft.MachineLearningServices/workspaces/mlworkspace001 [2023-04-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.MachineLearningServices/workspaces/mlworkspace001"
+      location: "eastus"
+      name:     "mlworkspace001"
+      type:     "Microsoft.MachineLearningServices/workspaces"
+
+  + Microsoft.MachineLearningServices/workspaces/mlworkspace002 [2023-04-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.MachineLearningServices/workspaces/mlworkspace002"
+      location: "westus"
+      name:     "mlworkspace002"
+      type:     "Microsoft.MachineLearningServices/workspaces"
+
+  + Microsoft.DataFactory/factories/datafactory001 [2018-06-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.DataFactory/factories/datafactory001"
+      location: "eastus"
+      name:     "datafactory001"
+      type:     "Microsoft.DataFactory/factories"
+
+  + Microsoft.DataFactory/factories/datafactory002 [2018-06-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.DataFactory/factories/datafactory002"
+      location: "westus"
+      name:     "datafactory002"
+      type:     "Microsoft.DataFactory/factories"
+
+  + Microsoft.Synapse/workspaces/synapse001 [2021-06-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Synapse/workspaces/synapse001"
+      location: "eastus"
+      name:     "synapse001"
+      type:     "Microsoft.Synapse/workspaces"
+
+  + Microsoft.Synapse/workspaces/synapse002 [2021-06-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Synapse/workspaces/synapse002"
+      location: "westus"
+      name:     "synapse002"
+      type:     "Microsoft.Synapse/workspaces"
+
+  + Microsoft.Databricks/workspaces/databricks001 [2023-02-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Databricks/workspaces/databricks001"
+      location: "eastus"
+      name:     "databricks001"
+      sku.name: "premium"
+      type:     "Microsoft.Databricks/workspaces"
+
+  + Microsoft.Databricks/workspaces/databricks002 [2023-02-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Databricks/workspaces/databricks002"
+      location: "westus"
+      name:     "databricks002"
+      sku.name: "standard"
+      type:     "Microsoft.Databricks/workspaces"
+
+  + Microsoft.Network/applicationGateways/appgw001 [2023-02-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Network/applicationGateways/appgw001"
+      location: "eastus"
+      name:     "appgw001"
+      type:     "Microsoft.Network/applicationGateways"
+
+  + Microsoft.Network/applicationGateways/appgw002 [2023-02-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Network/applicationGateways/appgw002"
+      location: "westus"
+      name:     "appgw002"
+      type:     "Microsoft.Network/applicationGateways"
+
+  + Microsoft.Network/loadBalancers/lb001 [2023-02-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Network/loadBalancers/lb001"
+      location: "eastus"
+      name:     "lb001"
+      sku.name: "Standard"
+      type:     "Microsoft.Network/loadBalancers"
+
+  + Microsoft.Network/loadBalancers/lb002 [2023-02-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-large-deployment/providers/Microsoft.Network/loadBalancers/lb002"
+      location: "westus"
+      name:     "lb002"
+      sku.name: "Basic"
+      type:     "Microsoft.Network/loadBalancers"
+
+Resource changes: 44 to create, 6 to modify, 8 to delete.

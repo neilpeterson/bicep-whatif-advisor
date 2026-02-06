@@ -1,0 +1,20 @@
+diff --git a/main.bicep b/main.bicep
+index 1234567..abcdefg 100644
+--- a/main.bicep
++++ b/main.bicep
+@@ -45,20 +45,6 @@ resource validateAFDId 'Microsoft.ApiManagement/service/policies@2023-03-01-pre
+   ]
+ }
+
+-// Database that stores application state
+-resource sqlDatabase 'Microsoft.Sql/servers/databases@2021-11-01' = {
+-  name: 'productiondb'
+-  location: location
+-  properties: {
+-    collation: 'SQL_Latin1_General_CP1_CI_AS'
+-    maxSizeBytes: 268435456000
+-    catalogCollation: 'SQL_Latin1_General_CP1_CI_AS'
+-  }
+-}
+-
+ // Application Insights diagnostics

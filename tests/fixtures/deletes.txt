@@ -1,0 +1,20 @@
+Resource and property changes are indicated with this symbol:
+  - Delete
+
+The deployment will update the following scope:
+
+Scope: /subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-production
+
+  - Microsoft.Sql/servers/databases/productiondb [2021-11-01]
+
+      id:   "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-production/providers/Microsoft.Sql/servers/sqlserver/databases/productiondb"
+      name: "productiondb"
+      type: "Microsoft.Sql/servers/databases"
+
+  - Microsoft.Storage/storageAccounts/oldstorageacct [2023-01-01]
+
+      id:   "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-production/providers/Microsoft.Storage/storageAccounts/oldstorageacct"
+      name: "oldstorageacct"
+      type: "Microsoft.Storage/storageAccounts"
+
+Resource changes: 2 to delete.
