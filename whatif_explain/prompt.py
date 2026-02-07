@@ -1,18 +1,25 @@
 """Prompt construction for LLM analysis of What-If output."""
 
 
-def build_system_prompt(verbose: bool = False, ci_mode: bool = False) -> str:
+def build_system_prompt(
+    verbose: bool = False,
+    ci_mode: bool = False,
+    pr_title: str = None,
+    pr_description: str = None
+) -> str:
     """Build the system prompt for the LLM.
 
     Args:
         verbose: Include property-level change details for modified resources
         ci_mode: Enable CI mode with risk assessment and verdict
+        pr_title: Pull request title for intent analysis (CI mode only)
+        pr_description: Pull request description for intent analysis (CI mode only)
 
     Returns:
         System prompt string
     """
     if ci_mode:
-        return _build_ci_system_prompt()
+        return _build_ci_system_prompt(pr_title, pr_description)
     else:
         return _build_standard_system_prompt(verbose)
 
@@ -49,13 +56,38 @@ You must respond with ONLY valid JSON matching this schema, no other text:
     return prompt
 
 
-def _build_ci_system_prompt() -> str:
+def _build_ci_system_prompt(pr_title: str = None, pr_description: str = None) -> str:
     """Build system prompt for CI mode with risk assessment."""
-    return '''You are an Azure infrastructure deployment safety reviewer. You are given:
+    base_prompt = '''You are an Azure infrastructure deployment safety reviewer. You are given:
 1. The Azure What-If output showing planned infrastructure changes
-2. The source code diff (Bicep/ARM template changes) that produced these changes
+2. The source code diff (Bicep/ARM template changes) that produced these changes'''
 
-Evaluate the deployment for safety and correctness.
+    # Add PR intent context if available
+    if pr_title or pr_description:
+        base_prompt += '''\n3. The pull request title and description stating the INTENDED purpose of this change'''
+
+    base_prompt += '''\n\nEvaluate the deployment for safety and correctness.'''
+
+    # Add intent analysis instructions if PR metadata is provided
+    intent_instructions = ""
+    if pr_title or pr_description:
+        intent_instructions = '''
+
+IMPORTANT - Intent Analysis:
+You have been provided with the pull request title and/or description. Use this to understand
+the STATED INTENT of the change. Flag any changes in the What-If output that:
+- Are NOT mentioned in the PR description
+- Do not align with the stated purpose
+- Seem unrelated or unexpected given the PR intent
+- Are destructive (Delete actions) but not explicitly mentioned
+
+Treat intent mismatches as elevated risk:
+- Destructive changes (Delete) not mentioned in PR = CRITICAL risk
+- Security/auth changes not mentioned in PR = HIGH risk
+- Resource modifications not aligned with PR intent = MEDIUM risk
+- New resources not mentioned but aligned with intent = LOW risk'''
+
+    return base_prompt + intent_instructions + '''
 
 Respond with ONLY valid JSON matching this schema:
 
@@ -97,7 +129,9 @@ Apply these risk classifications:
 def build_user_prompt(
     whatif_content: str,
     diff_content: str = None,
-    bicep_content: str = None
+    bicep_content: str = None,
+    pr_title: str = None,
+    pr_description: str = None
 ) -> str:
     """Build the user prompt with What-If output and optional context.
 
@@ -105,13 +139,26 @@ def build_user_prompt(
         whatif_content: Azure What-If output text
         diff_content: Git diff content (CI mode only)
         bicep_content: Bicep source files content (CI mode only)
+        pr_title: Pull request title (CI mode only)
+        pr_description: Pull request description (CI mode only)
 
     Returns:
         User prompt string
     """
     if diff_content is not None:
         # CI mode with diff
-        prompt = f'''Review this Azure deployment for safety.
+        prompt = f'''Review this Azure deployment for safety.'''
+
+        # Add PR intent context if available
+        if pr_title or pr_description:
+            prompt += f'''
+
+<pull_request_intent>
+Title: {pr_title or "Not provided"}
+Description: {pr_description or "Not provided"}
+</pull_request_intent>'''
+
+        prompt += f'''
 
 <whatif_output>
 {whatif_content}

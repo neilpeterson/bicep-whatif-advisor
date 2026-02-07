@@ -58,19 +58,38 @@ jobs:
           echo "What-If analysis completed"
           cat whatif-output.txt
 
+      - name: Get PR Details
+        id: pr-details
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "📋 Fetching PR details for intent analysis..."
+          PR_TITLE=$(gh pr view ${{ github.event.pull_request.number }} --json title --jq '.title')
+          PR_BODY=$(gh pr view ${{ github.event.pull_request.number }} --json body --jq '.body')
+
+          echo "pr_title<<EOF" >> $GITHUB_OUTPUT
+          echo "$PR_TITLE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          echo "pr_body<<EOF" >> $GITHUB_OUTPUT
+          echo "$PR_BODY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Run AI Analysis
         id: ai-analysis
         continue-on-error: true
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          echo "🤖 Running AI analysis..."
+          echo "🤖 Running AI analysis with intent validation..."
 
-          # Run whatif-explain in CI mode and save markdown output
+          # Run whatif-explain in CI mode with PR intent analysis
           cat whatif-output.txt | whatif-explain \
             --ci \
             --diff-ref origin/main \
             --bicep-dir bicep-sample/ \
+            --pr-title "${{ steps.pr-details.outputs.pr_title }}" \
+            --pr-description "${{ steps.pr-details.outputs.pr_body }}" \
             --format markdown \
             > ai-analysis.md
 

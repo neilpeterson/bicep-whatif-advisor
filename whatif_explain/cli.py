@@ -112,6 +112,18 @@ def extract_json(text: str) -> dict:
     default=".",
     help="Path to Bicep source files for context (CI mode only)"
 )
+@click.option(
+    "--pr-title",
+    type=str,
+    default=None,
+    help="Pull request title for intent analysis (CI mode only)"
+)
+@click.option(
+    "--pr-description",
+    type=str,
+    default=None,
+    help="Pull request description for intent analysis (CI mode only)"
+)
 @click.version_option(version=__version__)
 def main(
     provider: str,
@@ -125,7 +137,9 @@ def main(
     risk_threshold: str,
     post_comment: bool,
     pr_url: str,
-    bicep_dir: str
+    bicep_dir: str,
+    pr_title: str,
+    pr_description: str
 ):
     """Analyze Azure What-If deployment output using LLMs.
 
@@ -160,11 +174,18 @@ def main(
         llm_provider = get_provider(provider, model)
 
         # Build prompts
-        system_prompt = build_system_prompt(verbose=verbose, ci_mode=ci)
+        system_prompt = build_system_prompt(
+            verbose=verbose,
+            ci_mode=ci,
+            pr_title=pr_title,
+            pr_description=pr_description
+        )
         user_prompt = build_user_prompt(
             whatif_content=whatif_content,
             diff_content=diff_content,
-            bicep_content=bicep_content
+            bicep_content=bicep_content,
+            pr_title=pr_title,
+            pr_description=pr_description
         )
 
         # Call LLM
