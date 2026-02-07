@@ -33,6 +33,34 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install whatif-explain
+        run: |
+          pip install -e .[anthropic]
+
+      - name: Run What-If Analysis
+        id: whatif
+        run: |
+          az deployment group what-if \
+            --name "bicep-whatif-${{ github.run_number }}" \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --template-file ${{ env.BICEP_TEMPLATE }} \
+            --parameters ${{ env.BICEP_PARAMS }} \
+            --exclude-change-types NoChange Ignore \
+            > whatif-output.txt
+
+      - name: Analyze What-If with AI
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          echo "## 🔍 What-If Deployment Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          cat whatif-output.txt | whatif-explain --format markdown >> $GITHUB_STEP_SUMMARY
+
       - name: Deploy Bicep template
         id: deploy
         run: |
