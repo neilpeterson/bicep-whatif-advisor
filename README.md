@@ -33,14 +33,14 @@ pip install whatif-explain[all]
 
 ### Basic Usage
 
-```bash
+```powershell
 # Set your API key
-export ANTHROPIC_API_KEY="your-api-key"
+$env:ANTHROPIC_API_KEY = "your-api-key"
 
 # Pipe What-If output to whatif-explain
-az deployment group what-if \
-  --resource-group my-rg \
-  --template-file main.bicep \
+az deployment group what-if `
+  --resource-group my-rg `
+  --template-file main.bicep `
   --parameters params.json | whatif-explain
 ```
 
@@ -98,27 +98,27 @@ logging, and enhances API security with Front Door validation.
 ### Provider Credentials
 
 **Anthropic:**
-```bash
-export ANTHROPIC_API_KEY="sk-ant-..."
+```powershell
+$env:ANTHROPIC_API_KEY = "sk-ant-..."
 ```
 
 **Azure OpenAI:**
-```bash
-export AZURE_OPENAI_ENDPOINT="https://your-resource.openai.azure.com/"
-export AZURE_OPENAI_API_KEY="your-key"
-export AZURE_OPENAI_DEPLOYMENT="your-deployment-name"
+```powershell
+$env:AZURE_OPENAI_ENDPOINT = "https://your-resource.openai.azure.com/"
+$env:AZURE_OPENAI_API_KEY = "your-key"
+$env:AZURE_OPENAI_DEPLOYMENT = "your-deployment-name"
 ```
 
 **Ollama:**
-```bash
-export OLLAMA_HOST="http://localhost:11434"  # Optional, this is the default
+```powershell
+$env:OLLAMA_HOST = "http://localhost:11434"  # Optional, this is the default
 ```
 
 ### Optional Overrides
 
-```bash
-export WHATIF_PROVIDER="anthropic"  # Override default provider
-export WHATIF_MODEL="claude-sonnet-4-20250514"  # Override default model
+```powershell
+$env:WHATIF_PROVIDER = "anthropic"  # Override default provider
+$env:WHATIF_MODEL = "claude-sonnet-4-20250514"  # Override default model
 ```
 
 ## Usage Examples
@@ -161,22 +161,22 @@ az deployment group what-if ... | whatif-explain --model claude-opus-4
 
 ### CI Mode (Deployment Gate)
 
-```bash
+```powershell
 # Run as deployment gate in CI pipeline
 az deployment group what-if ... > whatif-output.txt
 
-cat whatif-output.txt | whatif-explain \
-  --ci \
-  --diff-ref origin/main \
-  --risk-threshold high \
-  --post-comment \
+cat whatif-output.txt | whatif-explain `
+  --ci `
+  --diff-ref origin/main `
+  --risk-threshold high `
+  --post-comment `
   --format markdown
 
 # Exit code 0 = safe to deploy
 # Exit code 1 = unsafe, block deployment
-if [ $? -eq 0 ]; then
+if ($LASTEXITCODE -eq 0) {
   az deployment group create --template-file main.bicep
-fi
+}
 ```
 
 ## Exit Codes
@@ -193,20 +193,20 @@ fi
 
 Use your own Azure OpenAI deployment.
 
-```bash
+```powershell
 pip install whatif-explain[azure]
-export AZURE_OPENAI_ENDPOINT="https://..."
-export AZURE_OPENAI_API_KEY="..."
-export AZURE_OPENAI_DEPLOYMENT="..."
+$env:AZURE_OPENAI_ENDPOINT = "https://..."
+$env:AZURE_OPENAI_API_KEY = "..."
+$env:AZURE_OPENAI_DEPLOYMENT = "..."
 ```
 
 ### Anthropic Claude
 
 Fast, accurate, and easy to set up.
 
-```bash
+```powershell
 pip install whatif-explain[anthropic]
-export ANTHROPIC_API_KEY="sk-ant-..."
+$env:ANTHROPIC_API_KEY = "sk-ant-..."
 ```
 
 Default model: `claude-sonnet-4-20250514`
@@ -247,8 +247,8 @@ az deployment group what-if ... | whatif-explain
 
 Set your API key:
 
-```bash
-export ANTHROPIC_API_KEY="sk-ant-..."
+```powershell
+$env:ANTHROPIC_API_KEY = "sk-ant-..."
 ```
 
 ### "Cannot reach Ollama" error

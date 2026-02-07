@@ -38,29 +38,29 @@ pip install whatif-explain[anthropic]
 
 **For Anthropic Claude (recommended):**
 
-```bash
-export ANTHROPIC_API_KEY="your-api-key"
+```powershell
+$env:ANTHROPIC_API_KEY = "your-api-key"
 ```
 
 Get your API key from: https://console.anthropic.com/
 
 **For Azure OpenAI:**
 
-```bash
-export AZURE_OPENAI_ENDPOINT="https://your-resource.openai.azure.com/"
-export AZURE_OPENAI_API_KEY="your-api-key"
-export AZURE_OPENAI_DEPLOYMENT="your-deployment-name"
+```powershell
+$env:AZURE_OPENAI_ENDPOINT = "https://your-resource.openai.azure.com/"
+$env:AZURE_OPENAI_API_KEY = "your-api-key"
+$env:AZURE_OPENAI_DEPLOYMENT = "your-deployment-name"
 ```
 
 **For Ollama (local):**
 
-```bash
+```powershell
 # Install and start Ollama
 ollama pull llama3.1
 ollama serve
 
 # Optional: set custom host
-export OLLAMA_HOST="http://localhost:11434"
+$env:OLLAMA_HOST = "http://localhost:11434"
 ```
 
 ### 2. Test with Sample Data
@@ -321,12 +321,12 @@ cat file.txt | whatif-explain
 
 ### API Key errors
 
-```bash
+```powershell
 # Verify environment variable is set
-echo $ANTHROPIC_API_KEY
+Write-Host $env:ANTHROPIC_API_KEY
 
 # Set it if missing
-export ANTHROPIC_API_KEY="sk-ant-..."
+$env:ANTHROPIC_API_KEY = "sk-ant-..."
 ```
 
 ### Module import errors
@@ -356,12 +356,13 @@ whatif-explain --ci --risk-threshold critical
 
 ### Multiple Resource Groups
 
-```bash
+```powershell
 # Review each scope separately
-for rg in rg-app rg-data rg-network; do
-  echo "Reviewing $rg..."
+$resourceGroups = @("rg-app", "rg-data", "rg-network")
+foreach ($rg in $resourceGroups) {
+  Write-Host "Reviewing $rg..."
   az deployment group what-if -g $rg -f main.bicep | whatif-explain
-done
+}
 ```
 
 ### Save Analysis Results
