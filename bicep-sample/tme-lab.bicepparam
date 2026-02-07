@@ -1,7 +1,8 @@
 using 'main.bicep'
 
-param apimName = 'apim-api-gateway-500-tme'
-param appInsightsLoggerName = 'ins-api-gateway-tme'
+param apimName = 'apim-nepeters-vs'
+param appInsightsLoggerName = 'ins-api-gateway-nepeters'
+param storageAccountName = 'nepetersstor'
 
 // Headers to log in APIM diagnostics
 param headersToLog = [
@@ -10,10 +11,4 @@ param headersToLog = [
   'X-JWT-Audience'
   'X-JWT-Status'
   'X-Azure-Ref'
-]
-
-// Front Door IDs - Get these from the Front Door resource properties
-// You can find this in Azure Portal > Front Door > Overview > Front Door ID
-param frontDoorIds = [
-  'f271dea0-43ef-47ff-b5ec-6516de1d090c'
 ]
