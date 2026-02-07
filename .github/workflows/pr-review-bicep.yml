@@ -1,0 +1,79 @@
+name: PR Review - Bicep What-If Analysis
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'bicep-sample/**'
+      - '.github/workflows/pr-review-bicep.yml'
+
+permissions:
+  id-token: write          # Required for OIDC authentication
+  contents: read           # Required to checkout code
+  pull-requests: write     # Required to post comments on PRs
+
+env:
+  BICEP_TEMPLATE: ./bicep-sample/main.bicep
+  BICEP_PARAMS: ./bicep-sample/tme-lab.bicepparam
+
+jobs:
+  whatif-review:
+    runs-on: ubuntu-latest
+    environment: azure-personal-subscription
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Needed for git diff in CI mode
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install whatif-explain
+        run: |
+          pip install -e .[anthropic]
+
+      - name: Run What-If Analysis
+        id: whatif
+        run: |
+          az deployment group what-if \
+            --name "bicep-whatif-pr-${{ github.event.pull_request.number }}" \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --template-file ${{ env.BICEP_TEMPLATE }} \
+            --parameters ${{ env.BICEP_PARAMS }} \
+            --exclude-change-types NoChange Ignore \
+            > whatif-output.txt
+
+          echo "What-If analysis completed"
+          cat whatif-output.txt
+
+      - name: AI Review & Post PR Comment
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cat whatif-output.txt | whatif-explain \
+            --ci \
+            --diff-ref origin/main \
+            --bicep-dir bicep-sample/ \
+            --format markdown \
+            --post-comment
+
+      - name: Upload What-If Output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: whatif-analysis
+          path: whatif-output.txt
+          retention-days: 30
