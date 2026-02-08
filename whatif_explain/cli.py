@@ -205,6 +205,12 @@ def main(
         # Call LLM
         response_text = llm_provider.complete(system_prompt, user_prompt)
 
+        # Debug: Save raw response to file in CI mode
+        if ci:
+            with open("/tmp/llm_raw_response.txt", "w") as f:
+                f.write(response_text)
+            sys.stderr.write("Debug: Raw LLM response saved to /tmp/llm_raw_response.txt\n")
+
         # Parse JSON response
         try:
             data = extract_json(response_text)
@@ -216,6 +222,10 @@ def main(
                 f"Raw response (first 500 chars):\n{truncated}\n"
             )
             sys.exit(1)
+
+        # Debug: Show what fields were actually returned
+        if ci:
+            sys.stderr.write(f"Debug: LLM response contains fields: {list(data.keys())}\n")
 
         # Validate required fields
         if "resources" not in data:

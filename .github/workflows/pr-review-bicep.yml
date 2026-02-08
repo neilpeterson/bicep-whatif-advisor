@@ -135,10 +135,17 @@ jobs:
           # Debug: Check if output was created
           if [ -f ai-analysis.md ]; then
             echo "✅ ai-analysis.md created ($(wc -l < ai-analysis.md) lines)"
-            echo "First 10 lines of output:"
-            head -10 ai-analysis.md
+            echo "First 20 lines of output:"
+            head -20 ai-analysis.md
           else
             echo "❌ ai-analysis.md was not created"
+          fi
+
+          # Debug: Show raw LLM response if available
+          if [ -f /tmp/llm_raw_response.txt ]; then
+            echo "📄 Raw LLM response (first 1000 chars):"
+            head -c 1000 /tmp/llm_raw_response.txt
+            echo ""
           fi
 
           if [ $EXIT_CODE -eq 0 ]; then
@@ -187,5 +194,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: whatif-analysis
-          path: whatif-output.txt
+          path: |
+            whatif-output.txt
+            ai-analysis.md
+            /tmp/llm_raw_response.txt
           retention-days: 30
