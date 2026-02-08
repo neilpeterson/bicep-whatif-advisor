@@ -30,14 +30,47 @@ def extract_json(text: str) -> dict:
     except json.JSONDecodeError:
         pass
 
-    # Try to find JSON in the text (look for {...})
-    # Match the outermost braces
-    match = re.search(r'\{(?:[^{}]|(?:\{[^{}]*\}))*\}', text, re.DOTALL)
-    if match:
-        try:
-            return json.loads(match.group(0))
-        except json.JSONDecodeError:
-            pass
+    # Try to find JSON in the text by looking for balanced braces
+    # This handles deeply nested JSON properly
+    start = text.find('{')
+    if start == -1:
+        raise ValueError("Could not extract valid JSON from LLM response")
+
+    # Find the matching closing brace
+    brace_count = 0
+    in_string = False
+    escape_next = False
+
+    for i in range(start, len(text)):
+        char = text[i]
+
+        if escape_next:
+            escape_next = False
+            continue
+
+        if char == '\\':
+            escape_next = True
+            continue
+
+        if char == '"' and not escape_next:
+            in_string = not in_string
+            continue
+
+        if in_string:
+            continue
+
+        if char == '{':
+            brace_count += 1
+        elif char == '}':
+            brace_count -= 1
+            if brace_count == 0:
+                # Found the matching closing brace
+                json_str = text[start:i+1]
+                try:
+                    return json.loads(json_str)
+                except json.JSONDecodeError:
+                    pass
+                break
 
     # Failed to extract JSON
     raise ValueError("Could not extract valid JSON from LLM response")
