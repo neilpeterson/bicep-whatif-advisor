@@ -47,16 +47,38 @@ jobs:
       - name: Run What-If Analysis
         id: whatif
         run: |
-          az deployment group what-if \
-            --name "bicep-whatif-pr-${{ github.event.pull_request.number }}" \
-            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-            --template-file ${{ env.BICEP_TEMPLATE }} \
-            --parameters ${{ env.BICEP_PARAMS }} \
-            --exclude-change-types NoChange Ignore \
-            > whatif-output.txt
+          echo "🔍 Running What-If analysis..."
+          echo "Resource Group: ${{ vars.AZURE_RESOURCE_GROUP }}"
+          echo "Template: ${{ env.BICEP_TEMPLATE }}"
+          echo "Parameters: ${{ env.BICEP_PARAMS }}"
 
-          echo "What-If analysis completed"
-          cat whatif-output.txt
+          # Run What-If and capture output AND errors
+          if az deployment group what-if \
+            --name "bicep-whatif-pr-${{ github.event.pull_request.number }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --template-file "${{ env.BICEP_TEMPLATE }}" \
+            --parameters "${{ env.BICEP_PARAMS }}" \
+            --exclude-change-types NoChange Ignore \
+            > whatif-output.txt 2>&1; then
+
+            echo "✅ What-If analysis completed successfully"
+
+            # Verify output has content
+            if [ ! -s whatif-output.txt ]; then
+              echo "⚠️ Warning: What-If output file is empty"
+              echo "File contents:"
+              cat whatif-output.txt
+            else
+              echo "Output file size: $(wc -l < whatif-output.txt) lines"
+              echo "First 20 lines:"
+              head -20 whatif-output.txt
+            fi
+          else
+            echo "❌ What-If analysis failed!"
+            echo "Error output:"
+            cat whatif-output.txt
+            exit 1
+          fi
 
       - name: Get PR Details
         id: pr-details
