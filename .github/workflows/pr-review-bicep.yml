@@ -125,17 +125,7 @@ jobs:
 
           # Run whatif-explain in CI mode with PR intent analysis
           echo "Running whatif-explain command..."
-          cat whatif-output.txt | whatif-explain \
-            --ci \
-            --diff-ref origin/main \
-            --bicep-dir bicep-sample/ \
-            --drift-threshold high \
-            --intent-threshold high \
-            --operations-threshold high \
-            --pr-title "${{ steps.pr-details.outputs.pr_title }}" \
-            --pr-description "${{ steps.pr-details.outputs.pr_body }}" \
-            --format markdown \
-            > ai-analysis.md 2>&1
+          cat whatif-output.txt | whatif-explain --ci --diff-ref origin/main --bicep-dir bicep-sample/ --drift-threshold high --intent-threshold high --operations-threshold high --pr-title "${{ steps.pr-details.outputs.pr_title }}" --pr-description "${{ steps.pr-details.outputs.pr_body }}" --format markdown > ai-analysis.md 2>&1
 
           EXIT_CODE=$?
           echo "Exit code: $EXIT_CODE"
