@@ -145,16 +145,18 @@ jobs:
             echo "✅ Posted analysis to PR #${{ github.event.pull_request.number }}"
           else
             echo "⚠️ No analysis output found, posting error message"
-            ERROR_MSG="## ❌ What-If Analysis Failed
+            cat > error-message.md << 'EOF'
+          ## ❌ What-If Analysis Failed
 
-The AI analysis could not be completed. This may be due to:
-- Missing or invalid What-If output
-- API key issues
-- Network connectivity problems
+          The AI analysis could not be completed. This may be due to:
+          - Missing or invalid What-If output
+          - API key issues
+          - Network connectivity problems
 
-Check the [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details."
+          Check the workflow logs for details.
+          EOF
 
-            echo "$ERROR_MSG" | gh pr comment ${{ github.event.pull_request.number }} --body-file -
+            gh pr comment ${{ github.event.pull_request.number }} --body-file error-message.md
           fi
 
       - name: Check Deployment Safety
