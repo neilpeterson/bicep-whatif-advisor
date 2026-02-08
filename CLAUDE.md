@@ -286,3 +286,67 @@ Required test fixtures in `tests/fixtures/`:
 - `large_output.txt` — 50+ resources for truncation testing
 
 Mock LLM providers in tests to avoid API calls during unit testing.
+
+## Future Improvements / Backlog
+
+### Priority: High - Simplify GitHub Actions Integration
+
+**Problem:** Current GitHub Actions workflows are too complex with too much manual logic:
+- Manual PR details fetching using `gh pr view`
+- Complex error handling and file management
+- Manual PR comment posting
+- Excessive debugging code
+- Users need to understand workflow YAML internals
+
+**Goal:** Make workflows as simple as possible - ideally 6 lines of logic:
+
+```yaml
+- name: Run What-If and AI Review
+  env:
+    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  run: |
+    az deployment group what-if ... | whatif-explain --ci --post-comment
+```
+
+**Implementation Tasks:**
+
+1. **Auto-detect GitHub Actions Environment**
+   - Detect `GITHUB_ACTIONS=true` environment variable
+   - Auto-extract PR details from `GITHUB_EVENT_PATH` JSON file
+   - Auto-set diff reference to PR base branch
+   - File: `cli.py`
+
+2. **Auto-fetch PR Metadata**
+   - Read PR number, title, description from `GITHUB_EVENT_PATH`
+   - No need for `--pr-title` or `--pr-description` flags
+   - File: `ci/github.py`
+
+3. **Simplify PR Comment Posting**
+   - Use `GITHUB_TOKEN`, `GITHUB_REPOSITORY` automatically
+   - No manual `gh` CLI commands needed
+   - Better error messages if token missing
+   - File: `ci/github.py`
+
+4. **Smart Defaults**
+   - Default thresholds to `high` (already done)
+   - Auto-detect repository context
+   - Auto-enable `--post-comment` if `GITHUB_TOKEN` exists
+
+5. **Better Error Handling**
+   - Clear, actionable error messages
+   - Suggest fixes for common issues (missing API key, etc.)
+   - No need for workflow-level debugging
+
+6. **Update Documentation**
+   - Show simplified workflow examples in `PIPELINE.md`
+   - Update `GITHUB_ACTIONS_SETUP.md` with 6-line workflow
+   - Add troubleshooting guide
+
+**Benefits:**
+- Easier onboarding for new users
+- Less copy-paste errors
+- Workflows focus on Azure deployment, not tool orchestration
+- Reduced maintenance burden
+
+**Estimated Effort:** 4-6 hours implementation + testing
