@@ -81,13 +81,16 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          echo "🤖 Running AI analysis with intent validation..."
+          echo "🤖 Running AI analysis with three-bucket risk assessment..."
 
           # Run whatif-explain in CI mode with PR intent analysis
           cat whatif-output.txt | whatif-explain \
             --ci \
             --diff-ref origin/main \
             --bicep-dir bicep-sample/ \
+            --drift-threshold high \
+            --intent-threshold high \
+            --operations-threshold high \
             --pr-title "${{ steps.pr-details.outputs.pr_title }}" \
             --pr-description "${{ steps.pr-details.outputs.pr_body }}" \
             --format markdown \
