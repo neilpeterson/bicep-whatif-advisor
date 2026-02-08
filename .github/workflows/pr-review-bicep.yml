@@ -80,27 +80,6 @@ jobs:
             exit 1
           fi
 
-      - name: Get PR Details
-        id: pr-details
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "📋 Fetching PR details for intent analysis..."
-          PR_TITLE=$(gh pr view ${{ github.event.pull_request.number }} --json title --jq '.title')
-          PR_BODY=$(gh pr view ${{ github.event.pull_request.number }} --json body --jq '.body')
-
-          # Write to output (suppressed from logs)
-          {
-            echo "pr_title<<EOF"
-            echo "$PR_TITLE"
-            echo "EOF"
-            echo "pr_body<<EOF"
-            echo "$PR_BODY"
-            echo "EOF"
-          } >> $GITHUB_OUTPUT
-
-          echo "✅ PR title and description captured"
-
       - name: Run AI Analysis
         id: ai-analysis
         continue-on-error: true
@@ -124,9 +103,9 @@ jobs:
           echo "First 10 lines of What-If output:"
           head -10 whatif-output.txt
 
-          # Run whatif-explain in CI mode (without intent analysis for now)
+          # Run whatif-explain in CI mode
           echo "Running whatif-explain command..."
-          cat whatif-output.txt | whatif-explain --ci --diff-ref origin/main --bicep-dir bicep-sample/ --drift-threshold high --intent-threshold high --operations-threshold high --format markdown > ai-analysis.md 2>&1
+          cat whatif-output.txt | whatif-explain --ci --diff-ref origin/main --bicep-dir bicep-sample/ --drift-threshold high --intent-threshold high --operations-threshold high --format markdown > ai-analysis.md
 
           EXIT_CODE=$?
           echo "Exit code: $EXIT_CODE"

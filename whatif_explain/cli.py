@@ -217,6 +217,10 @@ def main(
             if bicep_dir:
                 bicep_content = _load_bicep_files(bicep_dir)
 
+            # Auto-detect PR metadata if not provided
+            if not pr_title and not pr_description:
+                pr_title, pr_description = _auto_detect_pr_metadata()
+
         # Get provider
         llm_provider = get_provider(provider, model)
 
@@ -315,6 +319,42 @@ def main(
     except Exception as e:
         sys.stderr.write(f"Error: {e}\n")
         sys.exit(1)
+
+
+def _auto_detect_pr_metadata() -> tuple:
+    """Auto-detect PR title and description from GitHub environment.
+
+    Returns:
+        Tuple of (pr_title, pr_description), both may be None
+    """
+    import os
+
+    # Try GitHub Actions environment
+    if os.environ.get("GITHUB_EVENT_NAME") in ["pull_request", "pull_request_target"]:
+        event_path = os.environ.get("GITHUB_EVENT_PATH")
+        if event_path and os.path.exists(event_path):
+            try:
+                with open(event_path, 'r', encoding='utf-8') as f:
+                    event_data = json.load(f)
+                    pr_data = event_data.get("pull_request", {})
+                    pr_title = pr_data.get("title")
+                    pr_description = pr_data.get("body")
+
+                    if pr_title or pr_description:
+                        sys.stderr.write("Auto-detected PR metadata from GitHub event.\n")
+                        if pr_title:
+                            sys.stderr.write(f"  Title: {pr_title[:60]}{'...' if len(pr_title) > 60 else ''}\n")
+                        if pr_description:
+                            desc_preview = pr_description[:60].replace('\n', ' ')
+                            sys.stderr.write(f"  Description: {desc_preview}{'...' if len(pr_description) > 60 else ''}\n")
+                        return pr_title, pr_description
+            except (OSError, json.JSONDecodeError) as e:
+                sys.stderr.write(f"Warning: Could not read GitHub event data: {e}\n")
+
+    # Try Azure DevOps environment
+    # TODO: Add Azure DevOps support if needed
+
+    return None, None
 
 
 def _load_bicep_files(bicep_dir: str) -> Optional[str]:
