@@ -14,6 +14,7 @@ This document provides comprehensive details, examples, and configuration option
 - [Usage Examples](#usage-examples)
 - [Provider Configuration](#provider-configuration)
 - [CI/CD Integration Examples](#cicd-integration-examples)
+- [Troubleshooting](#troubleshooting)
 
 ## Standard vs CI Mode
 
@@ -842,3 +843,331 @@ pipeline {
     }
 }
 ```
+
+## Troubleshooting
+
+### "No input detected" or "stdin is empty" error
+
+**Problem:** The tool isn't receiving piped input.
+
+**Solution:** Make sure you're piping What-If output to the command:
+
+```bash
+# ❌ Wrong - no piped input
+whatif-explain
+
+# ❌ Wrong - command substitution doesn't work
+whatif-explain $(az deployment group what-if ...)
+
+# ✅ Correct - piped input
+az deployment group what-if ... | whatif-explain
+
+# ✅ Correct - file input
+az deployment group what-if ... > output.txt
+cat output.txt | whatif-explain
+```
+
+### "ANTHROPIC_API_KEY environment variable not set"
+
+**Problem:** API key not configured.
+
+**Solution:** Set your API key for the provider you're using:
+
+```bash
+# Anthropic
+export ANTHROPIC_API_KEY="sk-ant-..."
+
+# Azure OpenAI
+export AZURE_OPENAI_ENDPOINT="https://your-resource.openai.azure.com/"
+export AZURE_OPENAI_API_KEY="your-key"
+export AZURE_OPENAI_DEPLOYMENT="your-deployment-name"
+```
+
+**PowerShell:**
+```powershell
+$env:ANTHROPIC_API_KEY = "sk-ant-..."
+```
+
+### "Cannot reach Ollama" or "Connection refused" error
+
+**Problem:** Ollama server is not running or not accessible.
+
+**Solutions:**
+
+1. Start Ollama server:
+   ```bash
+   ollama serve
+   ```
+
+2. Check if Ollama is running:
+   ```bash
+   curl http://localhost:11434/api/version
+   ```
+
+3. If using a different host/port:
+   ```bash
+   export OLLAMA_HOST="http://your-host:11434"
+   ```
+
+4. Verify the model is installed:
+   ```bash
+   ollama list
+   ollama pull llama3.1  # If not installed
+   ```
+
+### "Invalid What-If output" or "No resource changes detected"
+
+**Problem:** The piped input doesn't contain valid Azure What-If output.
+
+**Solutions:**
+
+1. Verify What-If output contains resource changes:
+   ```bash
+   az deployment group what-if ... | tee output.txt
+   cat output.txt  # Check if it contains "Resource changes:" section
+   ```
+
+2. Make sure you're not filtering out all changes:
+   ```bash
+   # ❌ This might produce no output
+   az deployment group what-if --exclude-change-types NoChange Ignore Create Modify Delete
+
+   # ✅ Better - only exclude noise
+   az deployment group what-if --exclude-change-types NoChange Ignore
+   ```
+
+3. Check for Azure CLI errors in the output:
+   ```bash
+   az deployment group what-if ... 2>&1 | tee output.txt
+   # If there are errors, fix them before piping to whatif-explain
+   ```
+
+### "LLM returned invalid JSON" or "Failed to parse response"
+
+**Problem:** The LLM response couldn't be parsed as JSON.
+
+**Solutions:**
+
+1. Try a more capable model:
+   ```bash
+   # If using Haiku, try Sonnet
+   whatif-explain --model claude-sonnet-4-20250514
+
+   # If using Ollama with a small model, try a larger one
+   ollama pull llama3.1:70b
+   whatif-explain --provider ollama --model llama3.1:70b
+   ```
+
+2. Check if What-If output is too large (>100k chars):
+   ```bash
+   az deployment group what-if ... | wc -c
+   # If over 100,000, the output is truncated
+   ```
+
+3. Check for prompt injection or unusual characters in What-If output:
+   ```bash
+   az deployment group what-if ... > output.txt
+   cat output.txt  # Look for any unusual content
+   ```
+
+### "Rate limit exceeded" or "429 Too Many Requests"
+
+**Problem:** You've exceeded your API provider's rate limits.
+
+**Solutions:**
+
+1. **Anthropic:** Check your usage limits at https://console.anthropic.com/
+   - Wait a few minutes and retry
+   - Upgrade your plan if needed
+
+2. **Azure OpenAI:** Check your deployment's quota
+   - Increase TPM (tokens per minute) limit in Azure portal
+   - Use a different deployment
+
+3. **Ollama:** Should not have rate limits, but check system resources
+   - Verify CPU/memory availability
+   - Try a smaller model
+
+### CI Mode: "git diff failed" or "unable to read diff"
+
+**Problem:** Can't collect git diff for CI mode analysis.
+
+**Solutions:**
+
+1. Ensure you're in a git repository:
+   ```bash
+   git status  # Should not error
+   ```
+
+2. Make sure the diff reference exists:
+   ```bash
+   # Check if origin/main exists
+   git branch -r | grep origin/main
+
+   # If not, fetch first
+   git fetch origin
+
+   # Or use a different reference
+   whatif-explain --ci --diff-ref HEAD~1
+   ```
+
+3. In CI/CD, ensure you're fetching full history:
+   ```yaml
+   # GitHub Actions
+   - uses: actions/checkout@v4
+     with:
+       fetch-depth: 0  # Important!
+
+   # Azure DevOps
+   - checkout: self
+     fetchDepth: 0
+   ```
+
+### CI Mode: "Failed to post PR comment"
+
+**Problem:** Unable to post comment to GitHub or Azure DevOps.
+
+**Solutions:**
+
+1. **GitHub:** Check token permissions
+   ```yaml
+   permissions:
+     pull-requests: write  # Required!
+     contents: read
+   ```
+
+2. **GitHub:** Verify environment variables
+   ```bash
+   echo $GITHUB_TOKEN
+   echo $GITHUB_REPOSITORY
+   echo $GITHUB_PR_NUMBER
+   ```
+
+3. **Azure DevOps:** Enable System.AccessToken
+   ```yaml
+   - script: ...
+     env:
+       SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+   ```
+
+4. **Azure DevOps:** Grant build service permissions
+   - Project Settings → Repositories → Security
+   - Grant "Contribute to pull requests" to build service
+
+### "Output is truncated" or "Response too long"
+
+**Problem:** What-If output is extremely large (>100k characters).
+
+**Solutions:**
+
+1. Use `--exclude-change-types` to reduce noise:
+   ```bash
+   az deployment group what-if \
+     --exclude-change-types NoChange Ignore
+   ```
+
+2. Deploy in smaller chunks:
+   ```bash
+   # Instead of deploying everything at once, break into modules
+   az deployment group what-if --template-file network.bicep | whatif-explain
+   az deployment group what-if --template-file compute.bicep | whatif-explain
+   ```
+
+3. The tool automatically truncates at 100k chars - this is by design to stay within LLM context limits
+
+### "Permission denied" errors in CI/CD
+
+**Problem:** Can't access files or run commands in pipeline.
+
+**Solutions:**
+
+1. Check file permissions:
+   ```bash
+   ls -la main.bicep
+   chmod +r main.bicep  # If needed
+   ```
+
+2. Verify working directory:
+   ```yaml
+   - script: |
+       pwd
+       ls -la
+       cat whatif-output.txt | whatif-explain --ci
+   ```
+
+3. Check Python installation:
+   ```bash
+   python --version
+   pip --version
+   pip show whatif-explain
+   ```
+
+### Performance issues or slow response times
+
+**Problem:** Analysis takes too long.
+
+**Solutions:**
+
+1. Use a faster model:
+   ```bash
+   # Anthropic Haiku is fastest
+   whatif-explain --model claude-haiku-3-5
+
+   # Ollama with smaller models
+   whatif-explain --provider ollama --model llama3.1:8b
+   ```
+
+2. Reduce What-If output size (see "Output is truncated" above)
+
+3. Check your internet connection if using cloud providers
+
+4. For Ollama, ensure adequate system resources:
+   ```bash
+   # Check system load
+   top
+   # Consider using GPU acceleration if available
+   ```
+
+### "Module not found" or import errors
+
+**Problem:** Missing dependencies.
+
+**Solutions:**
+
+1. Install with the correct extras:
+   ```bash
+   # For Anthropic
+   pip install whatif-explain[anthropic]
+
+   # For Azure OpenAI
+   pip install whatif-explain[azure]
+
+   # For all providers
+   pip install whatif-explain[all]
+   ```
+
+2. Verify installation:
+   ```bash
+   pip show whatif-explain
+   pip list | grep -E "anthropic|openai|requests"
+   ```
+
+3. Upgrade pip and reinstall:
+   ```bash
+   pip install --upgrade pip
+   pip install --upgrade whatif-explain[all]
+   ```
+
+### Getting help
+
+If you're still having issues:
+
+1. Check the [GitHub Issues](https://github.com/your-repo/whatif-explain/issues) for similar problems
+2. Enable verbose output to see more details (if available in future versions)
+3. Verify your What-If output is valid by checking it manually first
+4. Try with a minimal Bicep template to isolate the issue
+5. Open a new issue with:
+   - Your command and flags
+   - Error message (full stack trace if available)
+   - What-If output (sanitized of sensitive data)
+   - Provider and model being used

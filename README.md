@@ -207,33 +207,6 @@ export OLLAMA_HOST="http://localhost:11434"  # Optional
 
 See [PIPELINE.md](docs/PIPELINE.md) for complete CI/CD integration guides and [REFERENCE.md](docs/REFERENCE.md) for detailed configuration options and examples.
 
-## Troubleshooting
-
-**"No input detected" error**
-
-Make sure you're piping What-If output:
-```bash
-# ❌ Wrong
-whatif-explain
-
-# ✅ Correct
-az deployment group what-if ... | whatif-explain
-```
-
-**"API key not set" error**
-
-Set your API key:
-```bash
-export ANTHROPIC_API_KEY="sk-ant-..."
-```
-
-**Using Ollama**
-
-Make sure Ollama is running:
-```bash
-ollama serve
-```
-
 ## Documentation
 
 - **[REFERENCE.md](docs/REFERENCE.md)** - Complete CLI reference, examples, and configuration options
