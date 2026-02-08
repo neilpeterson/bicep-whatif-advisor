@@ -1,5 +1,3 @@
-// az deployment group what-if --template-file ./bicep-sample/main.bicep --parameters ./bicep-sample/tme-lab.bicepparam -g rg-api-gateway-tme-two --exclude-change-types NoChange Ignore | python3 -m whatif_explain.cli --provider anthropic
-
 param apimName string
 
 @description('Name of the existing Application Insights logger in APIM')
