@@ -7,7 +7,10 @@
 ## Features
 
 - 📊 **Human-Friendly Summaries** - Colored tables with plain English explanations of infrastructure changes
-- 🔒 **Deployment Safety Gates** - Automated risk assessment for CI/CD pipelines
+- 🔒 **Deployment Safety Gates** - Three independent risk assessments with configurable thresholds:
+  - **Infrastructure Drift Detection** - Identifies changes not present in your code (out-of-band modifications)
+  - **PR Intent Analysis** - Compares actual changes against PR description to catch unintended modifications
+  - **Risky Operations Detection** - Flags dangerous operations (deletions, security changes, public endpoints)
 - 🤖 **Multiple LLM Providers** - Anthropic Claude, Azure OpenAI, or local Ollama
 - 📝 **Multiple Output Formats** - Table, JSON, or Markdown
 - 🚦 **PR Integration** - Post summaries directly to GitHub or Azure DevOps pull requests
