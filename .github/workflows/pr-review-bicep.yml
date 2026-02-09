@@ -1,17 +1,7 @@
 name: PR Review - Bicep What-If Analysis
 #
-# Simplified workflow using whatif-explain platform auto-detection.
-# The tool automatically:
-#   - Detects GitHub Actions environment and enables CI mode
-#   - Extracts PR metadata (title, description, number) from event file
-#   - Sets git diff reference to origin/{base_branch}
-#   - Posts PR comment with analysis (using GITHUB_TOKEN)
-#   - Exits with code 1 if deployment is unsafe (blocks merge)
-#
-# Migration from manual approach:
-#   Before: 171 lines with manual logic, file I/O, gh CLI commands
-#   After:  70 lines with direct piping to whatif-explain
-#   Reduction: 59% fewer lines, zero manual logic
+# Simplified workflow using whatif-explain auto-detection.
+# Automatically enables CI mode, extracts PR metadata, posts comments, and blocks unsafe deployments.
 
 on:
   pull_request:
@@ -36,47 +26,29 @@ jobs:
     environment: azure-personal-subscription
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Needed for git diff in CI mode
+          fetch-depth: 0
 
-      - name: Azure Login
-        uses: azure/login@v2
+      - uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install whatif-explain
-        run: |
-          pip install -e .[anthropic]
+      - run: pip install -e .[anthropic]
 
-      - name: Run What-If and AI Review
-        env:
+      - env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "🔍 Running What-If analysis and AI review..."
-          echo "Resource Group: ${{ vars.AZURE_RESOURCE_GROUP }}"
-          echo "Template: ${{ env.BICEP_TEMPLATE }}"
-          echo "Parameters: ${{ env.BICEP_PARAMS }}"
-          echo ""
-
-          # Run What-If piped directly to whatif-explain
-          # Auto-detection handles: CI mode, PR metadata, diff-ref, and PR comments
           az deployment group what-if \
-            --name "bicep-whatif-pr-${{ github.event.pull_request.number }}" \
             --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
             --template-file "${{ env.BICEP_TEMPLATE }}" \
             --parameters "${{ env.BICEP_PARAMS }}" \
             --exclude-change-types NoChange Ignore \
             | whatif-explain --bicep-dir bicep-sample/
-
-          # Exit code 0 = safe, 1 = unsafe/blocked, 2+ = error
-          # GitHub Actions will automatically fail the job if exit code is non-zero
