@@ -1,4 +1,4 @@
-name: Bicep Pipeline - Review & Deploy
+name: Sample Bicep Pipeline - Review & Deploy
 
 on:
   pull_request:
@@ -6,13 +6,13 @@ on:
       - main
     paths:
       - 'bicep-sample/**'
-      - '.github/workflows/bicep-pipeline.yml'
+      - '.github/workflows/bicep-sample-pipeline.yml'
   push:
     branches:
       - main
     paths:
       - 'bicep-sample/**'
-      - '.github/workflows/bicep-pipeline.yml'
+      - '.github/workflows/bicep-sample-pipeline.yml'
   workflow_dispatch:
 
 permissions:
