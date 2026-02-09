@@ -6,14 +6,15 @@
 
 ## Features
 
+- **Platform Auto-Detection** - Automatically detects GitHub Actions or Azure DevOps and enables full CI/CD integration (zero configuration required)
 - **Human-Friendly Summaries** - Colored tables with plain English explanations of infrastructure changes
 - **Deployment Safety Gates** - Three independent risk assessments with configurable thresholds:
   - Infrastructure Drift Detection - Identifies changes not present in your code (out-of-band modifications)
   - PR Intent Analysis - Compares actual changes against PR description to catch unintended modifications
   - Risky Operations Detection - Flags dangerous operations (deletions, security changes, public endpoints)
+- **Automatic PR Comments** - Posts detailed analysis to pull requests without manual configuration
 - **Multiple LLM Providers** - Anthropic Claude, Azure OpenAI, or local Ollama
 - **Multiple Output Formats** - Table, JSON, or Markdown
-- **PR Integration** - Post summaries directly to GitHub or Azure DevOps pull requests
 - **Fast & Lightweight** - Minimal dependencies, works anywhere Python runs
 
 ## Quick Start
@@ -88,32 +89,27 @@ az deployment group what-if ... | whatif-explain
 
 **Features:** Plain English summaries, colored output, multiple formats (table/JSON/markdown)
 
-### CI Mode (--ci)
+### CI Mode (Auto-Detected)
 
-For CI/CD pipelines. Acts as an automated deployment safety gate with three-bucket risk assessment.
+For CI/CD pipelines. Automatically detects GitHub Actions or Azure DevOps environment and enables full safety gate analysis.
 
 ```bash
-# Run What-If and save output
+# Simple - just pipe What-If output
 az deployment group what-if \
   --resource-group my-rg \
-  --template-file main.bicep > whatif-output.txt
+  --template-file main.bicep \
+  --exclude-change-types NoChange Ignore \
+  | whatif-explain
 
-# Analyze with CI mode (three independent risk thresholds)
-cat whatif-output.txt | whatif-explain \
-  --ci \
-  --diff-ref origin/main \
-  --drift-threshold high \
-  --intent-threshold high \
-  --operations-threshold high
-
-# Use exit code to gate deployment
-if [ $? -eq 0 ]; then
-  az deployment group create --resource-group my-rg --template-file main.bicep
-else
-  echo "❌ Deployment blocked - check which risk bucket failed"
-  exit 1
-fi
+# Exit code 0 = safe, 1 = unsafe (deployment blocked)
 ```
+
+**Auto-detection includes:**
+- ✅ Enables CI mode automatically in pipeline environments
+- ✅ Extracts PR title/description from environment
+- ✅ Sets git diff reference from PR base branch
+- ✅ Posts PR comments when auth token available
+- ✅ Blocks unsafe deployments with exit code 1
 
 **Features:** Everything in Standard Mode, plus:
 - **Three-bucket risk assessment** (drift, intent alignment, risky operations)
@@ -145,12 +141,17 @@ whatif-explain --provider ollama
 # Show property-level details
 whatif-explain --verbose
 
-# CI mode with custom thresholds (three independent buckets)
-whatif-explain --ci \
+# Adjust risk thresholds (CI mode auto-enables in pipelines)
+whatif-explain \
   --drift-threshold low \
   --intent-threshold medium \
   --operations-threshold high
+
+# Manual CI mode (if not auto-detected)
+whatif-explain --ci
 ```
+
+**Note:** CI mode is automatically enabled when running in GitHub Actions or Azure DevOps. Manual `--ci` flag only needed for local testing or other CI platforms.
 
 ## Environment Variables
 
@@ -183,42 +184,72 @@ export OLLAMA_HOST="http://localhost:11434"  # Optional
 
 ## CI/CD Integration
 
-### GitHub Actions
+### GitHub Actions (Simplified)
+
+Complete workflow in ~50 lines:
 
 ```yaml
-- name: AI Safety Analysis
-  env:
-    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  run: |
-    az deployment group what-if ... > whatif-output.txt
-    cat whatif-output.txt | whatif-explain \
-      --ci \
-      --diff-ref origin/main \
-      --drift-threshold high \
-      --intent-threshold high \
-      --operations-threshold high \
-      --post-comment \
-      --format markdown
+name: PR Review - Bicep What-If
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  whatif-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: pip install whatif-explain[anthropic]
+
+      - env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          az deployment group what-if \
+            --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+            --template-file bicep/main.bicep \
+            --exclude-change-types NoChange Ignore \
+            | whatif-explain
 ```
 
-### Azure DevOps
+**That's it!** Auto-detects everything: CI mode, PR metadata, diff reference, and posts comments.
+
+### Azure DevOps (Simplified)
 
 ```yaml
 - script: |
-    az deployment group what-if ... > whatif-output.txt
-    cat whatif-output.txt | whatif-explain \
-      --ci \
-      --diff-ref origin/main \
-      --drift-threshold high \
-      --intent-threshold high \
-      --operations-threshold high
+    az deployment group what-if \
+      --resource-group $(RESOURCE_GROUP) \
+      --template-file bicep/main.bicep \
+      --exclude-change-types NoChange Ignore \
+      | whatif-explain
   env:
     ANTHROPIC_API_KEY: $(ANTHROPIC_API_KEY)
     SYSTEM_ACCESSTOKEN: $(System.AccessToken)
 ```
 
-See [PIPELINE.md](docs/PIPELINE.md) for complete CI/CD integration guides and [REFERENCE.md](docs/REFERENCE.md) for detailed configuration options and examples.
+**Auto-detects:** CI mode, PR ID, target branch, posts comments when token available.
+
+See [GITHUB_ACTIONS_SETUP.md](docs/GITHUB_ACTIONS_SETUP.md) for complete setup guide with Azure authentication, or [PIPELINE.md](docs/PIPELINE.md) for other CI/CD platforms.
 
 ## Documentation
 
