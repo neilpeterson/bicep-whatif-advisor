@@ -29,7 +29,6 @@ jobs:
   pr-review:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    environment: azure-personal-subscription
 
     steps:
       - name: Checkout code
@@ -68,7 +67,6 @@ jobs:
   deploy:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    environment: azure-personal-subscription
 
     steps:
       - name: Checkout code
