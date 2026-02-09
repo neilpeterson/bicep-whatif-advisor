@@ -15,6 +15,8 @@ resource apiManagementInstance 'Microsoft.ApiManagement/service@2022-08-01' exis
   name: apimName
 }
 
+
+
 // Reference existing Application Insights logger
 resource apimLogger 'Microsoft.ApiManagement/service/loggers@2020-12-01' existing = {
   parent: apiManagementInstance
@@ -45,8 +47,6 @@ resource apimDiagnosticsAppInsights 'Microsoft.ApiManagement/service/diagnostics
     }
   }
 }
-
-
 
 // Basic API deployment
 resource demoApi 'Microsoft.ApiManagement/service/apis@2022-08-01' = {
@@ -95,6 +95,16 @@ resource demoOperation 'Microsoft.ApiManagement/service/apis/operations@2022-08-
         description: 'Success'
       }
     ]
+  }
+}
+
+// API Policy
+resource demoApiPolicy 'Microsoft.ApiManagement/service/apis/policies@2022-08-01' = {
+  parent: demoApi
+  name: 'policy'
+  properties: {
+    format: 'rawxml'
+    value: loadTextContent('policy-logic/apim-policy.xml')
   }
 }
 
