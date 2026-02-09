@@ -11,6 +11,12 @@ param headersToLog array = []
 @description('Name of the storage account')
 param storageAccountName string
 
+@description('Name of the Key Vault')
+param keyVaultName string
+
+@description('Tenant ID for Key Vault')
+param tenantId string = subscription().tenantId
+
 resource apiManagementInstance 'Microsoft.ApiManagement/service@2022-08-01' existing = {
   name: apimName
 }
@@ -126,3 +132,31 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2025-01-01' = {
     publicNetworkAccess: 'Disabled'
   }
 }
+
+// Key Vault with public access blocked
+resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
+  name: keyVaultName
+  location: 'centralus'
+  tags: {
+    Environment: 'Production'
+    ManagedBy: 'Bicep'
+  }
+  properties: {
+    sku: {
+      family: 'A'
+      name: 'standard'
+    }
+    tenantId: tenantId
+    enableRbacAuthorization: true
+    enableSoftDelete: true
+    softDeleteRetentionInDays: 90
+    enablePurgeProtection: true
+    publicNetworkAccess: 'Disabled'
+    networkAcls: {
+      defaultAction: 'Deny'
+      bypass: 'AzureServices'
+    }
+  }
+}
+
+
