@@ -43,9 +43,14 @@ bicep-whatif-explain/       # Root directory
 │   └── fixtures/           # Sample What-If outputs
 ├── bicep-sample/           # Example Bicep template for testing
 ├── docs/                   # Documentation
-│   ├── PIPELINE.md         # CI/CD integration guide
-│   ├── IMPLEMENTATION_GUIDE.md # Installation and usage walkthrough
-│   └── whatif-explain-spec.md  # Original specification
+│   ├── specs/              # Technical specifications
+│   │   ├── SPECIFICATION.md
+│   │   └── PLATFORM_AUTO_DETECTION_PLAN.md
+│   └── guides/             # User guides
+│       ├── GETTING_STARTED.md
+│       ├── CICD_INTEGRATION.md
+│       ├── RISK_ASSESSMENT.md
+│       └── CLI_REFERENCE.md
 ├── pyproject.toml          # Package configuration
 ├── README.md               # User documentation
 └── LICENSE                 # MIT license
@@ -198,6 +203,22 @@ Three-bucket risk assessment:
 - **High:** Deletion of stateful resources (databases, storage, key vaults), RBAC deletions, broad network security changes, encryption changes, SKU downgrades
 - **Medium:** Behavioral changes to existing resources, new public endpoints, firewall changes, policy modifications
 - **Low:** New resources, tags, monitoring resources, cosmetic changes
+
+## Documentation Structure
+
+Documentation is organized into two directories:
+
+**`/docs/specs/`** - Technical specifications and feature plans
+- `SPECIFICATION.md` - Complete technical design and architecture
+- `PLATFORM_AUTO_DETECTION_PLAN.md` - CI/CD auto-detection implementation
+
+**`/docs/guides/`** - User-facing guides
+- `GETTING_STARTED.md` - Installation and basic usage
+- `CICD_INTEGRATION.md` - CI/CD pipeline setup (GitHub Actions, Azure DevOps, etc.)
+- `RISK_ASSESSMENT.md` - How risk evaluation works
+- `CLI_REFERENCE.md` - Complete command reference
+
+The main `README.md` provides a concise overview with links to all documentation.
 
 ## Sample Bicep Template
 

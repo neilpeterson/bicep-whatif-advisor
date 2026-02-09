@@ -34,24 +34,25 @@ pip install whatif-explain[all]
 
 ### Set Your API Key
 
-```powershell
+```bash
 # Anthropic (recommended)
-$env:ANTHROPIC_API_KEY = "sk-ant-..."
+export ANTHROPIC_API_KEY="sk-ant-..."
 
 # Or Azure OpenAI
-$env:AZURE_OPENAI_ENDPOINT = "https://your-resource.openai.azure.com/"
-$env:AZURE_OPENAI_API_KEY = "your-key"
-$env:AZURE_OPENAI_DEPLOYMENT = "your-deployment-name"
+export AZURE_OPENAI_ENDPOINT="https://your-resource.openai.azure.com/"
+export AZURE_OPENAI_API_KEY="your-key"
+export AZURE_OPENAI_DEPLOYMENT="your-deployment-name"
 ```
 
 ### Basic Usage
 
-```powershell
+```bash
 # Pipe What-If output to whatif-explain
-az deployment group what-if `
-  --resource-group my-rg `
-  --template-file main.bicep `
-  --parameters params.json | whatif-explain
+az deployment group what-if \
+  --resource-group my-rg \
+  --template-file main.bicep \
+  --parameters params.json \
+  | whatif-explain
 ```
 
 ### Example Output
@@ -67,14 +68,9 @@ az deployment group what-if `
 │ 2    │ policy                    │ APIM Global Policy   │ Modify │ Updates global inbound policy to    │
 │      │                           │                      │        │ validate Front Door header and      │
 │      │                           │                      │        │ include JWT parsing fragment.       │
-├──────┼───────────────────────────┼──────────────────────┼────────┼─────────────────────────────────────┤
-│ 3    │ sce-jwt-parsing-logging   │ APIM Policy Fragment │ Create │ Reusable fragment that parses       │
-│      │                           │                      │        │ Bearer tokens and extracts claims   │
-│      │                           │                      │        │ into logging headers.               │
 ╰──────┴───────────────────────────┴──────────────────────┴────────┴─────────────────────────────────────╯
 
-Summary: This deployment creates JWT authentication policies, updates diagnostic
-logging, and enhances API security with Front Door validation.
+Summary: This deployment creates JWT authentication policies and updates diagnostic logging.
 ```
 
 ## Two Operating Modes
@@ -112,7 +108,7 @@ az deployment group what-if \
 - ✅ Blocks unsafe deployments with exit code 1
 
 **Features:** Everything in Standard Mode, plus:
-- **Three-bucket risk assessment** (drift, intent alignment, risky operations)
+- Three-bucket risk assessment (drift, intent alignment, risky operations)
 - Git diff analysis to detect infrastructure drift
 - PR intent validation (compares changes to PR description)
 - Independent thresholds for each risk category
@@ -127,52 +123,62 @@ az deployment group what-if \
 
 **Risk Levels per Bucket:** Low, Medium, High (deployment fails if ANY bucket exceeds its threshold)
 
-## Common Options
+## Documentation
+
+### User Guides
+
+- **[Getting Started](docs/guides/GETTING_STARTED.md)** - Complete installation and usage guide
+- **[CI/CD Integration](docs/guides/CICD_INTEGRATION.md)** - Set up deployment gates in GitHub Actions, Azure DevOps, GitLab, Jenkins
+- **[Risk Assessment](docs/guides/RISK_ASSESSMENT.md)** - Understand how risk evaluation works
+- **[CLI Reference](docs/guides/CLI_REFERENCE.md)** - Complete command reference with examples
+
+### Technical Specifications
+
+- **[Project Specification](docs/specs/SPECIFICATION.md)** - Technical design and architecture
+- **[Platform Auto-Detection Plan](docs/specs/PLATFORM_AUTO_DETECTION_PLAN.md)** - Implementation details for CI/CD auto-detection
+
+## Common Usage
+
+### Different Output Formats
 
 ```bash
-# Use different output format
+# JSON format for scripting
 whatif-explain --format json
-whatif-explain --format markdown
 
-# Use different provider
-whatif-explain --provider azure-openai
-whatif-explain --provider ollama
+# Markdown format for documentation
+whatif-explain --format markdown
 
 # Show property-level details
 whatif-explain --verbose
+```
 
-# Adjust risk thresholds (CI mode auto-enables in pipelines)
+### Different LLM Providers
+
+```bash
+# Use Azure OpenAI
+whatif-explain --provider azure-openai
+
+# Use local Ollama
+whatif-explain --provider ollama
+```
+
+### Adjust Risk Thresholds (CI Mode)
+
+```bash
+# More strict (block on medium or high risk)
+whatif-explain \
+  --drift-threshold medium \
+  --intent-threshold medium \
+  --operations-threshold medium
+
+# Very strict (block on any risk)
 whatif-explain \
   --drift-threshold low \
-  --intent-threshold medium \
-  --operations-threshold high
-
-# Manual CI mode (if not auto-detected)
-whatif-explain --ci
+  --intent-threshold low \
+  --operations-threshold low
 ```
 
 **Note:** CI mode is automatically enabled when running in GitHub Actions or Azure DevOps. Manual `--ci` flag only needed for local testing or other CI platforms.
-
-## Environment Variables
-
-### Provider Credentials
-
-**Anthropic:**
-```bash
-export ANTHROPIC_API_KEY="sk-ant-..."
-```
-
-**Azure OpenAI:**
-```bash
-export AZURE_OPENAI_ENDPOINT="https://your-resource.openai.azure.com/"
-export AZURE_OPENAI_API_KEY="your-key"
-export AZURE_OPENAI_DEPLOYMENT="your-deployment-name"
-```
-
-**Ollama:**
-```bash
-export OLLAMA_HOST="http://localhost:11434"  # Optional
-```
 
 ## Exit Codes
 
@@ -182,7 +188,7 @@ export OLLAMA_HOST="http://localhost:11434"  # Optional
 | `1` | Error or unsafe deployment (risk threshold exceeded) |
 | `2` | Invalid input (no piped input or malformed What-If output) |
 
-## CI/CD Integration
+## CI/CD Integration Examples
 
 ### GitHub Actions (Simplified)
 
@@ -249,24 +255,20 @@ jobs:
 
 **Auto-detects:** CI mode, PR ID, target branch, posts comments when token available.
 
-See [GITHUB_ACTIONS_SETUP.md](docs/GITHUB_ACTIONS_SETUP.md) for complete setup guide with Azure authentication, or [PIPELINE.md](docs/PIPELINE.md) for other CI/CD platforms.
+See **[CI/CD Integration Guide](docs/guides/CICD_INTEGRATION.md)** for complete setup instructions.
 
-## Documentation
+## Support & Contributing
 
-- **[REFERENCE.md](docs/REFERENCE.md)** - Complete CLI reference, examples, and configuration options
-- **[PIPELINE.md](docs/PIPELINE.md)** - CI/CD integration guides for GitHub Actions, Azure DevOps, GitLab, and Jenkins
-- **[IMPLEMENTATION_GUIDE.md](docs/IMPLEMENTATION_GUIDE.md)** - Step-by-step installation and usage walkthrough
-
-## Contributing
-
-Issues and pull requests are welcome! Please see the repository for contribution guidelines.
-
-## License
-
-MIT License - see [LICENSE](LICENSE) for details.
+- **Documentation**: See [docs/guides/](docs/guides/) for comprehensive guides
+- **Issues**: Report bugs or request features at the repository issues page
+- **Contributing**: Issues and pull requests are welcome!
 
 ## Links
 
 - Anthropic API: https://console.anthropic.com/
 - Azure OpenAI: https://azure.microsoft.com/products/ai-services/openai-service
 - Ollama: https://ollama.com/
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
