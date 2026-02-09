@@ -1,5 +1,6 @@
 """CLI entry point for whatif-explain."""
 
+import os
 import sys
 import json
 from typing import Optional
@@ -9,6 +10,7 @@ from .input import read_stdin, InputError
 from .prompt import build_system_prompt, build_user_prompt
 from .providers import get_provider
 from .render import render_table, render_json, render_markdown
+from .ci.platform import detect_platform
 
 
 def extract_json(text: str) -> dict:
@@ -204,6 +206,48 @@ def main(
         # Read stdin
         whatif_content = read_stdin()
 
+        # Auto-detect platform context (GitHub Actions, Azure DevOps, or local)
+        platform_ctx = detect_platform()
+
+        # Apply smart defaults based on platform detection
+        if platform_ctx.platform != "local":
+            # Auto-enable CI mode in pipeline environments
+            if not ci:
+                platform_name = (
+                    "GitHub Actions" if platform_ctx.platform == "github"
+                    else "Azure DevOps"
+                )
+                sys.stderr.write(
+                    f"🤖 Auto-detected {platform_name} environment - enabling CI mode\n"
+                )
+                ci = True
+
+            # Auto-set diff reference if not manually provided
+            if diff_ref == "HEAD~1" and platform_ctx.base_branch:
+                diff_ref = platform_ctx.get_diff_ref()
+                sys.stderr.write(f"📊 Auto-detected diff reference: {diff_ref}\n")
+
+            # Auto-populate PR metadata if not manually provided
+            if not pr_title and platform_ctx.pr_title:
+                pr_title = platform_ctx.pr_title
+                title_preview = pr_title[:60] + "..." if len(pr_title) > 60 else pr_title
+                sys.stderr.write(f"📝 Auto-detected PR title: {title_preview}\n")
+
+            if not pr_description and platform_ctx.pr_description:
+                pr_description = platform_ctx.pr_description
+                desc_lines = len(pr_description.splitlines())
+                sys.stderr.write(f"📄 Auto-detected PR description ({desc_lines} lines)\n")
+
+            # Auto-enable PR comments if token available
+            if not post_comment:
+                has_token = (
+                    (platform_ctx.platform == "github" and os.environ.get("GITHUB_TOKEN")) or
+                    (platform_ctx.platform == "azuredevops" and os.environ.get("SYSTEM_ACCESSTOKEN"))
+                )
+                if has_token:
+                    sys.stderr.write("💬 Auto-enabling PR comments (auth token detected)\n")
+                    post_comment = True
+
         # Get diff content if CI mode
         diff_content = None
         bicep_content = None
@@ -215,10 +259,6 @@ def main(
             # Optionally load Bicep source files
             if bicep_dir:
                 bicep_content = _load_bicep_files(bicep_dir)
-
-            # Auto-detect PR metadata if not provided
-            if not pr_title and not pr_description:
-                pr_title, pr_description = _auto_detect_pr_metadata()
 
         # Get provider
         llm_provider = get_provider(provider, model)
@@ -308,50 +348,6 @@ def main(
     except Exception as e:
         sys.stderr.write(f"Error: {e}\n")
         sys.exit(1)
-
-
-def _auto_detect_pr_metadata() -> tuple:
-    """Auto-detect PR title and description from GitHub environment.
-
-    Returns:
-        Tuple of (pr_title, pr_description), both may be None
-    """
-    import os
-
-    # Try GitHub Actions environment
-    if os.environ.get("GITHUB_EVENT_NAME") in ["pull_request", "pull_request_target"]:
-        event_path = os.environ.get("GITHUB_EVENT_PATH")
-        if event_path and os.path.exists(event_path):
-            try:
-                with open(event_path, 'r', encoding='utf-8') as f:
-                    event_data = json.load(f)
-                    pr_data = event_data.get("pull_request", {})
-                    pr_title = pr_data.get("title")
-                    pr_description = pr_data.get("body")
-
-                    if pr_title or pr_description:
-                        sys.stderr.write(
-                            "Auto-detected PR metadata from GitHub event.\n"
-                        )
-                        if pr_title:
-                            title_ellipsis = '...' if len(pr_title) > 60 else ''
-                            sys.stderr.write(
-                                f"  Title: {pr_title[:60]}{title_ellipsis}\n"
-                            )
-                        if pr_description:
-                            desc_preview = pr_description[:60].replace('\n', ' ')
-                            desc_ellipsis = '...' if len(pr_description) > 60 else ''
-                            sys.stderr.write(
-                                f"  Description: {desc_preview}{desc_ellipsis}\n"
-                            )
-                        return pr_title, pr_description
-            except (OSError, json.JSONDecodeError) as e:
-                sys.stderr.write(f"Warning: Could not read GitHub event data: {e}\n")
-
-    # Try Azure DevOps environment
-    # TODO: Add Azure DevOps support if needed
-
-    return None, None
 
 
 def _load_bicep_files(bicep_dir: str) -> Optional[str]:

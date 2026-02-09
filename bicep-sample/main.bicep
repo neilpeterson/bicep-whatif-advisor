@@ -1,3 +1,5 @@
+// test
+
 param apimName string
 
 @description('Name of the existing Application Insights logger in APIM')
@@ -59,6 +61,6 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2025-01-01' = {
     minimumTlsVersion: 'TLS1_2'
     allowBlobPublicAccess: false
     accessTier: 'Hot'
-    publicNetworkAccess: 'Enabled'
+    publicNetworkAccess: 'Disabled'
   }
 }
