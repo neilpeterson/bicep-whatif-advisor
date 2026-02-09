@@ -1,6 +1,6 @@
 name: PR Review - Bicep What-If Analysis
 #
-# Simplified workflow using whatif-explain auto-detection.
+# Simplified workflow using bicep-whatif-advisor auto-detection.
 # Automatically enables CI mode, extracts PR metadata, posts comments, and blocks unsafe deployments.
 
 on:
@@ -51,4 +51,4 @@ jobs:
             --template-file "${{ env.BICEP_TEMPLATE }}" \
             --parameters "${{ env.BICEP_PARAMS }}" \
             --exclude-change-types NoChange Ignore \
-            | whatif-explain --bicep-dir bicep-sample/
+            | bicep-whatif-advisor --bicep-dir bicep-sample/

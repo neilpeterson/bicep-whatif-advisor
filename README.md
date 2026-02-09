@@ -1,8 +1,8 @@
-# whatif-explain
+# bicep-whatif-advisor
 
 > Azure What-If deployment analyzer using LLMs for human-friendly summaries and safety reviews
 
-`whatif-explain` is a Python CLI tool that accepts Azure Bicep/ARM What-If output via stdin, sends it to an LLM for analysis, and renders a human-friendly summary. In CI mode, it acts as an automated deployment safety gate with risk assessment and PR comments.
+`bicep-whatif-advisor` is a Python CLI tool that accepts Azure Bicep/ARM What-If output via stdin, sends it to an LLM for analysis, and renders a human-friendly summary. In CI mode, it acts as an automated deployment safety gate with risk assessment and PR comments.
 
 ## Features
 
@@ -23,13 +23,13 @@
 
 ```bash
 # Install with Anthropic Claude support (recommended)
-pip install whatif-explain[anthropic]
+pip install bicep-whatif-advisor[anthropic]
 
 # Or with Azure OpenAI
-pip install whatif-explain[azure]
+pip install bicep-whatif-advisor[azure]
 
 # Or with all providers
-pip install whatif-explain[all]
+pip install bicep-whatif-advisor[all]
 ```
 
 ### Set Your API Key
@@ -47,12 +47,12 @@ export AZURE_OPENAI_DEPLOYMENT="your-deployment-name"
 ### Basic Usage
 
 ```bash
-# Pipe What-If output to whatif-explain
+# Pipe What-If output to bicep-whatif-advisor
 az deployment group what-if \
   --resource-group my-rg \
   --template-file main.bicep \
   --parameters params.json \
-  | whatif-explain
+  | bicep-whatif-advisor
 ```
 
 ### Example Output
@@ -80,7 +80,7 @@ Summary: This deployment creates JWT authentication policies and updates diagnos
 For local development and interactive usage. Provides human-readable summaries without risk assessment.
 
 ```bash
-az deployment group what-if ... | whatif-explain
+az deployment group what-if ... | bicep-whatif-advisor
 ```
 
 **Features:** Plain English summaries, colored output, multiple formats (table/JSON/markdown)
@@ -95,7 +95,7 @@ az deployment group what-if \
   --resource-group my-rg \
   --template-file main.bicep \
   --exclude-change-types NoChange Ignore \
-  | whatif-explain
+  | bicep-whatif-advisor
 
 # Exit code 0 = safe, 1 = unsafe (deployment blocked)
 ```
@@ -136,36 +136,36 @@ az deployment group what-if \
 
 ```bash
 # JSON format for scripting
-whatif-explain --format json
+bicep-whatif-advisor --format json
 
 # Markdown format for documentation
-whatif-explain --format markdown
+bicep-whatif-advisor --format markdown
 
 # Show property-level details
-whatif-explain --verbose
+bicep-whatif-advisor --verbose
 ```
 
 ### Different LLM Providers
 
 ```bash
 # Use Azure OpenAI
-whatif-explain --provider azure-openai
+bicep-whatif-advisor --provider azure-openai
 
 # Use local Ollama
-whatif-explain --provider ollama
+bicep-whatif-advisor --provider ollama
 ```
 
 ### Adjust Risk Thresholds (CI Mode)
 
 ```bash
 # More strict (block on medium or high risk)
-whatif-explain \
+bicep-whatif-advisor \
   --drift-threshold medium \
   --intent-threshold medium \
   --operations-threshold medium
 
 # Very strict (block on any risk)
-whatif-explain \
+bicep-whatif-advisor \
   --drift-threshold low \
   --intent-threshold low \
   --operations-threshold low
@@ -217,7 +217,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - run: pip install whatif-explain[anthropic]
+      - run: pip install bicep-whatif-advisor[anthropic]
 
       - env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -227,7 +227,7 @@ jobs:
             --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
             --template-file bicep/main.bicep \
             --exclude-change-types NoChange Ignore \
-            | whatif-explain
+            | bicep-whatif-advisor
 ```
 
 **That's it!** Auto-detects everything: CI mode, PR metadata, diff reference, and posts comments.
@@ -240,7 +240,7 @@ jobs:
       --resource-group $(RESOURCE_GROUP) \
       --template-file bicep/main.bicep \
       --exclude-change-types NoChange Ignore \
-      | whatif-explain
+      | bicep-whatif-advisor
   env:
     ANTHROPIC_API_KEY: $(ANTHROPIC_API_KEY)
     SYSTEM_ACCESSTOKEN: $(System.AccessToken)

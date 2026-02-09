@@ -1,10 +1,10 @@
-# Getting Started with whatif-explain
+# Getting Started with bicep-whatif-advisor
 
-Complete installation and usage guide for `whatif-explain`.
+Complete installation and usage guide for `bicep-whatif-advisor`.
 
 ## Table of Contents
 
-- [What is whatif-explain?](#what-is-whatif-explain)
+- [What is bicep-whatif-advisor?](#what-is-bicep-whatif-advisor)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Basic Usage](#basic-usage)
@@ -13,9 +13,9 @@ Complete installation and usage guide for `whatif-explain`.
 - [Environment Variables](#environment-variables)
 - [Next Steps](#next-steps)
 
-## What is whatif-explain?
+## What is bicep-whatif-advisor?
 
-`whatif-explain` is a Python CLI tool that transforms Azure Bicep/ARM What-If output into human-friendly summaries using AI. It operates in two modes:
+`bicep-whatif-advisor` is a Python CLI tool that transforms Azure Bicep/ARM What-If output into human-friendly summaries using AI. It operates in two modes:
 
 1. **Standard Mode**: Provides readable summaries for local development
 2. **CI Mode**: Acts as an automated deployment safety gate with risk assessment
@@ -33,19 +33,19 @@ Complete installation and usage guide for `whatif-explain`.
 
 ```bash
 # Install with Anthropic Claude support (recommended)
-pip install whatif-explain[anthropic]
+pip install bicep-whatif-advisor[anthropic]
 
 # Or with Azure OpenAI
-pip install whatif-explain[azure]
+pip install bicep-whatif-advisor[azure]
 
 # Or with all providers
-pip install whatif-explain[all]
+pip install bicep-whatif-advisor[all]
 ```
 
 ### Install from Source
 
 ```bash
-cd whatif-explain
+cd bicep-whatif-advisor
 
 # Install with Anthropic support
 pip install -e .[anthropic]
@@ -102,7 +102,7 @@ export OLLAMA_HOST="http://localhost:11434"
 
 ```bash
 # Test with a fixture file
-cat tests/fixtures/create_only.txt | whatif-explain
+cat tests/fixtures/create_only.txt | bicep-whatif-advisor
 
 # You should see a colorful table with resource summaries
 ```
@@ -110,13 +110,13 @@ cat tests/fixtures/create_only.txt | whatif-explain
 ### 3. Use with Real Azure What-If Output
 
 ```bash
-# Run Azure What-If and pipe to whatif-explain
+# Run Azure What-If and pipe to bicep-whatif-advisor
 az deployment group what-if \
   --resource-group my-rg \
   --template-file main.bicep \
   --parameters params.json \
   --exclude-change-types NoChange Ignore \
-  | whatif-explain
+  | bicep-whatif-advisor
 ```
 
 ## Basic Usage
@@ -127,7 +127,7 @@ az deployment group what-if \
 az deployment group what-if \
   --resource-group my-rg \
   --template-file main.bicep \
-  | whatif-explain
+  | bicep-whatif-advisor
 ```
 
 **Example Output:**
@@ -152,26 +152,26 @@ Summary: This deployment creates JWT authentication policies and updates diagnos
 
 ```bash
 # JSON format (for scripting)
-az deployment group what-if ... | whatif-explain --format json
+az deployment group what-if ... | bicep-whatif-advisor --format json
 
 # Markdown format (for documentation)
-az deployment group what-if ... | whatif-explain --format markdown
+az deployment group what-if ... | bicep-whatif-advisor --format markdown
 
 # With verbose property-level details
-az deployment group what-if ... | whatif-explain --verbose
+az deployment group what-if ... | bicep-whatif-advisor --verbose
 ```
 
 ### Using Different Providers
 
 ```bash
 # Use Azure OpenAI
-az deployment group what-if ... | whatif-explain --provider azure-openai
+az deployment group what-if ... | bicep-whatif-advisor --provider azure-openai
 
 # Use local Ollama
-az deployment group what-if ... | whatif-explain --provider ollama
+az deployment group what-if ... | bicep-whatif-advisor --provider ollama
 
 # Override model
-az deployment group what-if ... | whatif-explain --model claude-opus-4-20250101
+az deployment group what-if ... | bicep-whatif-advisor --model claude-opus-4-20250101
 ```
 
 ## Output Formats
@@ -209,13 +209,13 @@ Structured output for scripting and automation:
 
 ```bash
 # Filter resources by action
-az deployment group what-if ... | whatif-explain -f json | jq '.resources[] | select(.action == "Delete")'
+az deployment group what-if ... | bicep-whatif-advisor -f json | jq '.resources[] | select(.action == "Delete")'
 
 # Count creates
-az deployment group what-if ... | whatif-explain -f json | jq '[.resources[] | select(.action == "Create")] | length'
+az deployment group what-if ... | bicep-whatif-advisor -f json | jq '[.resources[] | select(.action == "Create")] | length'
 
 # Save to file
-az deployment group what-if ... | whatif-explain -f json > analysis.json
+az deployment group what-if ... | bicep-whatif-advisor -f json > analysis.json
 ```
 
 ### Markdown
@@ -274,7 +274,7 @@ az deployment group what-if \
   --resource-group my-rg \
   --template-file main.bicep \
   --exclude-change-types NoChange Ignore \
-  | whatif-explain
+  | bicep-whatif-advisor
 
 # Everything auto-detects:
 # ✅ CI mode enabled
@@ -319,10 +319,10 @@ Make sure you're piping What-If output to the command:
 
 ```bash
 # ❌ Wrong - no piped input
-whatif-explain
+bicep-whatif-advisor
 
 # ✅ Correct - piped input
-az deployment group what-if ... | whatif-explain
+az deployment group what-if ... | bicep-whatif-advisor
 ```
 
 ### "API key not set" error

@@ -53,7 +53,7 @@ class AzureOpenAIProvider(Provider):
         except ImportError:
             sys.stderr.write(
                 "Error: openai package not installed.\n"
-                "Install it with: pip install whatif-explain[azure]\n"
+                "Install it with: pip install bicep-whatif-advisor[azure]\n"
             )
             sys.exit(1)
 

@@ -1,4 +1,4 @@
-"""Input validation and stdin reading for whatif-explain."""
+"""Input validation and stdin reading for bicep-whatif-advisor."""
 
 import sys
 
@@ -24,7 +24,7 @@ def read_stdin(max_chars: int = 100000) -> str:
     if sys.stdin.isatty():
         raise InputError(
             "No input detected. Pipe Azure What-If output to this command:\n"
-            "  az deployment group what-if ... | whatif-explain"
+            "  az deployment group what-if ... | bicep-whatif-advisor"
         )
 
     # Read all stdin

@@ -45,7 +45,7 @@ class AnthropicProvider(Provider):
         except ImportError:
             sys.stderr.write(
                 "Error: anthropic package not installed.\n"
-                "Install it with: pip install whatif-explain[anthropic]\n"
+                "Install it with: pip install bicep-whatif-advisor[anthropic]\n"
             )
             sys.exit(1)
 

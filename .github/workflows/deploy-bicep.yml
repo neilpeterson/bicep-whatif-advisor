@@ -38,7 +38,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install whatif-explain
+      - name: Install bicep-whatif-advisor
         run: |
           pip install -e .[anthropic]
 
@@ -59,7 +59,7 @@ jobs:
         run: |
           echo "## 🔍 What-If Deployment Analysis" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          cat whatif-output.txt | whatif-explain --format markdown >> $GITHUB_STEP_SUMMARY
+          cat whatif-output.txt | bicep-whatif-advisor --format markdown >> $GITHUB_STEP_SUMMARY
 
       - name: Deploy Bicep template
         id: deploy

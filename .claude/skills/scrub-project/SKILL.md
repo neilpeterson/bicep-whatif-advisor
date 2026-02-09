@@ -35,7 +35,7 @@ Performs comprehensive project cleanup: removes unnecessary code, simplifies whe
    - Check for unnecessary else clauses after return statements
 
    **C. File Organization:**
-   - Check Python package structure (whatif_explain/)
+   - Check Python package structure (bicep_whatif_advisor/)
    - Look for duplicate or redundant files
    - Verify test fixtures in tests/fixtures/ are current
    - Verify bicep-sample/ examples are working
@@ -81,7 +81,7 @@ Performs comprehensive project cleanup: removes unnecessary code, simplifies whe
    - Update threshold and flag documentation
    - Verify PR comment format examples
 
-   **D. docs/whatif-explain-spec.md:**
+   **D. docs/bicep-whatif-advisor-spec.md:**
    - Check if original spec is still accurate
    - Note any deviations from spec in current implementation
    - Consider archiving if superseded by other docs
@@ -110,7 +110,7 @@ Performs comprehensive project cleanup: removes unnecessary code, simplifies whe
 
    **Tests:**
    - Run full test suite: `pytest`
-   - Check test coverage: `pytest --cov=whatif_explain`
+   - Check test coverage: `pytest --cov=bicep_whatif_advisor`
    - Look for obsolete tests
    - Ensure test names are descriptive
    - Check for skipped or disabled tests that should be removed
@@ -173,13 +173,13 @@ Performs comprehensive project cleanup: removes unnecessary code, simplifies whe
 - `ruff check .` - Find code quality issues
 - `ruff format .` - Format code consistently
 - `pytest` - Run test suite
-- `pytest --cov=whatif_explain` - Check test coverage
+- `pytest --cov=bicep_whatif_advisor` - Check test coverage
 - `pip install -e .[all,dev]` - Verify dependencies install
 - `git status` - Check for untracked files
 - Task tool with Explore agent - For comprehensive code exploration
 - Grep tool - Search for patterns (TODO, FIXME, unused imports, etc.)
 - Read tool - Review documentation files
-- `cat tests/fixtures/*.txt | python -m whatif_explain.cli` - Test CLI with fixtures
+- `cat tests/fixtures/*.txt | python -m bicep_whatif_advisor.cli` - Test CLI with fixtures
 
 ## Success Criteria:
 

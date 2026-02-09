@@ -12,13 +12,13 @@ Simplify GitHub Actions and Azure DevOps pipeline integration by auto-detecting 
     ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   run: |
-    az deployment group what-if ... | whatif-explain
+    az deployment group what-if ... | bicep-whatif-advisor
 ```
 
 ### Azure DevOps (Before: ~100 lines → After: 6 lines)
 ```yaml
 - script: |
-    az deployment group what-if ... | whatif-explain
+    az deployment group what-if ... | bicep-whatif-advisor
   env:
     ANTHROPIC_API_KEY: $(ANTHROPIC_API_KEY)
     SYSTEM_ACCESSTOKEN: $(System.AccessToken)
@@ -36,7 +36,7 @@ Simplify GitHub Actions and Azure DevOps pipeline integration by auto-detecting 
 **Status:** Complete
 
 **Tasks:**
-- [x] Create `whatif_explain/ci/platform.py`
+- [x] Create `bicep_whatif_advisor/ci/platform.py`
 - [x] Implement `PlatformContext` dataclass
 - [x] Implement `detect_platform()` function
 - [x] Implement `_detect_github()` function
@@ -44,7 +44,7 @@ Simplify GitHub Actions and Azure DevOps pipeline integration by auto-detecting 
 - [x] Add basic verification tests for platform detection
 
 **Deliverables:**
-- ✅ New module: `whatif_explain/ci/platform.py`
+- ✅ New module: `bicep_whatif_advisor/ci/platform.py`
 - ✅ Auto-detects GitHub Actions environment
 - ✅ Auto-detects Azure DevOps environment
 - ✅ Extracts PR metadata from both platforms
@@ -69,7 +69,7 @@ Simplify GitHub Actions and Azure DevOps pipeline integration by auto-detecting 
 - [x] Ensure backward compatibility (manual flags still work)
 
 **Deliverables:**
-- ✅ Updated `whatif_explain/cli.py`
+- ✅ Updated `bicep_whatif_advisor/cli.py`
 - ✅ Automatic smart defaults in pipeline environments
 - ✅ Helpful auto-detection messages in stderr (with emoji indicators)
 - ✅ No breaking changes for existing users
@@ -194,7 +194,7 @@ Simplify GitHub Actions and Azure DevOps pipeline integration by auto-detecting 
 ### Summary of Completed Work
 
 **Phase 1 - Platform Detection Module:**
-- Created `whatif_explain/ci/platform.py` with unified platform detection
+- Created `bicep_whatif_advisor/ci/platform.py` with unified platform detection
 - Supports GitHub Actions, Azure DevOps, and local environments
 - Auto-extracts PR metadata, branch info, and generates diff references
 

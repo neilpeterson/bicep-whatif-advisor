@@ -1,4 +1,4 @@
-"""LLM provider implementations for whatif-explain."""
+"""LLM provider implementations for bicep-whatif-advisor."""
 
 from abc import ABC, abstractmethod
 import os

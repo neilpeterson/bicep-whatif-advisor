@@ -39,7 +39,7 @@ class OllamaProvider(Provider):
         except ImportError:
             sys.stderr.write(
                 "Error: requests package not installed.\n"
-                "Install it with: pip install whatif-explain[ollama]\n"
+                "Install it with: pip install bicep-whatif-advisor[ollama]\n"
             )
             sys.exit(1)
 

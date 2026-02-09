@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This repository contains the `whatif-explain` Python CLI tool that analyzes Azure Bicep/ARM What-If deployment output using LLMs to provide human-friendly summaries and automated deployment safety reviews.
+This repository contains the `bicep-whatif-advisor` Python CLI tool that analyzes Azure Bicep/ARM What-If deployment output using LLMs to provide human-friendly summaries and automated deployment safety reviews.
 
 **Current State:** ✅ Fully implemented and ready to use. The Python package is at the root level.
 
@@ -13,7 +13,7 @@ This repository contains the `whatif-explain` Python CLI tool that analyzes Azur
 The tool accepts Azure What-If output via stdin, sends it to an LLM (Anthropic Claude, Azure OpenAI, or Ollama), and outputs a structured summary:
 
 ```bash
-az deployment group what-if -g my-rg -f main.bicep | whatif-explain
+az deployment group what-if -g my-rg -f main.bicep | bicep-whatif-advisor
 ```
 
 ## Project Structure
@@ -21,8 +21,8 @@ az deployment group what-if -g my-rg -f main.bicep | whatif-explain
 The implementation follows this structure:
 
 ```
-bicep-whatif-explain/       # Root directory
-├── whatif_explain/         # Main Python package
+bicep-bicep-whatif-advisor/       # Root directory
+├── bicep_whatif_advisor/         # Main Python package
 │   ├── __init__.py
 │   ├── cli.py              # Entry point using click
 │   ├── input.py            # Stdin reading and validation
@@ -76,17 +76,17 @@ pytest -k "test_name"               # Run specific test
 
 **Testing with fixtures:**
 ```bash
-cat tests/fixtures/create_only.txt | whatif-explain
+cat tests/fixtures/create_only.txt | bicep-whatif-advisor
 
 # Test CI mode:
-cat tests/fixtures/create_only.txt | whatif-explain \
+cat tests/fixtures/create_only.txt | bicep-whatif-advisor \
   --ci \
   --drift-threshold high \
   --intent-threshold high \
   --operations-threshold high
 
 # Or run directly via Python module:
-cat tests/fixtures/create_only.txt | python -m whatif_explain.cli
+cat tests/fixtures/create_only.txt | python -m bicep_whatif_advisor.cli
 ```
 
 **Linting and formatting:**
@@ -286,7 +286,7 @@ When implementing CI mode (`--ci` flag):
 
 **Sample CI command:**
 ```bash
-cat whatif-output.txt | whatif-explain \
+cat whatif-output.txt | bicep-whatif-advisor \
   --ci \
   --diff-ref origin/main \
   --drift-threshold high \
@@ -327,7 +327,7 @@ Mock LLM providers in tests to avoid API calls during unit testing.
     ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   run: |
-    az deployment group what-if ... | whatif-explain --ci --post-comment
+    az deployment group what-if ... | bicep-whatif-advisor --ci --post-comment
 ```
 
 **Implementation Tasks:**

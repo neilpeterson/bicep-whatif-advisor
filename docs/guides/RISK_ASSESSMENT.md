@@ -1,6 +1,6 @@
 # Risk Assessment Guide
 
-Complete guide to understanding how `whatif-explain` evaluates deployment safety and makes decisions.
+Complete guide to understanding how `bicep-whatif-advisor` evaluates deployment safety and makes decisions.
 
 ## Table of Contents
 
@@ -16,7 +16,7 @@ Complete guide to understanding how `whatif-explain` evaluates deployment safety
 
 ## Overview
 
-When running in CI mode, `whatif-explain` acts as a deployment safety gate by evaluating your infrastructure changes across three independent risk categories. Each category gets its own risk level, and you set thresholds to control when deployments should be blocked.
+When running in CI mode, `bicep-whatif-advisor` acts as a deployment safety gate by evaluating your infrastructure changes across three independent risk categories. Each category gets its own risk level, and you set thresholds to control when deployments should be blocked.
 
 ## The Decision Flow
 
@@ -309,7 +309,7 @@ elif action == "Modify" and property == "publicNetworkAccess":
 You set independent thresholds for each bucket to control when deployments are blocked:
 
 ```bash
-whatif-explain \
+bicep-whatif-advisor \
   --drift-threshold high \       # Block only on high drift
   --intent-threshold high \      # Block only on high misalignment
   --operations-threshold high    # Block only on high-risk operations
@@ -374,7 +374,7 @@ The tool uses standard exit codes to communicate results:
 **GitHub Actions:**
 
 ```yaml
-- run: az deployment group what-if ... | whatif-explain
+- run: az deployment group what-if ... | bicep-whatif-advisor
   # Exit code 1 automatically fails the workflow
   # Blocks PR from being merged if branch protection enabled
 ```
@@ -386,7 +386,7 @@ The tool uses standard exit codes to communicate results:
 **Azure DevOps:**
 
 ```yaml
-- script: az deployment group what-if ... | whatif-explain
+- script: az deployment group what-if ... | bicep-whatif-advisor
   # Exit code 1 automatically fails the pipeline
   # Sets build status to failed
 ```
@@ -407,7 +407,7 @@ You have a PR titled "Add Application Insights monitoring" with this workflow:
 - env:
     ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
   run: |
-    az deployment group what-if ... | whatif-explain \
+    az deployment group what-if ... | bicep-whatif-advisor \
       --drift-threshold high \
       --intent-threshold high \
       --operations-threshold high
@@ -510,7 +510,7 @@ This is fine - you can still catch drift and risky operations.
 **A:** Yes! Use `--ci` flag manually:
 
 ```bash
-az deployment group what-if ... | whatif-explain \
+az deployment group what-if ... | bicep-whatif-advisor \
   --ci \
   --diff-ref origin/main \
   --pr-title "My test PR"

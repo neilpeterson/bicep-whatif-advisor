@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "whatif-explain"
+name = "bicep-whatif-advisor"
 version = "1.0.0"
-description = "Azure What-If deployment analyzer using LLMs for human-friendly summaries and safety reviews"
+description = "AI-powered Azure Bicep What-If deployment advisor with automated safety reviews"
 readme = "README.md"
 requires-python = ">=3.8"
 license = {text = "MIT"}
@@ -49,15 +49,15 @@ dev = [
 ]
 
 [project.scripts]
-whatif-explain = "whatif_explain.cli:main"
+bicep-whatif-advisor = "bicep_whatif_advisor.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/neilpeterson/bicep-whatif-explain"
-Issues = "https://github.com/neilpeterson/bicep-whatif-explain/issues"
+Homepage = "https://github.com/neilpeterson/bicep-whatif-advisor"
+Issues = "https://github.com/neilpeterson/bicep-whatif-advisor/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["whatif_explain*"]
+include = ["bicep_whatif_advisor*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

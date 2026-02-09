@@ -1,6 +1,6 @@
 # CI/CD Integration Guide
 
-Complete guide for integrating `whatif-explain` as an automated deployment gate in CI/CD pipelines.
+Complete guide for integrating `bicep-whatif-advisor` as an automated deployment gate in CI/CD pipelines.
 
 ## Table of Contents
 
@@ -14,7 +14,7 @@ Complete guide for integrating `whatif-explain` as an automated deployment gate 
 
 ## Overview
 
-`whatif-explain` provides **platform auto-detection** for seamless CI/CD integration:
+`bicep-whatif-advisor` provides **platform auto-detection** for seamless CI/CD integration:
 
 - ✅ **Automatic CI mode** - Detects GitHub Actions or Azure DevOps and enables safety gates
 - ✅ **Zero configuration** - Extracts PR metadata from environment automatically
@@ -60,7 +60,7 @@ Run these commands to create an app registration for GitHub Actions:
 
 ```bash
 # Create app registration
-APP_ID=$(az ad app create --display-name "github-actions-whatif-explain" --query appId -o tsv)
+APP_ID=$(az ad app create --display-name "github-actions-bicep-whatif-advisor" --query appId -o tsv)
 
 # Create service principal
 az ad sp create --id $APP_ID
@@ -103,7 +103,7 @@ This enables passwordless authentication from GitHub to Azure.
 **Using Azure Portal (Recommended):**
 
 1. Go to **Azure Portal → Azure AD → App registrations**
-2. Find **github-actions-whatif-explain**
+2. Find **github-actions-bicep-whatif-advisor**
 3. Click **Certificates & secrets → Federated credentials → Add credential**
 4. Fill in:
    - **Federated credential scenario:** GitHub Actions deploying Azure resources
@@ -185,7 +185,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - run: pip install whatif-explain[anthropic]
+      - run: pip install bicep-whatif-advisor[anthropic]
 
       - env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -196,7 +196,7 @@ jobs:
             --template-file ${{ env.BICEP_TEMPLATE }} \
             --parameters ${{ env.BICEP_PARAMS }} \
             --exclude-change-types NoChange Ignore \
-            | whatif-explain
+            | bicep-whatif-advisor
 ```
 
 **That's it!** The tool automatically:
@@ -214,13 +214,13 @@ By default, deployments are blocked only on **high** risk. Adjust by adding flag
 
 ```yaml
 # More strict - block on medium risk
-| whatif-explain \
+| bicep-whatif-advisor \
   --drift-threshold medium \
   --intent-threshold medium \
   --operations-threshold medium
 
 # Very strict - block on any risk
-| whatif-explain \
+| bicep-whatif-advisor \
   --drift-threshold low \
   --intent-threshold low \
   --operations-threshold low
@@ -230,25 +230,25 @@ By default, deployments are blocked only on **high** risk. Adjust by adding flag
 
 **Azure OpenAI:**
 ```yaml
-- run: pip install whatif-explain[azure]
+- run: pip install bicep-whatif-advisor[azure]
 
 - env:
     AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_KEY }}
     AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   run: |
-    az deployment group what-if ... | whatif-explain --provider azure-openai
+    az deployment group what-if ... | bicep-whatif-advisor --provider azure-openai
 ```
 
 **Ollama (self-hosted):**
 ```yaml
-- run: pip install whatif-explain[ollama]
+- run: pip install bicep-whatif-advisor[ollama]
 
 - env:
     OLLAMA_HOST: http://localhost:11434
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   run: |
-    az deployment group what-if ... | whatif-explain --provider ollama
+    az deployment group what-if ... | bicep-whatif-advisor --provider ollama
 ```
 
 ## Azure DevOps
@@ -298,14 +298,14 @@ stages:
               scriptType: bash
               scriptLocation: inlineScript
               inlineScript: |
-                pip install whatif-explain[anthropic]
+                pip install bicep-whatif-advisor[anthropic]
 
                 az deployment group what-if \
                   --resource-group $(RESOURCE_GROUP) \
                   --template-file $(BICEP_TEMPLATE) \
                   --parameters $(BICEP_PARAMS) \
                   --exclude-change-types NoChange Ignore \
-                  | whatif-explain
+                  | bicep-whatif-advisor
             env:
               ANTHROPIC_API_KEY: $(ANTHROPIC_API_KEY)
               SYSTEM_ACCESSTOKEN: $(System.AccessToken)
@@ -333,7 +333,7 @@ Add these in **Pipelines → Library → Variable groups:**
 #### Adjust Risk Thresholds
 
 ```yaml
-| whatif-explain \
+| bicep-whatif-advisor \
   --drift-threshold medium \
   --intent-threshold medium \
   --operations-threshold medium
@@ -344,7 +344,7 @@ Add these in **Pipelines → Library → Variable groups:**
 If you want intent analysis in Azure DevOps:
 
 ```yaml
-| whatif-explain \
+| bicep-whatif-advisor \
   --pr-title "$(System.PullRequest.Title)" \
   --pr-description "$(System.PullRequest.Description)"
 ```
@@ -359,9 +359,9 @@ For platforms without built-in auto-detection (GitLab, Jenkins, etc.), manually 
 bicep_review:
   stage: review
   script:
-    - pip install whatif-explain[anthropic]
+    - pip install bicep-whatif-advisor[anthropic]
     - |
-      az deployment group what-if ... | whatif-explain \
+      az deployment group what-if ... | bicep-whatif-advisor \
         --ci \
         --diff-ref origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME \
         --pr-title "$CI_MERGE_REQUEST_TITLE" \
@@ -378,8 +378,8 @@ bicep_review:
 stage('What-If Review') {
   steps {
     sh '''
-      pip install whatif-explain[anthropic]
-      az deployment group what-if ... | whatif-explain \
+      pip install bicep-whatif-advisor[anthropic]
+      az deployment group what-if ... | bicep-whatif-advisor \
         --ci \
         --diff-ref origin/${CHANGE_TARGET} \
         --pr-title "${CHANGE_TITLE}"
@@ -441,7 +441,7 @@ Use different thresholds per environment:
 
 **Development:**
 ```yaml
-| whatif-explain \
+| bicep-whatif-advisor \
   --drift-threshold low \      # Catch all drift
   --intent-threshold medium \
   --operations-threshold medium
@@ -449,7 +449,7 @@ Use different thresholds per environment:
 
 **Production:**
 ```yaml
-| whatif-explain \
+| bicep-whatif-advisor \
   --drift-threshold high \     # Only block critical drift
   --intent-threshold high \
   --operations-threshold high
@@ -460,7 +460,7 @@ Use different thresholds per environment:
 Include Bicep source files for better analysis:
 
 ```bash
-| whatif-explain --bicep-dir bicep/modules/
+| bicep-whatif-advisor --bicep-dir bicep/modules/
 ```
 
 ## Troubleshooting
@@ -508,7 +508,7 @@ env:
 
 **Fix:** Manually enable CI mode:
 ```bash
-| whatif-explain --ci
+| bicep-whatif-advisor --ci
 ```
 
 ### High risk detected unexpectedly
@@ -551,7 +551,7 @@ When a PR is created, you'll see:
 **Reasoning:** New public endpoint is documented in PR and includes planned firewall rules.
 
 ---
-*Generated by whatif-explain*
+*Generated by bicep-whatif-advisor*
 ```
 
 ## Additional Resources

@@ -1,4 +1,4 @@
-"""CLI entry point for whatif-explain."""
+"""CLI entry point for bicep-whatif-advisor."""
 
 import os
 import sys
@@ -193,14 +193,14 @@ def main(
 
     Pipe Azure What-If output to this command:
 
-        az deployment group what-if ... | whatif-explain
+        az deployment group what-if ... | bicep-whatif-advisor
 
     Example:
 
         az deployment group what-if \\
           --resource-group my-rg \\
           --template-file main.bicep \\
-          --parameters params.json | whatif-explain
+          --parameters params.json | bicep-whatif-advisor
     """
     try:
         # Read stdin

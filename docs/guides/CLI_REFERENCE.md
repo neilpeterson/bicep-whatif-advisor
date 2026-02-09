@@ -1,6 +1,6 @@
-# whatif-explain Reference Guide
+# bicep-whatif-advisor Reference Guide
 
-This document provides comprehensive details, examples, and configuration options for `whatif-explain`.
+This document provides comprehensive details, examples, and configuration options for `bicep-whatif-advisor`.
 
 ## Table of Contents
 
@@ -18,7 +18,7 @@ This document provides comprehensive details, examples, and configuration option
 
 ## Standard vs CI Mode
 
-`whatif-explain` operates in two distinct modes:
+`bicep-whatif-advisor` operates in two distinct modes:
 
 ### Standard Mode (Default)
 
@@ -26,7 +26,7 @@ This document provides comprehensive details, examples, and configuration option
 
 **Usage:**
 ```bash
-az deployment group what-if ... | whatif-explain
+az deployment group what-if ... | bicep-whatif-advisor
 ```
 
 **Features:**
@@ -48,7 +48,7 @@ az deployment group what-if ... | whatif-explain
 
 **Usage:**
 ```bash
-az deployment group what-if ... | whatif-explain --ci --diff-ref origin/main
+az deployment group what-if ... | bicep-whatif-advisor --ci --diff-ref origin/main
 ```
 
 **Features:**
@@ -201,7 +201,7 @@ Formatted for PR comments:
 
 ## CI Mode Deep Dive
 
-CI mode (`--ci`) transforms `whatif-explain` from a summary tool into an **automated deployment safety gate** for your CI/CD pipelines.
+CI mode (`--ci`) transforms `bicep-whatif-advisor` from a summary tool into an **automated deployment safety gate** for your CI/CD pipelines.
 
 ### How CI Mode Works
 
@@ -427,40 +427,40 @@ To get the most value from intent analysis:
 # Default table format
 az deployment group what-if \
   --resource-group my-rg \
-  --template-file main.bicep | whatif-explain
+  --template-file main.bicep | bicep-whatif-advisor
 ```
 
 #### Different Output Formats
 
 ```bash
 # JSON output for scripting
-az deployment group what-if ... | whatif-explain --format json
+az deployment group what-if ... | bicep-whatif-advisor --format json
 
 # Markdown output for documentation
-az deployment group what-if ... | whatif-explain --format markdown
+az deployment group what-if ... | bicep-whatif-advisor --format markdown
 
 # Pipe JSON to jq for filtering
-az deployment group what-if ... | whatif-explain -f json | jq '.resources[] | select(.action == "Delete")'
+az deployment group what-if ... | bicep-whatif-advisor -f json | jq '.resources[] | select(.action == "Delete")'
 ```
 
 #### Verbose Mode
 
 ```bash
 # Show property-level changes for modified resources
-az deployment group what-if ... | whatif-explain --verbose
+az deployment group what-if ... | bicep-whatif-advisor --verbose
 ```
 
 #### Different Providers
 
 ```bash
 # Use Azure OpenAI
-az deployment group what-if ... | whatif-explain --provider azure-openai
+az deployment group what-if ... | bicep-whatif-advisor --provider azure-openai
 
 # Use local Ollama
-az deployment group what-if ... | whatif-explain --provider ollama --model llama3.1
+az deployment group what-if ... | bicep-whatif-advisor --provider ollama --model llama3.1
 
 # Use a different Claude model
-az deployment group what-if ... | whatif-explain --model claude-opus-4
+az deployment group what-if ... | bicep-whatif-advisor --model claude-opus-4
 ```
 
 ### CI Mode Examples
@@ -475,7 +475,7 @@ az deployment group what-if \
   --parameters params.json > whatif-output.txt
 
 # Analyze with CI mode
-cat whatif-output.txt | whatif-explain \
+cat whatif-output.txt | bicep-whatif-advisor \
   --ci \
   --diff-ref origin/main \
   --risk-threshold high
@@ -497,7 +497,7 @@ fi
 
 ```bash
 # Include Bicep source files for better analysis
-cat whatif-output.txt | whatif-explain \
+cat whatif-output.txt | bicep-whatif-advisor \
   --ci \
   --diff-ref origin/main \
   --bicep-dir ./bicep \
@@ -508,12 +508,12 @@ cat whatif-output.txt | whatif-explain \
 
 ```bash
 # Block on medium risk or higher (more strict)
-cat whatif-output.txt | whatif-explain \
+cat whatif-output.txt | bicep-whatif-advisor \
   --ci \
   --risk-threshold medium
 
 # Only block on critical risk (more permissive)
-cat whatif-output.txt | whatif-explain \
+cat whatif-output.txt | bicep-whatif-advisor \
   --ci \
   --risk-threshold critical
 ```
@@ -522,23 +522,23 @@ cat whatif-output.txt | whatif-explain \
 
 ```bash
 # Compare against main branch
-cat whatif-output.txt | whatif-explain --ci --diff-ref origin/main
+cat whatif-output.txt | bicep-whatif-advisor --ci --diff-ref origin/main
 
 # Compare against specific commit
-cat whatif-output.txt | whatif-explain --ci --diff-ref abc123
+cat whatif-output.txt | bicep-whatif-advisor --ci --diff-ref abc123
 
 # Compare against previous commit
-cat whatif-output.txt | whatif-explain --ci --diff-ref HEAD~1
+cat whatif-output.txt | bicep-whatif-advisor --ci --diff-ref HEAD~1
 
 # Compare against tag
-cat whatif-output.txt | whatif-explain --ci --diff-ref v1.0.0
+cat whatif-output.txt | bicep-whatif-advisor --ci --diff-ref v1.0.0
 ```
 
 #### With PR Intent Analysis
 
 ```bash
 # In GitHub Actions (PR metadata auto-detected)
-cat whatif-output.txt | whatif-explain \
+cat whatif-output.txt | bicep-whatif-advisor \
   --ci \
   --diff-ref origin/main \
   --pr-title "${{ steps.pr-details.outputs.pr_title }}" \
@@ -553,7 +553,7 @@ Fast, accurate, and easy to set up.
 
 **Installation:**
 ```bash
-pip install whatif-explain[anthropic]
+pip install bicep-whatif-advisor[anthropic]
 ```
 
 **Configuration:**
@@ -566,10 +566,10 @@ $env:ANTHROPIC_API_KEY = "sk-ant-..."
 **Using different models:**
 ```bash
 # Use Claude Opus (more capable, slower)
-whatif-explain --model claude-opus-4
+bicep-whatif-advisor --model claude-opus-4
 
 # Use Claude Haiku (faster, less capable)
-whatif-explain --model claude-haiku-3-5
+bicep-whatif-advisor --model claude-haiku-3-5
 ```
 
 ### Azure OpenAI
@@ -578,7 +578,7 @@ Use your own Azure OpenAI deployment.
 
 **Installation:**
 ```bash
-pip install whatif-explain[azure]
+pip install bicep-whatif-advisor[azure]
 ```
 
 **Configuration:**
@@ -590,7 +590,7 @@ $env:AZURE_OPENAI_DEPLOYMENT = "your-deployment-name"
 
 **Usage:**
 ```bash
-whatif-explain --provider azure-openai
+bicep-whatif-advisor --provider azure-openai
 ```
 
 ### Ollama (Local)
@@ -599,7 +599,7 @@ Run LLMs locally without API calls.
 
 **Installation:**
 ```bash
-pip install whatif-explain[ollama]
+pip install bicep-whatif-advisor[ollama]
 ollama pull llama3.1
 ```
 
@@ -610,18 +610,18 @@ ollama serve
 
 **Usage:**
 ```bash
-whatif-explain --provider ollama --model llama3.1
+bicep-whatif-advisor --provider ollama --model llama3.1
 ```
 
 **Using different models:**
 ```bash
 # Use Mistral
 ollama pull mistral
-whatif-explain --provider ollama --model mistral
+bicep-whatif-advisor --provider ollama --model mistral
 
 # Use CodeLlama
 ollama pull codellama
-whatif-explain --provider ollama --model codellama
+bicep-whatif-advisor --provider ollama --model codellama
 ```
 
 ## CI/CD Integration Examples
@@ -661,8 +661,8 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install whatif-explain
-        run: pip install whatif-explain[anthropic]
+      - name: Install bicep-whatif-advisor
+        run: pip install bicep-whatif-advisor[anthropic]
 
       - name: Get PR Details
         id: pr
@@ -689,7 +689,7 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          cat whatif-output.txt | whatif-explain \
+          cat whatif-output.txt | bicep-whatif-advisor \
             --ci \
             --diff-ref origin/main \
             --bicep-dir infrastructure/ \
@@ -749,11 +749,11 @@ steps:
       versionSpec: '3.11'
 
   - script: |
-      pip install whatif-explain[anthropic]
-    displayName: 'Install whatif-explain'
+      pip install bicep-whatif-advisor[anthropic]
+    displayName: 'Install bicep-whatif-advisor'
 
   - script: |
-      cat whatif-output.txt | whatif-explain \
+      cat whatif-output.txt | bicep-whatif-advisor \
         --ci \
         --diff-ref origin/main \
         --bicep-dir infrastructure/ \
@@ -782,7 +782,7 @@ infrastructure-review:
       - infrastructure/**
   before_script:
     - az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
-    - pip install whatif-explain[anthropic]
+    - pip install bicep-whatif-advisor[anthropic]
   script:
     - |
       az deployment group what-if \
@@ -791,7 +791,7 @@ infrastructure-review:
         --parameters infrastructure/params.json \
         > whatif-output.txt
     - |
-      cat whatif-output.txt | whatif-explain \
+      cat whatif-output.txt | bicep-whatif-advisor \
         --ci \
         --diff-ref origin/main \
         --bicep-dir infrastructure/ \
@@ -824,7 +824,7 @@ pipeline {
                       -p $AZURE_CLIENT_SECRET \
                       --tenant $AZURE_TENANT_ID
 
-                    pip install whatif-explain[anthropic]
+                    pip install bicep-whatif-advisor[anthropic]
 
                     az deployment group what-if \
                       --resource-group ${RESOURCE_GROUP} \
@@ -832,7 +832,7 @@ pipeline {
                       --parameters infrastructure/params.json \
                       > whatif-output.txt
 
-                    cat whatif-output.txt | whatif-explain \
+                    cat whatif-output.txt | bicep-whatif-advisor \
                       --ci \
                       --diff-ref origin/main \
                       --bicep-dir infrastructure/ \
@@ -854,17 +854,17 @@ pipeline {
 
 ```bash
 # ❌ Wrong - no piped input
-whatif-explain
+bicep-whatif-advisor
 
 # ❌ Wrong - command substitution doesn't work
-whatif-explain $(az deployment group what-if ...)
+bicep-whatif-advisor $(az deployment group what-if ...)
 
 # ✅ Correct - piped input
-az deployment group what-if ... | whatif-explain
+az deployment group what-if ... | bicep-whatif-advisor
 
 # ✅ Correct - file input
 az deployment group what-if ... > output.txt
-cat output.txt | whatif-explain
+cat output.txt | bicep-whatif-advisor
 ```
 
 ### "ANTHROPIC_API_KEY environment variable not set"
@@ -939,7 +939,7 @@ $env:ANTHROPIC_API_KEY = "sk-ant-..."
 3. Check for Azure CLI errors in the output:
    ```bash
    az deployment group what-if ... 2>&1 | tee output.txt
-   # If there are errors, fix them before piping to whatif-explain
+   # If there are errors, fix them before piping to bicep-whatif-advisor
    ```
 
 ### "LLM returned invalid JSON" or "Failed to parse response"
@@ -951,11 +951,11 @@ $env:ANTHROPIC_API_KEY = "sk-ant-..."
 1. Try a more capable model:
    ```bash
    # If using Haiku, try Sonnet
-   whatif-explain --model claude-sonnet-4-20250514
+   bicep-whatif-advisor --model claude-sonnet-4-20250514
 
    # If using Ollama with a small model, try a larger one
    ollama pull llama3.1:70b
-   whatif-explain --provider ollama --model llama3.1:70b
+   bicep-whatif-advisor --provider ollama --model llama3.1:70b
    ```
 
 2. Check if What-If output is too large (>100k chars):
@@ -1008,7 +1008,7 @@ $env:ANTHROPIC_API_KEY = "sk-ant-..."
    git fetch origin
 
    # Or use a different reference
-   whatif-explain --ci --diff-ref HEAD~1
+   bicep-whatif-advisor --ci --diff-ref HEAD~1
    ```
 
 3. In CI/CD, ensure you're fetching full history:
@@ -1069,8 +1069,8 @@ $env:ANTHROPIC_API_KEY = "sk-ant-..."
 2. Deploy in smaller chunks:
    ```bash
    # Instead of deploying everything at once, break into modules
-   az deployment group what-if --template-file network.bicep | whatif-explain
-   az deployment group what-if --template-file compute.bicep | whatif-explain
+   az deployment group what-if --template-file network.bicep | bicep-whatif-advisor
+   az deployment group what-if --template-file compute.bicep | bicep-whatif-advisor
    ```
 
 3. The tool automatically truncates at 100k chars - this is by design to stay within LLM context limits
@@ -1092,14 +1092,14 @@ $env:ANTHROPIC_API_KEY = "sk-ant-..."
    - script: |
        pwd
        ls -la
-       cat whatif-output.txt | whatif-explain --ci
+       cat whatif-output.txt | bicep-whatif-advisor --ci
    ```
 
 3. Check Python installation:
    ```bash
    python --version
    pip --version
-   pip show whatif-explain
+   pip show bicep-whatif-advisor
    ```
 
 ### Performance issues or slow response times
@@ -1111,10 +1111,10 @@ $env:ANTHROPIC_API_KEY = "sk-ant-..."
 1. Use a faster model:
    ```bash
    # Anthropic Haiku is fastest
-   whatif-explain --model claude-haiku-3-5
+   bicep-whatif-advisor --model claude-haiku-3-5
 
    # Ollama with smaller models
-   whatif-explain --provider ollama --model llama3.1:8b
+   bicep-whatif-advisor --provider ollama --model llama3.1:8b
    ```
 
 2. Reduce What-If output size (see "Output is truncated" above)
@@ -1137,32 +1137,32 @@ $env:ANTHROPIC_API_KEY = "sk-ant-..."
 1. Install with the correct extras:
    ```bash
    # For Anthropic
-   pip install whatif-explain[anthropic]
+   pip install bicep-whatif-advisor[anthropic]
 
    # For Azure OpenAI
-   pip install whatif-explain[azure]
+   pip install bicep-whatif-advisor[azure]
 
    # For all providers
-   pip install whatif-explain[all]
+   pip install bicep-whatif-advisor[all]
    ```
 
 2. Verify installation:
    ```bash
-   pip show whatif-explain
+   pip show bicep-whatif-advisor
    pip list | grep -E "anthropic|openai|requests"
    ```
 
 3. Upgrade pip and reinstall:
    ```bash
    pip install --upgrade pip
-   pip install --upgrade whatif-explain[all]
+   pip install --upgrade bicep-whatif-advisor[all]
    ```
 
 ### Getting help
 
 If you're still having issues:
 
-1. Check the [GitHub Issues](https://github.com/your-repo/whatif-explain/issues) for similar problems
+1. Check the [GitHub Issues](https://github.com/your-repo/bicep-whatif-advisor/issues) for similar problems
 2. Enable verbose output to see more details (if available in future versions)
 3. Verify your What-If output is valid by checking it manually first
 4. Try with a minimal Bicep template to isolate the issue
