@@ -22,7 +22,7 @@
 ### Installation
 
 ```bash
-# Install with Anthropic Claude support (recommended)
+# Install with Anthropic Claude support
 pip install bicep-whatif-advisor[anthropic]
 
 # Or with Azure OpenAI
@@ -35,7 +35,7 @@ pip install bicep-whatif-advisor[all]
 ### Set Your API Key
 
 ```bash
-# Anthropic (recommended)
+# Anthropic
 export ANTHROPIC_API_KEY="sk-ant-..."
 
 # Or Azure OpenAI
