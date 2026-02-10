@@ -1,79 +1,20 @@
 # bicep-whatif-advisor
 
-`bicep-whatif-advisor` is a Python CLI tool that transforms Azure's technical What-If deployment output into plain English summaries. It pipes What-If results to an LLM (Anthropic Claude, Azure OpenAI, or Ollama) which analyzes each resource change and explains what's actually happening in human-readable terms. In CI/CD pipelines, it automatically detects your platform (GitHub Actions or Azure DevOps), analyzes your code diff alongside the What-If output to detect drift and unintended changes, evaluates deployment risk across three independent categories, and posts detailed safety assessments as PR comments—blocking unsafe deployments before they reach production.
+`bicep-whatif-advisor` is an AI-powered deployment safety gate for Azure Bicep and ARM templates. It automatically integrates into your CI/CD pipeline (GitHub Actions or Azure DevOps) to analyze Azure What-If output using LLMs (Anthropic Claude, Azure OpenAI, or Ollama), providing intelligent risk assessment before deployments reach production. The tool detects infrastructure drift by comparing What-If results against your code changes, validates that deployment changes align with PR intent, and flags inherently risky operations like deletions, security changes, and SKU downgrades. With zero-configuration platform auto-detection and automatic PR comments, it blocks unsafe deployments through configurable three-bucket risk thresholds—giving teams confidence that infrastructure changes match their intentions.
 
-## Quick Start
+> **Note:** The tool also includes a CLI for local What-If analysis and human-readable deployment summaries.
 
-```bash
-# Install with Anthropic Claude support
-pip install bicep-whatif-advisor[anthropic]
+## How It Works
 
-# Set your API key
-export ANTHROPIC_API_KEY="sk-ant-..."
+When integrated into your CI/CD pipeline, `bicep-whatif-advisor` automatically detects the platform (GitHub Actions or Azure DevOps) and performs comprehensive deployment analysis with zero configuration required. Simply pipe Azure What-If output to the tool and it handles the rest.
 
-# Run analysis
-az deployment group what-if \
-  --resource-group my-rg \
-  --template-file main.bicep \
-  | bicep-whatif-advisor
-```
-
-## CLI Mode (Local Development)
-
-For interactive usage and local development. Provides human-readable summaries of infrastructure changes.
-
-**Usage:**
-```bash
-az deployment group what-if \
-  --resource-group my-rg \
-  --template-file main.bicep \
-  --exclude-change-types NoChange Ignore \
-  | bicep-whatif-advisor
-```
-
-**Example Output:**
-```
-╭──────┬───────────────────────────┬──────────────────────┬────────┬─────────────────────────────────────╮
-│ #    │ Resource                  │ Type                 │ Action │ Summary                             │
-├──────┼───────────────────────────┼──────────────────────┼────────┼─────────────────────────────────────┤
-│ 1    │ applicationinsights       │ APIM Diagnostic      │ Create │ Configures App Insights logging     │
-│      │                           │                      │        │ with custom JWT headers and 100%    │
-│      │                           │                      │        │ sampling.                           │
-├──────┼───────────────────────────┼──────────────────────┼────────┼─────────────────────────────────────┤
-│ 2    │ policy                    │ APIM Global Policy   │ Modify │ Updates global inbound policy to    │
-│      │                           │                      │        │ validate Front Door header and      │
-│      │                           │                      │        │ include JWT parsing fragment.       │
-├──────┼───────────────────────────┼──────────────────────┼────────┼─────────────────────────────────────┤
-│ 3    │ storageAccount            │ Storage Account      │ Delete │ Removes storage account including   │
-│      │                           │                      │        │ all blobs, tables, and queues.      │
-╰──────┴───────────────────────────┴──────────────────────┴────────┴─────────────────────────────────────╯
-
-Overall: This deployment updates API Management policies and diagnostics, but also deletes a storage
-account. Verify that the storage account deletion is intentional.
-```
-
-**Features:**
-- Plain English explanations of each resource change
-- Colored output with action symbols (Create, Modify, Delete)
-- Overall deployment summary
-- Multiple output formats: `--format json|markdown|table`
-- Multiple LLM providers: `--provider anthropic|azure-openai|ollama`
-
-## CI Mode (Automated Deployment Gates)
-
-For CI/CD pipelines. Automatically detects GitHub Actions or Azure DevOps and enables deployment safety gates with risk assessment.
-
-**Usage:**
-```bash
-# Automatically detects CI environment - zero config needed
-az deployment group what-if \
-  --resource-group my-rg \
-  --template-file main.bicep \
-  --exclude-change-types NoChange Ignore \
-  | bicep-whatif-advisor
-
-# Exit code: 0 = safe | 1 = unsafe (blocks deployment)
-```
+**The tool will:**
+1. Extract PR metadata (title, description, number) from the CI environment
+2. Collect your code diff to understand what changes are in the PR
+3. Send What-If output and diff to the LLM for analysis
+4. Evaluate risk across three independent categories
+5. Post a detailed assessment as a PR comment
+6. Exit with code 0 (safe) or 1 (unsafe) to block/allow deployment
 
 **Example Output:**
 ```
@@ -115,18 +56,79 @@ Reason: Risky operations exceed threshold (high). Address role deletion and SKU 
 - **Automatic PR Comments** - Posts detailed analysis (zero config when using platform tokens)
 - **Deployment Gating** - Exit codes block unsafe deployments automatically
 
-## Additional Options
+## Quick Start
+
+**GitHub Actions:**
+```yaml
+- name: Deployment Safety Gate
+  env:
+    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  run: |
+    pip install bicep-whatif-advisor[anthropic]
+    az deployment group what-if \
+      --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+      --template-file main.bicep \
+      --exclude-change-types NoChange Ignore \
+      | bicep-whatif-advisor
+```
+
+**Azure DevOps:**
+```yaml
+- script: |
+    pip install bicep-whatif-advisor[anthropic]
+    az deployment group what-if \
+      --resource-group $(RESOURCE_GROUP) \
+      --template-file main.bicep \
+      --exclude-change-types NoChange Ignore \
+      | bicep-whatif-advisor
+  env:
+    ANTHROPIC_API_KEY: $(ANTHROPIC_API_KEY)
+    SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+```
+
+The tool automatically detects your CI platform, extracts PR metadata, analyzes code diffs, evaluates risk, posts PR comments, and blocks unsafe deployments (exit code 1) based on configurable thresholds.
+
+## Configuration Options
 
 ### Output Formats
 ```bash
-# JSON for scripting
+# JSON for additional processing
 bicep-whatif-advisor --format json
 
-# Markdown for documentation
+# Markdown (default for PR comments)
 bicep-whatif-advisor --format markdown
 ```
 
-### LLM Providers
+### Risk Thresholds
+
+Control deployment sensitivity by adjusting thresholds for each risk bucket independently:
+
+```bash
+# Stricter gates (block on medium or high risk)
+bicep-whatif-advisor \
+  --drift-threshold medium \
+  --intent-threshold medium \
+  --operations-threshold medium
+
+# Strictest gates (block on any risk)
+bicep-whatif-advisor \
+  --drift-threshold low \
+  --intent-threshold low \
+  --operations-threshold low
+```
+
+**Available thresholds:** `low`, `medium`, `high` (default: `high` for all buckets)
+
+**Threshold meanings:**
+- `low` - Block if ANY risk detected in this category
+- `medium` - Block if medium or high risk detected
+- `high` - Only block on high risk (most permissive)
+
+### Alternative LLM Providers
+
+By default, the tool uses Anthropic Claude. You can also use Azure OpenAI or local Ollama:
+
 ```bash
 # Azure OpenAI
 pip install bicep-whatif-advisor[azure]
@@ -135,19 +137,10 @@ export AZURE_OPENAI_API_KEY="..."
 export AZURE_OPENAI_DEPLOYMENT="gpt-4"
 bicep-whatif-advisor --provider azure-openai
 
-# Local Ollama
+# Local Ollama (free, runs on your infrastructure)
+pip install bicep-whatif-advisor[ollama]
 bicep-whatif-advisor --provider ollama --model llama3.1
 ```
-
-### Adjust Risk Thresholds (CI Mode)
-```bash
-# Stricter gates (block on medium or high)
-bicep-whatif-advisor \
-  --drift-threshold medium \
-  --operations-threshold medium
-```
-
-**Available thresholds:** `low`, `medium`, `high` (defaults to `high`)
 
 ### Multi-Environment Pipelines
 ```bash
@@ -160,38 +153,17 @@ bicep-whatif-advisor --comment-title "Production" --no-block
 # Title becomes: "Production (non-blocking)"
 ```
 
-## CI/CD Integration
+## Complete Setup Guide
 
-### GitHub Actions
-```yaml
-- name: Deployment Safety Gate
-  env:
-    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  run: |
-    az deployment group what-if \
-      --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
-      --template-file main.bicep \
-      --exclude-change-types NoChange Ignore \
-      | bicep-whatif-advisor
-```
+The tool works with any CI/CD platform that can run Azure CLI and Python. For complete setup instructions including:
 
-### Azure DevOps
-```yaml
-- script: |
-    az deployment group what-if \
-      --resource-group $(RESOURCE_GROUP) \
-      --template-file main.bicep \
-      --exclude-change-types NoChange Ignore \
-      | bicep-whatif-advisor
-  env:
-    ANTHROPIC_API_KEY: $(ANTHROPIC_API_KEY)
-    SYSTEM_ACCESSTOKEN: $(System.AccessToken)
-```
+- Azure authentication configuration (service principals, managed identities)
+- Repository permissions and access tokens
+- Multi-environment pipeline patterns
+- Advanced configuration options
+- Troubleshooting common issues
 
-**Auto-detects:** CI environment, PR metadata, diff analysis, and automatically posts PR comments.
-
-See **[CI/CD Integration Guide](docs/guides/CICD_INTEGRATION.md)** for complete setup instructions including Azure authentication.
+See the **[CI/CD Integration Guide](docs/guides/CICD_INTEGRATION.md)** for platform-specific examples including GitHub Actions, Azure DevOps, GitLab CI, and Jenkins.
 
 ## Documentation
 
