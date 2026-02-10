@@ -326,21 +326,20 @@ def render_markdown(data: dict, ci_mode: bool = False, custom_title: str = None,
             lines.append("### Resource Changes")
             lines.append("")
 
-    # Table header
+    # Table header (without Summary column)
     if ci_mode:
-        lines.append("| # | Resource | Type | Action | Risk | Summary |")
-        lines.append("|---|----------|------|--------|------|---------|")
+        lines.append("| # | Resource | Type | Action | Risk |")
+        lines.append("|---|----------|------|--------|------|")
     else:
-        lines.append("| # | Resource | Type | Action | Summary |")
-        lines.append("|---|----------|------|--------|---------|")
+        lines.append("| # | Resource | Type | Action |")
+        lines.append("|---|----------|------|--------|")
 
-    # Table rows
+    # Table rows (without summaries)
     resources = data.get("resources", [])
     for idx, resource in enumerate(resources, 1):
         resource_name = resource.get("resource_name", "Unknown")
         resource_type = resource.get("resource_type", "Unknown")
         action = resource.get("action", "Unknown")
-        summary = resource.get("summary", "").replace("|", "\\|")  # Escape pipes
 
         # Get action display
         action_display = action
@@ -349,13 +348,25 @@ def render_markdown(data: dict, ci_mode: bool = False, custom_title: str = None,
             risk_level = resource.get("risk_level", "none")
             risk_display = risk_level.capitalize()
             lines.append(
-                f"| {idx} | {resource_name} | {resource_type} | {action_display} | {risk_display} | {summary} |"
+                f"| {idx} | {resource_name} | {resource_type} | {action_display} | {risk_display} |"
             )
         else:
             lines.append(
-                f"| {idx} | {resource_name} | {resource_type} | {action_display} | {summary} |"
+                f"| {idx} | {resource_name} | {resource_type} | {action_display} |"
             )
 
+    lines.append("")
+
+    # Add collapsible details section with summaries
+    lines.append("<details>")
+    lines.append("<summary>📝 View detailed summaries</summary>")
+    lines.append("")
+    for idx, resource in enumerate(resources, 1):
+        resource_name = resource.get("resource_name", "Unknown")
+        summary = resource.get("summary", "No summary provided")
+        lines.append(f"{idx}. **{resource_name}**: {summary}")
+    lines.append("")
+    lines.append("</details>")
     lines.append("")
 
     # Overall summary
