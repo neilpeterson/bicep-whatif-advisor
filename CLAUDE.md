@@ -66,6 +66,25 @@ pip install -e .[all]               # All provider dependencies
 pip install -e .[all,dev]           # With dev/test dependencies
 ```
 
+**Version updates for releases:**
+```bash
+# CRITICAL: Version must be updated in TWO places for PyPI releases:
+# 1. bicep_whatif_advisor/__init__.py
+__version__ = "X.Y.Z"
+
+# 2. pyproject.toml (this is what the build system uses!)
+[project]
+version = "X.Y.Z"
+
+# Then commit, tag, and create release:
+git add bicep_whatif_advisor/__init__.py pyproject.toml
+git commit -m "Bump version to X.Y.Z"
+git push origin main
+git tag -a vX.Y.Z -m "Release vX.Y.Z: Description"
+git push origin vX.Y.Z
+gh release create vX.Y.Z --title "vX.Y.Z - Title" --notes "Release notes"
+```
+
 **Run tests:**
 ```bash
 pytest                              # Run all tests
