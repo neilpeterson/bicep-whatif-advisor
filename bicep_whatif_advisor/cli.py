@@ -170,6 +170,11 @@ def extract_json(text: str) -> dict:
     default=None,
     help="Pull request description for intent analysis (CI mode only)"
 )
+@click.option(
+    "--no-block",
+    is_flag=True,
+    help="Don't fail pipeline even if deployment is unsafe - only report findings (CI mode only)"
+)
 @click.version_option(version=__version__)
 def main(
     provider: str,
@@ -187,7 +192,8 @@ def main(
     pr_url: str,
     bicep_dir: str,
     pr_title: str,
-    pr_description: str
+    pr_description: str,
+    no_block: bool
 ):
     """Analyze Azure What-If deployment output using LLMs.
 
@@ -331,8 +337,17 @@ def main(
                 # Show which buckets failed
                 if failed_buckets:
                     bucket_names = ", ".join(failed_buckets)
-                    sys.stderr.write(f"Deployment blocked: Failed risk buckets: {bucket_names}\n")
-                sys.exit(1)  # Unsafe, block deployment
+                    if no_block:
+                        sys.stderr.write(f"⚠️  Warning: Failed risk buckets: {bucket_names} (pipeline not blocked due to --no-block)\n")
+                    else:
+                        sys.stderr.write(f"❌ Deployment blocked: Failed risk buckets: {bucket_names}\n")
+
+                # Exit with 0 if --no-block is set, otherwise exit with 1
+                if no_block:
+                    sys.stderr.write("ℹ️  CI mode: Reporting findings only (--no-block enabled)\n")
+                    sys.exit(0)  # Don't block pipeline
+                else:
+                    sys.exit(1)  # Unsafe, block deployment
 
         # Standard mode: exit successfully
         sys.exit(0)

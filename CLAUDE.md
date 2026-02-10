@@ -297,6 +297,9 @@ cat whatif-output.txt | bicep-whatif-advisor \
   --post-comment
 ```
 
+**Optional CI flags:**
+- `--no-block`: Report findings without failing pipeline (exit code 0 even if unsafe)
+
 ## Testing Strategy
 
 Required test fixtures in `tests/fixtures/`:

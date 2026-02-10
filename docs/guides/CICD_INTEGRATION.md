@@ -433,24 +433,64 @@ Each bucket has an independent threshold (low, medium, high):
 
 See [Risk Assessment Guide](./RISK_ASSESSMENT.md) for detailed explanation.
 
-## Configuration Options
+## Advanced Features
 
-### Multi-Environment Setup
+### Non-Blocking Mode (`--no-block`)
 
-Use different thresholds per environment:
+By default, CI mode blocks deployment if risk thresholds are exceeded (exit code 1). Use `--no-block` to report findings without failing the pipeline:
 
-**Development:**
-```yaml
-| bicep-whatif-advisor \
-  --drift-threshold low \      # Catch all drift
-  --intent-threshold medium \
-  --operations-threshold medium
+**Use cases:**
+- **Informational reviews** - Get risk analysis without blocking deployment
+- **Gradual rollout** - Collect data before enforcing strict gates
+- **Soft gates** - Let teams review warnings but don't stop deployments
+- **Multi-environment** - Block production but allow dev/staging
+
+**Example:**
+```bash
+# Report findings but don't fail pipeline
+az deployment group what-if ... | bicep-whatif-advisor \
+  --ci \
+  --no-block \
+  --post-comment
+
+# Exit code: Always 0, even if unsafe
 ```
 
-**Production:**
+**Output:**
+```
+⚠️  Warning: Failed risk buckets: operations (pipeline not blocked due to --no-block)
+ℹ️  CI mode: Reporting findings only (--no-block enabled)
+```
+
+**GitHub Actions example:**
 ```yaml
+- name: AI Review (Non-blocking for Dev)
+  env:
+    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  run: |
+    az deployment group what-if \
+      --resource-group ${{ vars.DEV_RESOURCE_GROUP }} \
+      --template-file main.bicep \
+      | bicep-whatif-advisor --no-block
+```
+
+## Configuration Options
+
+### Adjust Risk Thresholds
+
+Use different thresholds based on your risk tolerance:
+
+```bash
+# Stricter - block on medium risk or higher
 | bicep-whatif-advisor \
-  --drift-threshold high \     # Only block critical drift
+  --drift-threshold medium \
+  --intent-threshold medium \
+  --operations-threshold medium
+
+# More permissive - only block on high risk
+| bicep-whatif-advisor \
+  --drift-threshold high \
   --intent-threshold high \
   --operations-threshold high
 ```
