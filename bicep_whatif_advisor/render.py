@@ -323,23 +323,27 @@ def render_markdown(data: dict, ci_mode: bool = False, custom_title: str = None,
                 lines.append(f"| Risky Operations | {operations_risk} | {concern_text} |")
 
             lines.append("")
-            lines.append("### Resource Changes")
-            lines.append("")
 
-    # Table header (without Summary column)
+    # Collapsible section for resource changes
+    lines.append("<details>")
+    lines.append("<summary>📋 View changed resources</summary>")
+    lines.append("")
+
+    # Table header (with Summary column)
     if ci_mode:
-        lines.append("| # | Resource | Type | Action | Risk |")
-        lines.append("|---|----------|------|--------|------|")
+        lines.append("| # | Resource | Type | Action | Risk | Summary |")
+        lines.append("|---|----------|------|--------|------|---------|")
     else:
-        lines.append("| # | Resource | Type | Action |")
-        lines.append("|---|----------|------|--------|")
+        lines.append("| # | Resource | Type | Action | Summary |")
+        lines.append("|---|----------|------|--------|---------|")
 
-    # Table rows (without summaries)
+    # Table rows (with summaries)
     resources = data.get("resources", [])
     for idx, resource in enumerate(resources, 1):
         resource_name = resource.get("resource_name", "Unknown")
         resource_type = resource.get("resource_type", "Unknown")
         action = resource.get("action", "Unknown")
+        summary = resource.get("summary", "").replace("|", "\\|")  # Escape pipes
 
         # Get action display
         action_display = action
@@ -348,23 +352,13 @@ def render_markdown(data: dict, ci_mode: bool = False, custom_title: str = None,
             risk_level = resource.get("risk_level", "none")
             risk_display = risk_level.capitalize()
             lines.append(
-                f"| {idx} | {resource_name} | {resource_type} | {action_display} | {risk_display} |"
+                f"| {idx} | {resource_name} | {resource_type} | {action_display} | {risk_display} | {summary} |"
             )
         else:
             lines.append(
-                f"| {idx} | {resource_name} | {resource_type} | {action_display} |"
+                f"| {idx} | {resource_name} | {resource_type} | {action_display} | {summary} |"
             )
 
-    lines.append("")
-
-    # Add collapsible details section with summaries
-    lines.append("<details>")
-    lines.append("<summary>📝 View detailed summaries</summary>")
-    lines.append("")
-    for idx, resource in enumerate(resources, 1):
-        resource_name = resource.get("resource_name", "Unknown")
-        summary = resource.get("summary", "No summary provided")
-        lines.append(f"{idx}. **{resource_name}**: {summary}")
     lines.append("")
     lines.append("</details>")
     lines.append("")
