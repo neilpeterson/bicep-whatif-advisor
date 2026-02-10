@@ -9,12 +9,16 @@
 When integrated into your CI/CD pipeline, `bicep-whatif-advisor` automatically detects the platform (GitHub Actions or Azure DevOps) and performs comprehensive deployment analysis with zero configuration required. Simply pipe Azure What-If output to the tool and it handles the rest.
 
 **The tool will:**
-1. Extract PR metadata (title, description, number) from the CI environment
-2. Collect your code diff to understand what changes are in the PR
-3. Send What-If output and diff to the LLM for analysis
-4. Evaluate risk across three independent categories
-5. Post a detailed assessment as a PR comment
-6. Exit with code 0 (safe) or 1 (unsafe) to block/allow deployment
+1. **Auto-detect your CI platform** - Recognizes GitHub Actions or Azure DevOps environments
+2. **Extract PR metadata** - Pulls title, description, and PR number from the CI environment
+3. **Collect code diff** - Gathers changes from your PR to understand what's in the codebase
+4. **Analyze with LLM** - Sends What-If output, PR metadata, and code diff to the LLM for intelligent analysis
+5. **Evaluate three risk categories independently:**
+   - **Infrastructure Drift** - Detects changes not in your code (out-of-band modifications)
+   - **PR Intent Alignment** - Ensures changes match PR description
+   - **Risky Operations** - Flags dangerous operations (deletions, security changes, downgrades)
+6. **Post detailed PR comment** - Automatically comments with formatted analysis (zero config)
+7. **Gate deployment** - Exits with code 0 (safe) or 1 (unsafe) based on configurable thresholds per risk bucket
 
 **Example Output:**
 ```
@@ -46,16 +50,6 @@ Reason: Risky operations exceed threshold (high). Address role deletion and SKU 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-**Features:**
-- **Platform Auto-Detection** - Automatically enables CI mode in GitHub Actions/Azure DevOps
-- **Three-Bucket Risk Assessment** - Independent evaluation across:
-  - **Infrastructure Drift** - Detects changes not in your code (out-of-band modifications)
-  - **PR Intent Alignment** - Ensures changes match PR description
-  - **Risky Operations** - Flags dangerous operations (deletions, security changes, downgrades)
-- **Configurable Thresholds** - Set sensitivity per bucket: `--drift-threshold`, `--intent-threshold`, `--operations-threshold`
-- **Automatic PR Comments** - Posts detailed analysis (zero config when using platform tokens)
-- **Deployment Gating** - Exit codes block unsafe deployments automatically
-
 ## Quick Start
 
 **GitHub Actions:**
@@ -86,8 +80,6 @@ Reason: Risky operations exceed threshold (high). Address role deletion and SKU 
     ANTHROPIC_API_KEY: $(ANTHROPIC_API_KEY)
     SYSTEM_ACCESSTOKEN: $(System.AccessToken)
 ```
-
-The tool automatically detects your CI platform, extracts PR metadata, analyzes code diffs, evaluates risk, posts PR comments, and blocks unsafe deployments (exit code 1) based on configurable thresholds.
 
 ## Configuration Options
 
