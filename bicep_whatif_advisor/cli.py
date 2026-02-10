@@ -175,6 +175,12 @@ def extract_json(text: str) -> dict:
     is_flag=True,
     help="Don't fail pipeline even if deployment is unsafe - only report findings (CI mode only)"
 )
+@click.option(
+    "--comment-title",
+    type=str,
+    default=None,
+    help="Custom title for PR comment (default: 'What-If Deployment Review')"
+)
 @click.version_option(version=__version__)
 def main(
     provider: str,
@@ -193,7 +199,8 @@ def main(
     bicep_dir: str,
     pr_title: str,
     pr_description: str,
-    no_block: bool
+    no_block: bool,
+    comment_title: str
 ):
     """Analyze Azure What-If deployment output using LLMs.
 
@@ -314,7 +321,7 @@ def main(
         elif format == "json":
             render_json(data)
         elif format == "markdown":
-            markdown = render_markdown(data, ci_mode=ci)
+            markdown = render_markdown(data, ci_mode=ci, custom_title=comment_title, no_block=no_block)
             print(markdown)
 
         # CI mode: evaluate verdict and post comment
@@ -327,7 +334,7 @@ def main(
 
             # Post comment if requested
             if post_comment:
-                markdown = render_markdown(data, ci_mode=True)
+                markdown = render_markdown(data, ci_mode=True, custom_title=comment_title, no_block=no_block)
                 _post_pr_comment(markdown, pr_url)
 
             # Exit with appropriate code

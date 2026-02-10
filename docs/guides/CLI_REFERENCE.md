@@ -108,7 +108,8 @@ az deployment group what-if ... | bicep-whatif-advisor --ci --diff-ref origin/ma
 | `--bicep-dir` | | `.` | Path to Bicep source files for additional context |
 | `--pr-title` | | Auto-detect | Pull request title for intent analysis (auto-fetched in GitHub Actions) |
 | `--pr-description` | | Auto-detect | Pull request description for intent analysis (auto-fetched in GitHub Actions) |
-| `--no-block` | | _(disabled)_ | Don't fail pipeline even if deployment is unsafe - only report findings (CI mode only) |
+| `--no-block` | | _(disabled)_ | Don't fail pipeline even if deployment is unsafe - only report findings (CI mode only). Automatically appends "(non-blocking)" to PR comment title. |
+| `--comment-title` | | `What-If Deployment Review` | Custom title for PR comment (useful for multi-environment pipelines). Combines with `--no-block` to append "(non-blocking)". |
 
 ### Exit Codes
 
