@@ -26,22 +26,14 @@ concurrency:
 
 env:
   BICEP_TEMPLATE: ./sample-bicep-deployment/main.bicep
+  BICEP_PARAMS: ./sample-bicep-deployment/azure-personal-subscription.bicepparam
   PYTHON_VERSION: '3.11'
 
 jobs:
   pr-review:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    environment: ${{ matrix.environment.name }}
-    strategy:
-      matrix:
-        environment:
-          - name: pre-production
-            params: ./sample-bicep-deployment/pre-production.bicepparam
-            resource_group_var: AZURE_RESOURCE_GROUP_PRE_PRODUCTION
-          - name: production
-            params: ./sample-bicep-deployment/production.bicepparam
-            resource_group_var: AZURE_RESOURCE_GROUP_PRODUCTION
+    environment: azure-personal-subscription
 
     steps:
       - name: Check out code
@@ -64,31 +56,22 @@ jobs:
       - name: Install bicep-whatif-advisor
         run: pip install bicep-whatif-advisor[anthropic]
 
-      - name: Run What-If analysis with safety gate (${{ matrix.environment.name }})
+      - name: Run What-If analysis with safety gate
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           az deployment group what-if \
-            --resource-group "${{ vars[matrix.environment.resource_group_var] }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
             --template-file "${{ env.BICEP_TEMPLATE }}" \
-            --parameters "${{ matrix.environment.params }}" \
+            --parameters "${{ env.BICEP_PARAMS }}" \
             --exclude-change-types NoChange Ignore \
-            | bicep-whatif-advisor --no-block --comment-title "${{ matrix.environment.name }} What-If Summary" --bicep-dir sample-bicep-deployment/
+            | bicep-whatif-advisor --no-block --comment-title "What-If Summary" --bicep-dir sample-bicep-deployment/
 
   validate:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    environment: ${{ matrix.environment.name }}
-    strategy:
-      matrix:
-        environment:
-          - name: pre-production
-            params: ./sample-bicep-deployment/pre-production.bicepparam
-            resource_group_var: AZURE_RESOURCE_GROUP_PRE_PRODUCTION
-          - name: production
-            params: ./sample-bicep-deployment/production.bicepparam
-            resource_group_var: AZURE_RESOURCE_GROUP_PRODUCTION
+    environment: azure-personal-subscription
 
     steps:
       - name: Check out code
@@ -109,22 +92,22 @@ jobs:
       - name: Install bicep-whatif-advisor
         run: pip install bicep-whatif-advisor[anthropic]
 
-      - name: Run What-If analysis (${{ matrix.environment.name }})
+      - name: Run What-If analysis
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           az deployment group what-if \
-            --name "bicep-whatif-${{ matrix.environment.name }}-${{ github.run_number }}" \
-            --resource-group "${{ vars[matrix.environment.resource_group_var] }}" \
+            --name "bicep-whatif-${{ github.run_number }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
             --template-file "${{ env.BICEP_TEMPLATE }}" \
-            --parameters "${{ matrix.environment.params }}" \
+            --parameters "${{ env.BICEP_PARAMS }}" \
             --exclude-change-types NoChange Ignore | bicep-whatif-advisor --format markdown >> $GITHUB_STEP_SUMMARY
 
-  deploy-pre-production:
+  deploy:
     needs: validate
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    environment: pre-production
+    environment: azure-personal-subscription
 
     steps:
       - name: Check out code
@@ -140,34 +123,8 @@ jobs:
       - name: Deploy Bicep template
         run: |
           az deployment group create \
-            --name "bicep-deploy-pre-production-${{ github.run_number }}" \
-            --resource-group "${{ vars.AZURE_RESOURCE_GROUP_PRE_PRODUCTION }}" \
+            --name "bicep-deploy-${{ github.run_number }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
             --template-file "${{ env.BICEP_TEMPLATE }}" \
-            --parameters ./sample-bicep-deployment/pre-production.bicepparam \
-            --verbose
-            
-  deploy-production:
-    needs: deploy-pre-production
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    environment: production
-
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v4
-
-      - name: Log in to Azure
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Deploy Bicep template
-        run: |
-          az deployment group create \
-            --name "bicep-deploy-production-${{ github.run_number }}" \
-            --resource-group "${{ vars.AZURE_RESOURCE_GROUP_PRODUCTION }}" \
-            --template-file "${{ env.BICEP_TEMPLATE }}" \
-            --parameters ./sample-bicep-deployment/production.bicepparam \
+            --parameters ${{ env.BICEP_PARAMS }} \
             --verbose
