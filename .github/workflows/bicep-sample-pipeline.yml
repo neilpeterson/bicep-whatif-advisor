@@ -32,6 +32,7 @@ jobs:
   pr-review:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    environment: ${{ matrix.environment.name }}
     strategy:
       matrix:
         environment:
@@ -78,6 +79,7 @@ jobs:
   validate:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    environment: ${{ matrix.environment.name }}
     strategy:
       matrix:
         environment:
