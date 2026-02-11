@@ -32,16 +32,15 @@ jobs:
   pr-review:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    environment: ${{ matrix.environment.name }}
     strategy:
       matrix:
         environment:
           - name: pre-production
             params: ./sample-bicep-deployment/pre-production.bicepparam
-            resource_group_var: AZURE_RESOURCE_GROUP_PRE_PRODUCTION
+            resource_group: rg-bicep-advisor-test-pre
           - name: production
             params: ./sample-bicep-deployment/production.bicepparam
-            resource_group_var: AZURE_RESOURCE_GROUP_PRODUCTION
+            resource_group: rg-bicep-advisor-test-prd
 
     steps:
       - name: Check out code
@@ -70,7 +69,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           az deployment group what-if \
-            --resource-group "${{ vars[matrix.environment.resource_group_var] }}" \
+            --resource-group "${{ matrix.environment.resource_group }}" \
             --template-file "${{ env.BICEP_TEMPLATE }}" \
             --parameters "${{ matrix.environment.params }}" \
             --exclude-change-types NoChange Ignore \
@@ -79,16 +78,15 @@ jobs:
   validate:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    environment: ${{ matrix.environment.name }}
     strategy:
       matrix:
         environment:
           - name: pre-production
             params: ./sample-bicep-deployment/pre-production.bicepparam
-            resource_group_var: AZURE_RESOURCE_GROUP_PRE_PRODUCTION
+            resource_group: rg-bicep-advisor-test-pre
           - name: production
             params: ./sample-bicep-deployment/production.bicepparam
-            resource_group_var: AZURE_RESOURCE_GROUP_PRODUCTION
+            resource_group: rg-bicep-advisor-test-prd
 
     steps:
       - name: Check out code
@@ -115,7 +113,7 @@ jobs:
         run: |
           az deployment group what-if \
             --name "bicep-whatif-${{ matrix.environment.name }}-${{ github.run_number }}" \
-            --resource-group "${{ vars[matrix.environment.resource_group_var] }}" \
+            --resource-group "${{ matrix.environment.resource_group }}" \
             --template-file "${{ env.BICEP_TEMPLATE }}" \
             --parameters "${{ matrix.environment.params }}" \
             --exclude-change-types NoChange Ignore | bicep-whatif-advisor --format markdown >> $GITHUB_STEP_SUMMARY
@@ -141,7 +139,7 @@ jobs:
         run: |
           az deployment group create \
             --name "bicep-deploy-pre-production-${{ github.run_number }}" \
-            --resource-group "${{ vars.AZURE_RESOURCE_GROUP_PRE_PRODUCTION }}" \
+            --resource-group "rg-bicep-advisor-test-pre" \
             --template-file "${{ env.BICEP_TEMPLATE }}" \
             --parameters ./sample-bicep-deployment/pre-production.bicepparam \
             --verbose
@@ -167,7 +165,7 @@ jobs:
         run: |
           az deployment group create \
             --name "bicep-deploy-production-${{ github.run_number }}" \
-            --resource-group "${{ vars.AZURE_RESOURCE_GROUP_PRODUCTION }}" \
+            --resource-group "rg-bicep-advisor-test-prd" \
             --template-file "${{ env.BICEP_TEMPLATE }}" \
             --parameters ./sample-bicep-deployment/production.bicepparam \
             --verbose
