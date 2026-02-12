@@ -11,6 +11,7 @@ from .prompt import build_system_prompt, build_user_prompt
 from .providers import get_provider
 from .render import render_table, render_json, render_markdown
 from .ci.platform import detect_platform
+from .noise_filter import apply_noise_filtering
 
 
 def extract_json(text: str) -> dict:
@@ -98,7 +99,8 @@ def filter_by_confidence(data: dict) -> tuple[dict, dict]:
     for resource in resources:
         confidence = resource.get("confidence_level", "medium").lower()
 
-        if confidence == "low":
+        if confidence in ("low", "noise"):
+            # Low confidence and noise-matched resources excluded from analysis
             low_confidence_resources.append(resource)
         else:
             # medium and high confidence included in analysis
@@ -229,6 +231,18 @@ def filter_by_confidence(data: dict) -> tuple[dict, dict]:
     default=None,
     help="Custom title for PR comment (default: 'What-If Deployment Review')"
 )
+@click.option(
+    "--noise-file",
+    type=str,
+    default=None,
+    help="Path to noise patterns file for summary-based filtering"
+)
+@click.option(
+    "--noise-threshold",
+    type=int,
+    default=80,
+    help="Similarity threshold percentage for noise pattern matching (default: 80)"
+)
 @click.version_option(version=__version__)
 def main(
     provider: str,
@@ -248,7 +262,9 @@ def main(
     pr_title: str,
     pr_description: str,
     no_block: bool,
-    comment_title: str
+    comment_title: str,
+    noise_file: str,
+    noise_threshold: int
 ):
     """Analyze Azure What-If deployment output using LLMs.
 
@@ -369,6 +385,19 @@ def main(
                 resource["confidence_level"] = "medium"  # Default to include in analysis
             if "confidence_reason" not in resource:
                 resource["confidence_reason"] = "No confidence assessment provided"
+
+        # Apply summary-based noise filtering (if noise file provided)
+        if noise_file:
+            try:
+                # Convert threshold from percentage to ratio (0-1)
+                threshold_ratio = noise_threshold / 100.0
+                data = apply_noise_filtering(data, noise_file, threshold_ratio)
+            except FileNotFoundError as e:
+                sys.stderr.write(f"Error: {e}\n")
+                sys.exit(2)
+            except IOError as e:
+                sys.stderr.write(f"Error reading noise file: {e}\n")
+                sys.exit(2)
 
         # TODO: Add --show-all-confidence flag to display medium/high/low separately
         # TODO: Consider adding --confidence-threshold to make filtering configurable
