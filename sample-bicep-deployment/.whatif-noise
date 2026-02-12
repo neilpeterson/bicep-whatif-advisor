@@ -109,4 +109,5 @@ System-managed property changing
 # ============================================================================
 # Add your organization-specific noise patterns below
 # Example: Common recurring changes in your environment
+Removing blob delete retention policy configuration
 
