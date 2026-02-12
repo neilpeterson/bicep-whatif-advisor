@@ -407,6 +407,75 @@ def main(
         # Filter by confidence (always-on behavior)
         high_confidence_data, low_confidence_data = filter_by_confidence(data)
 
+        # CRITICAL FIX: If noise filtering removed resources in CI mode, the LLM's
+        # risk_assessment is stale (generated before filtering). Re-prompt the LLM
+        # with only high-confidence resources to get an accurate risk assessment.
+        if ci and low_confidence_data.get("resources"):
+            num_filtered = len(low_confidence_data["resources"])
+            num_remaining = len(high_confidence_data.get("resources", []))
+
+            sys.stderr.write(
+                f"🔄 Recalculating risk assessment: {num_filtered} low-confidence resources "
+                f"filtered, {num_remaining} high-confidence resources remain\n"
+            )
+
+            # Build a filtered What-If output containing only high-confidence resources
+            # We'll reconstruct a minimal What-If output from the high-confidence resources
+            # and re-prompt the LLM for accurate risk assessment
+            filtered_whatif_lines = ["Resource changes:"]
+            for resource in high_confidence_data.get("resources", []):
+                # Reconstruct What-If format: "~ ResourceName"
+                action_symbol = {
+                    "create": "+",
+                    "modify": "~",
+                    "delete": "-",
+                    "deploy": "=",
+                    "nochange": "*",
+                    "ignore": "x"
+                }.get(resource.get("action", "").lower(), "~")
+
+                filtered_whatif_lines.append(f"{action_symbol} {resource['resource_name']}")
+                filtered_whatif_lines.append(f"  Summary: {resource['summary']}")
+
+            filtered_whatif_content = "\n".join(filtered_whatif_lines)
+
+            # Re-build prompts with filtered data
+            filtered_system_prompt = build_system_prompt(
+                verbose=verbose,
+                ci_mode=ci,
+                pr_title=pr_title,
+                pr_description=pr_description
+            )
+            filtered_user_prompt = build_user_prompt(
+                whatif_content=filtered_whatif_content,
+                diff_content=diff_content,
+                bicep_content=bicep_content,
+                pr_title=pr_title,
+                pr_description=pr_description
+            )
+
+            # Re-call LLM with filtered resources
+            sys.stderr.write("📡 Re-analyzing with filtered resources for accurate risk assessment...\n")
+            filtered_response_text = llm_provider.complete(filtered_system_prompt, filtered_user_prompt)
+
+            # Parse the new response
+            try:
+                filtered_data = extract_json(filtered_response_text)
+
+                # Extract the fresh risk_assessment and verdict
+                if "risk_assessment" in filtered_data:
+                    high_confidence_data["risk_assessment"] = filtered_data["risk_assessment"]
+                if "verdict" in filtered_data:
+                    high_confidence_data["verdict"] = filtered_data["verdict"]
+
+                sys.stderr.write("✅ Risk assessment recalculated based on high-confidence resources only\n")
+
+            except ValueError:
+                sys.stderr.write(
+                    "⚠️  Warning: Could not parse re-analysis response. "
+                    "Using original risk assessment (may be inaccurate).\n"
+                )
+
         # Render output
         if format == "table":
             render_table(high_confidence_data, verbose=verbose, no_color=no_color, ci_mode=ci, low_confidence_data=low_confidence_data)
