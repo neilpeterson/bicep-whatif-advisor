@@ -1,0 +1,113 @@
+# Azure What-If Noise Patterns
+#
+# This file contains summary text patterns that are commonly identified as noise
+# in Azure What-If deployment output. When a resource's LLM-generated summary
+# matches one of these patterns (using fuzzy matching), its confidence score is
+# lowered to indicate it's likely not a real infrastructure change.
+#
+# Usage:
+#   az deployment group what-if ... | bicep-whatif-advisor --noise-file .whatif-noise
+#
+# Format:
+#   - One pattern per line
+#   - Lines starting with # are comments (ignored)
+#   - Blank lines are ignored
+#   - Fuzzy matching with 80% similarity threshold (configurable via --noise-threshold)
+#
+# How it works:
+#   1. LLM analyzes What-If output and generates summaries for each resource
+#   2. Each summary is compared against patterns in this file
+#   3. If similarity >= 80%, confidence is set to 10 (very low)
+#   4. Default --min-confidence 70 will filter these resources
+#
+# Tips:
+#   - Add patterns based on real noise you encounter
+#   - Be specific enough to avoid false positives
+#   - Test patterns with --noise-threshold to tune sensitivity
+#   - Commit this file to version control to share with your team
+
+# ============================================================================
+# Subnet Reference Changes
+# ============================================================================
+# Azure often changes subnet references from hardcoded IDs to dynamic ARM functions
+Changing subnet reference from hardcoded ID to dynamic reference
+Changing subnet reference from hardcoded to dynamic
+Updating subnet ID reference to use ARM function
+Converting hardcoded subnet ID to dynamic reference
+
+# ============================================================================
+# IPv6 Configuration Changes
+# ============================================================================
+# IPv6 flags frequently toggle without code changes
+Removing IPv6 flag
+Changing disableIpv6 property
+Disabling IPv6 addressing
+Changing enableIPv6Addressing property
+Toggling IPv6 configuration
+IPv6 flag changing from enabled to disabled
+IPv6 flag changing from disabled to enabled
+
+# ============================================================================
+# Log Analytics Destination Type
+# ============================================================================
+# This property changes between deployment runs without code modifications
+Changing logAnalyticsDestinationType property
+Updating Log Analytics destination type
+Modifying logAnalyticsDestinationType setting
+Log Analytics destination changing from Dedicated to AzureDiagnostics
+
+# ============================================================================
+# Tags Only Changes
+# ============================================================================
+# Tag-only modifications are often not significant for deployment safety
+Updating tags only
+Changing only resource tags
+Modifying tags without other changes
+Only tag values are changing
+Tags are being updated
+
+# ============================================================================
+# Diagnostic Settings
+# ============================================================================
+# Diagnostic settings often appear as noise
+Modifying diagnostic settings
+Updating Application Insights diagnostics
+Changing diagnostic configuration
+Adding diagnostic settings
+
+# ============================================================================
+# Metadata Properties
+# ============================================================================
+# System-managed metadata that doesn't represent real changes
+Changing only etag property
+Updating provisioningState metadata
+Changing resource ID reference
+Updating metadata properties only
+Only etag is changing
+System metadata property update
+
+# ============================================================================
+# Monitoring & Application Insights
+# ============================================================================
+# These are often deployed as dependencies but not the main change
+Adding Application Insights logging
+Adding Application Insights monitoring
+Creating Application Insights resource
+Deploying monitoring components
+
+# ============================================================================
+# Computed/Read-Only Properties
+# ============================================================================
+# Properties that Azure manages automatically
+Changing resourceGuid property
+Updating system-generated identifier
+Modifying read-only property
+System-managed property changing
+
+# ============================================================================
+# Custom Patterns
+# ============================================================================
+# Add your organization-specific noise patterns below
+# Example: Common recurring changes in your environment
+Removing blob delete retention policy configuration
+

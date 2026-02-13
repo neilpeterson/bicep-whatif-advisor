@@ -735,6 +735,322 @@ bicep-whatif-advisor --show-all-confidence
 - But increases risk of missing real changes
 - Can be added as configuration option later
 
+## Summary-Based Noise Filtering
+
+### Overview
+
+**Feature Name:** Summary-Based Noise Patterns
+**Status:** ✅ Implemented
+**Version:** 1.4.0
+**Date:** 2025-02-11
+
+### Purpose
+
+While LLM-based confidence scoring effectively identifies common noise patterns, some organizations encounter domain-specific or recurring noise that should always be filtered. Summary-based noise filtering allows users to define custom noise patterns that automatically lower confidence scores when matched.
+
+### Design
+
+**File Format:** Plain text file, one summary pattern per line
+
+**Example:** `.whatif-noise`
+```
+Changing subnet reference from hardcoded ID to dynamic reference and removing IPv6 flag
+Updating tags only
+Modifying diagnostic settings
+Adding Application Insights
+Changing logAnalyticsDestinationType property
+```
+
+**Matching Algorithm:** Fuzzy string similarity using Python's `difflib.SequenceMatcher`
+- Default similarity threshold: 80% (configurable)
+- Case-insensitive matching
+- Handles minor variations in LLM-generated summaries
+
+**Confidence Override:** When a pattern matches, confidence is set to **10** (very low)
+- Works with existing `--min-confidence` filtering (default 70)
+- Resources remain visible but are likely filtered
+- No explicit "noise" flag - low confidence indicates pattern match
+
+### CLI Flags
+
+```bash
+--noise-file <path>           # Path to noise patterns file
+--noise-threshold <percent>   # Similarity threshold for matching (default: 80)
+```
+
+**Example Usage:**
+```bash
+az deployment group what-if -g my-rg -f main.bicep | \
+  bicep-whatif-advisor \
+  --noise-file .whatif-noise \
+  --noise-threshold 85
+```
+
+### Integration Flow
+
+```
+Azure What-If Output
+        ↓
+   LLM Analysis
+   (assigns confidence scores)
+        ↓
+   Parse LLM Response
+   (extract JSON with confidence_level field)
+        ↓
+   Apply Noise Pattern Matching ← NEW STEP
+   ├─ Load patterns from --noise-file
+   ├─ For each resource:
+   │  ├─ Compare summary to each pattern (fuzzy match)
+   │  └─ If match ≥ threshold: confidence = 10
+   └─ Keep original LLM confidence if no match
+        ↓
+   Convert to Numeric Scores
+   (high=90, medium=60, low=30, noise-matched=10)
+        ↓
+   Filter by --min-confidence
+   (default 70 filters out noise-matched resources)
+        ↓
+   Risk Bucket Evaluation (clean data)
+        ↓
+   Render Output
+```
+
+### Implementation
+
+**Module:** `bicep_whatif_advisor/noise_filter.py`
+
+**Functions:**
+
+```python
+def load_noise_patterns(file_path: str) -> list[str]:
+    """Load noise patterns from text file.
+
+    Args:
+        file_path: Path to noise patterns file
+
+    Returns:
+        List of noise pattern strings (one per line, comments/blank lines removed)
+    """
+
+def match_noise_pattern(summary: str, patterns: list[str], threshold: float = 0.80) -> bool:
+    """Check if summary matches any noise pattern using fuzzy matching.
+
+    Args:
+        summary: Resource summary text from LLM
+        patterns: List of noise pattern strings
+        threshold: Similarity threshold (0.0-1.0, default 0.80)
+
+    Returns:
+        True if any pattern matches above threshold
+    """
+
+def apply_noise_filtering(data: dict, noise_file: str, threshold: float = 0.80) -> dict:
+    """Apply noise pattern filtering to LLM response data.
+
+    Args:
+        data: Parsed LLM response with resources
+        noise_file: Path to noise patterns file
+        threshold: Similarity threshold for matching
+
+    Returns:
+        Modified data with confidence overridden for matched resources
+    """
+```
+
+**Algorithm (difflib.SequenceMatcher):**
+```python
+from difflib import SequenceMatcher
+
+def similarity(a: str, b: str) -> float:
+    """Calculate similarity ratio between two strings."""
+    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
+
+# Match if similarity >= threshold (e.g., 0.80)
+# Example:
+#   Pattern: "Changing subnet reference from hardcoded ID to dynamic reference"
+#   Summary: "Changing subnet reference from hardcoded to dynamic"
+#   Similarity: 0.85 → MATCH
+```
+
+### Integration Points
+
+**1. Main CLI Flow (cli.py):**
+```python
+# Parse LLM response
+data = extract_json(response_text)
+
+# Apply noise pattern filtering (if --noise-file provided)
+if noise_file:
+    data = apply_noise_filtering(data, noise_file, noise_threshold)
+
+# Add backward compatibility defaults
+for resource in data.get("resources", []):
+    if "confidence_level" not in resource:
+        resource["confidence_level"] = "medium"
+
+# Convert confidence levels to numeric scores
+data = convert_confidence_to_numeric(data)
+
+# Filter by numeric confidence threshold
+high_confidence_data, low_confidence_data = filter_by_confidence(
+    data, min_confidence
+)
+```
+
+**2. Confidence Score Conversion:**
+
+The system uses numeric confidence scores (0-100) instead of categorical levels:
+
+```python
+def convert_confidence_to_numeric(data: dict) -> dict:
+    """Convert categorical confidence levels to numeric scores.
+
+    Mapping:
+    - high: 90
+    - medium: 60
+    - low: 30
+    - Resources matched by noise patterns: 10 (set by noise filter)
+
+    Numeric scores enable precise threshold-based filtering.
+    """
+```
+
+**Default thresholds:**
+- `--min-confidence 70` (default): Filters noise-matched (10), low (30), and medium (60)
+- `--min-confidence 50`: Filters noise-matched (10) and low (30)
+- `--min-confidence 0`: Shows all resources
+
+### Benefits
+
+**1. Organization-Specific Filtering:**
+- Define custom noise patterns for your environment
+- Filter recurring false positives unique to your infrastructure
+- No need to wait for LLM prompt updates
+
+**2. Deterministic Filtering:**
+- Fuzzy matching provides consistent results
+- No LLM variation for known patterns
+- Predictable confidence scores
+
+**3. Incremental Improvement:**
+- Add new patterns as noise is discovered
+- Build up knowledge base over time
+- Share patterns across teams via version control
+
+**4. Transparent Override:**
+- Confidence set to 10 (very low but non-zero)
+- Resources visible in output (not silently filtered)
+- Can adjust `--min-confidence` to see matched resources
+
+### Example Workflow
+
+**1. Initial Deployment:**
+```bash
+az deployment group what-if -g my-rg -f main.bicep | \
+  bicep-whatif-advisor
+```
+
+**Output shows noise:**
+```
+Resource: myVnet/subnet
+Action: Modify
+Confidence: 60 (medium)
+Summary: Changing subnet reference from hardcoded ID to dynamic reference
+```
+
+**2. Add Pattern to .whatif-noise:**
+```
+Changing subnet reference from hardcoded ID to dynamic reference
+```
+
+**3. Next Deployment:**
+```bash
+az deployment group what-if -g my-rg -f main.bicep | \
+  bicep-whatif-advisor --noise-file .whatif-noise
+```
+
+**Output (noise filtered):**
+```
+Resource: myVnet/subnet
+Action: Modify
+Confidence: 10 (noise pattern matched)
+Summary: Changing subnet reference from hardcoded ID to dynamic reference
+[Filtered by default --min-confidence 70]
+```
+
+### Sample Noise File
+
+Located at: `sample-bicep-deployment/.whatif-noise`
+
+Common Azure noise patterns:
+```
+# Common Azure What-If noise patterns
+# One pattern per line - fuzzy matching with 80% similarity threshold
+# Lines starting with # are comments
+
+# Subnet reference changes
+Changing subnet reference from hardcoded ID to dynamic reference
+
+# IPv6 flags
+Removing IPv6 flag
+Changing disableIpv6 property
+
+# Log Analytics destination
+Changing logAnalyticsDestinationType property
+
+# Tags
+Updating tags only
+
+# Diagnostic settings
+Modifying diagnostic settings
+
+# Metadata changes
+Updating metadata properties
+Changing etag property
+
+# Application Insights
+Adding Application Insights logging
+```
+
+### Limitations
+
+**1. Requires Manual Pattern Maintenance:**
+- Users must identify and add noise patterns
+- No automatic pattern learning (yet)
+- Patterns must be updated as Azure behavior changes
+
+**2. Fuzzy Matching Trade-offs:**
+- Too low threshold (< 70%): False positives (matches too broadly)
+- Too high threshold (> 90%): False negatives (misses valid noise)
+- Default 80% is a balanced starting point
+
+**3. Summary Text Dependency:**
+- Relies on LLM generating consistent summary text
+- LLM variations might affect match rate
+- Temperature=0 helps but doesn't eliminate variation
+
+### Future Enhancements
+
+**1. Pattern Auto-Discovery:**
+- Track resources consistently marked as low confidence
+- Suggest adding to noise file
+- Machine learning to identify recurring patterns
+
+**2. Regex Support:**
+- Allow regex patterns in noise file
+- More flexible matching for similar summaries
+- Syntax: `/pattern/` for regex, plain text for fuzzy match
+
+**3. Shared Pattern Repository:**
+- Community-contributed noise patterns
+- Azure resource-type specific patterns
+- Downloadable pattern packs
+
+**4. Pattern Analytics:**
+- Report on pattern match rates
+- Identify unused or overly-broad patterns
+- Suggest threshold adjustments
+
 ## Future Enhancements
 
 ### Planned (TODOs in Code)
