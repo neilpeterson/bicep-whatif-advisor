@@ -980,7 +980,7 @@ Summary: Changing subnet reference from hardcoded ID to dynamic reference
 
 ### Sample Noise File
 
-Located at: `sample-bicep-deployment/.whatif-noise`
+Located at: `tests/sample-bicep-deployment/.whatif-noise`
 
 Common Azure noise patterns:
 ```

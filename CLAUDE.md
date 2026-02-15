@@ -41,7 +41,9 @@ bicep-bicep-whatif-advisor/       # Root directory
 │       └── azdevops.py     # Azure DevOps PR comments
 ├── tests/
 │   └── fixtures/           # Sample What-If outputs
-├── bicep-sample/           # Example Bicep template for testing
+├── tests/
+│   ├── fixtures/           # Sample What-If outputs
+│   └── sample-bicep-deployment/  # Example Bicep template for testing
 ├── docs/                   # Documentation
 │   ├── specs/              # Technical specifications
 │   │   ├── SPECIFICATION.md
@@ -241,26 +243,19 @@ The main `README.md` provides a concise overview with links to all documentation
 
 ## Sample Bicep Template
 
-The `bicep-sample/` directory contains a working Azure API Management configuration example:
+The `tests/sample-bicep-deployment/` directory contains a working Azure deployment example:
 
 **Test What-If output:**
 ```bash
 # Generic command (replace <resource-group> with your Azure resource group)
 az deployment group what-if \
-  --template-file ./bicep-sample/main.bicep \
-  --parameters ./bicep-sample/tme-lab.bicepparam \
+  --template-file ./tests/sample-bicep-deployment/main.bicep \
+  --parameters ./tests/sample-bicep-deployment/pre-production.bicepparam \
   -g <resource-group> \
   --exclude-change-types NoChange Ignore
-
-# Example from original development environment:
-az deployment group what-if --template-file ./bicep-sample/main.bicep --parameters ./bicep-sample/tme-lab.bicepparam -g rg-api-gateway-tme-two --exclude-change-types NoChange Ignore
 ```
 
-This Bicep template:
-- Creates APIM policy fragments for JWT parsing and logging
-- Configures Application Insights diagnostics
-- Sets up Front Door ID validation
-- Uses `loadTextContent()` to inject XML policy files
+This directory contains sample Bicep templates and parameter files for testing the tool.
 
 ## Key Implementation Requirements
 
