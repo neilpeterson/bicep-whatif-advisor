@@ -2,6 +2,8 @@
 
 Complete guide to understanding how `bicep-whatif-advisor` evaluates deployment safety and makes decisions.
 
+**Prerequisites:** Familiarity with CI mode. See [CICD_INTEGRATION.md](./CICD_INTEGRATION.md) for pipeline setup first.
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -526,6 +528,7 @@ The tool uses standard exit codes to communicate results:
 | **0** | Success / Safe | All risk buckets below thresholds | Deploy safely ✅ |
 | **1** | Unsafe / Blocked | One or more buckets exceed thresholds | Review PR comment, fix issues ⚠️ |
 | **2** | Error / Invalid | Bad input or tool error | Check logs, fix command ❌ |
+| **130** | Interrupted | User pressed Ctrl+C | Re-run when ready |
 
 ### How CI/CD Pipelines Use Exit Codes
 
@@ -721,6 +724,6 @@ All three checks together provide comprehensive deployment safety, powered by AI
 
 ## Additional Resources
 
-- [Getting Started Guide](./GETTING_STARTED.md) - Installation and basic usage
-- [CI/CD Integration Guide](./CICD_INTEGRATION.md) - Set up deployment gates
-- [CLI Reference](./CLI_REFERENCE.md) - Complete command reference
+- [Quick Start Guide](./QUICKSTART.md) - 5-minute getting started
+- [User Guide](./USER_GUIDE.md) - Complete feature reference and all CLI flags
+- [CI/CD Integration Guide](./CICD_INTEGRATION.md) - Pipeline setup for GitHub Actions, Azure DevOps, etc.
