@@ -2,15 +2,20 @@
 
 Complete guide for integrating `bicep-whatif-advisor` as an automated deployment gate in CI/CD pipelines.
 
+**Prerequisites:** Familiarity with basic tool usage. See [QUICKSTART.md](./QUICKSTART.md) or [USER_GUIDE.md](./USER_GUIDE.md) first.
+
+---
+
 ## Table of Contents
 
 - [Overview](#overview)
 - [GitHub Actions](#github-actions)
 - [Azure DevOps](#azure-devops)
 - [Other CI Platforms](#other-ci-platforms)
-- [Risk Assessment System](#risk-assessment-system)
-- [Configuration Options](#configuration-options)
+- [Advanced Features](#advanced-features)
 - [Troubleshooting](#troubleshooting)
+
+---
 
 ## Overview
 
@@ -35,11 +40,25 @@ Complete guide for integrating `bicep-whatif-advisor` as an automated deployment
 - Git diff reference from target branch
 - PR comments posted when `SYSTEM_ACCESSTOKEN` available
 
+### How Risk Assessment Works
+
+The tool evaluates **three independent risk buckets**:
+
+1. **Infrastructure Drift** - Changes in What-If not present in code diff
+2. **PR Intent Alignment** - Changes not aligned with PR description
+3. **Risky Operations** - Inherently dangerous operations (deletions, security changes)
+
+Each bucket gets a risk level (low/medium/high) and has an independent configurable threshold. Deployment is blocked if **ANY** bucket exceeds its threshold.
+
+**For detailed explanation,** see [RISK_ASSESSMENT.md](./RISK_ASSESSMENT.md)
+
+**For all configuration options,** see [USER_GUIDE.md - CLI Flags Reference](./USER_GUIDE.md#cli-flags-reference)
+
+---
+
 ## GitHub Actions
 
 ### Prerequisites
-
-Before starting, ensure you have:
 
 1. **Azure Setup:**
    - Azure subscription with Contributor access
@@ -210,21 +229,21 @@ jobs:
 
 #### Adjust Risk Thresholds
 
-By default, deployments are blocked only on **high** risk. Adjust by adding flags:
-
 ```yaml
-# More strict - block on medium risk
+# More strict - block on medium risk in all buckets
 | bicep-whatif-advisor \
   --drift-threshold medium \
   --intent-threshold medium \
   --operations-threshold medium
 
-# Very strict - block on any risk
+# Custom per-bucket - strict on drift, lenient on operations
 | bicep-whatif-advisor \
   --drift-threshold low \
-  --intent-threshold low \
-  --operations-threshold low
+  --intent-threshold medium \
+  --operations-threshold high
 ```
+
+**For all threshold options,** see [USER_GUIDE.md - CI Mode Flags](./USER_GUIDE.md#ci-mode-flags)
 
 #### Use Different Providers
 
@@ -250,6 +269,8 @@ By default, deployments are blocked only on **high** risk. Adjust by adding flag
   run: |
     az deployment group what-if ... | bicep-whatif-advisor --provider ollama
 ```
+
+---
 
 ## Azure DevOps
 
@@ -349,6 +370,8 @@ If you want intent analysis in Azure DevOps:
   --pr-description "$(System.PullRequest.Description)"
 ```
 
+---
+
 ## Other CI Platforms
 
 For platforms without built-in auto-detection (GitLab, Jenkins, etc.), manually enable CI mode:
@@ -391,47 +414,7 @@ stage('What-If Review') {
 }
 ```
 
-## Risk Assessment System
-
-### Three Independent Risk Buckets
-
-Each deployment is evaluated across three risk categories:
-
-1. **Infrastructure Drift**
-   - Detects changes in What-If output not present in code diff
-   - Catches out-of-band modifications (manual portal changes)
-   - **High risk:** Security settings, stateful resources
-   - **Medium risk:** Multiple resources drifting
-   - **Low risk:** Tags, display names
-
-2. **PR Intent Alignment**
-   - Compares What-If changes to PR title/description
-   - Catches unintended side effects
-   - **High risk:** Destructive changes not mentioned
-   - **Medium risk:** Changes misaligned with PR purpose
-   - **Low risk:** Minor scope differences
-
-3. **Risky Operations**
-   - Evaluates inherent danger of Azure operations
-   - Independent of code/PR context
-   - **High risk:** Deletions, security changes, public access
-   - **Medium risk:** Behavioral changes, new endpoints
-   - **Low risk:** New resources, monitoring, tags
-
-### Risk Thresholds
-
-Each bucket has an independent threshold (low, medium, high):
-
-```bash
-# Example: Strict on drift, lenient on operations
---drift-threshold low \
---intent-threshold high \
---operations-threshold high
-```
-
-**Deployment fails if ANY bucket exceeds its threshold.**
-
-See [Risk Assessment Guide](./RISK_ASSESSMENT.md) for detailed explanation.
+---
 
 ## Advanced Features
 
@@ -540,33 +523,7 @@ az deployment group what-if ... | bicep-whatif-advisor \
       | bicep-whatif-advisor --no-block
 ```
 
-## Configuration Options
-
-### Adjust Risk Thresholds
-
-Use different thresholds based on your risk tolerance:
-
-```bash
-# Stricter - block on medium risk or higher
-| bicep-whatif-advisor \
-  --drift-threshold medium \
-  --intent-threshold medium \
-  --operations-threshold medium
-
-# More permissive - only block on high risk
-| bicep-whatif-advisor \
-  --drift-threshold high \
-  --intent-threshold high \
-  --operations-threshold high
-```
-
-### Specify Bicep Source Directory
-
-Include Bicep source files for better analysis:
-
-```bash
-| bicep-whatif-advisor --bicep-dir bicep/modules/
-```
+---
 
 ## Troubleshooting
 
@@ -625,6 +582,10 @@ env:
 2. Update code to match infrastructure, OR
 3. Deploy from main branch to sync infrastructure
 
+**For more troubleshooting,** see [USER_GUIDE.md - Troubleshooting](./USER_GUIDE.md#troubleshooting)
+
+---
+
 ## Example PR Comment
 
 When a PR is created, you'll see:
@@ -659,9 +620,11 @@ When a PR is created, you'll see:
 *Generated by bicep-whatif-advisor*
 ```
 
+---
+
 ## Additional Resources
 
-- [Getting Started Guide](./GETTING_STARTED.md) - Installation and basic usage
+- [Quick Start Guide](./QUICKSTART.md) - 5-minute getting started
+- [User Guide](./USER_GUIDE.md) - Complete feature reference
 - [Risk Assessment Guide](./RISK_ASSESSMENT.md) - Understanding risk evaluation
-- [CLI Reference](./CLI_REFERENCE.md) - Complete command reference
 - [Azure OIDC Authentication](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect) - GitHub Actions Azure auth

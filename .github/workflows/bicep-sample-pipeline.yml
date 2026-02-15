@@ -5,13 +5,13 @@ on:
     branches:
       - main
     paths:
-      - 'sample-bicep-deployment/**'
+      - 'tests/sample-bicep-deployment/**'
       - '.github/workflows/bicep-sample-pipeline.yml'
   push:
     branches:
       - main
     paths:
-      - 'sample-bicep-deployment/**'
+      - 'tests/sample-bicep-deployment/**'
       - '.github/workflows/bicep-sample-pipeline.yml'
   workflow_dispatch:
 
@@ -25,8 +25,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  BICEP_TEMPLATE: ./sample-bicep-deployment/main.bicep
-  BICEP_PARAMS: ./sample-bicep-deployment/pre-production.bicepparam
+  BICEP_TEMPLATE: ./tests/sample-bicep-deployment/main.bicep
+  BICEP_PARAMS: ./tests/sample-bicep-deployment/pre-production.bicepparam
   PYTHON_VERSION: '3.11'
 
 jobs:
@@ -66,7 +66,7 @@ jobs:
             --template-file "${{ env.BICEP_TEMPLATE }}" \
             --parameters "${{ env.BICEP_PARAMS }}" \
             --exclude-change-types NoChange Ignore \
-            | bicep-whatif-advisor --no-block --comment-title "What-If Summary" --bicep-dir sample-bicep-deployment/
+            | bicep-whatif-advisor --no-block --comment-title "What-If Summary" --bicep-dir tests/sample-bicep-deployment/
 
   validate:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'

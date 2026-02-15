@@ -161,14 +161,25 @@ See the **[CI/CD Integration Guide](docs/guides/CICD_INTEGRATION.md)** for platf
 ## Documentation
 
 **User Guides:**
-- [Getting Started](docs/guides/GETTING_STARTED.md) - Complete installation and usage guide
-- [CI/CD Integration](docs/guides/CICD_INTEGRATION.md) - Pipeline setup for GitHub Actions, Azure DevOps, GitLab, Jenkins
-- [Risk Assessment](docs/guides/RISK_ASSESSMENT.md) - How risk evaluation works
-- [CLI Reference](docs/guides/CLI_REFERENCE.md) - Complete command reference
+- [Quick Start](docs/guides/QUICKSTART.md) - Get running in 5 minutes
+- [User Guide](docs/guides/USER_GUIDE.md) - Complete feature reference and CLI flags
+- [CI/CD Integration](docs/guides/CICD_INTEGRATION.md) - Pipeline setup for GitHub Actions, Azure DevOps, etc.
+- [Risk Assessment](docs/guides/RISK_ASSESSMENT.md) - Deep dive into AI risk evaluation
 
 **Technical Specifications:**
-- [Project Specification](docs/specs/SPECIFICATION.md) - Technical design and architecture
-- [Platform Auto-Detection](docs/specs/PLATFORM_AUTO_DETECTION_PLAN.md) - CI/CD auto-detection implementation
+- [Technical Specifications](docs/specs/) - Comprehensive specs for each module (00-11)
+  - [00-OVERVIEW](docs/specs/00-OVERVIEW.md) - Project architecture and design principles
+  - [01-CLI-INTERFACE](docs/specs/01-CLI-INTERFACE.md) - CLI orchestration and flags
+  - [02-INPUT-VALIDATION](docs/specs/02-INPUT-VALIDATION.md) - Input processing
+  - [03-PROVIDER-SYSTEM](docs/specs/03-PROVIDER-SYSTEM.md) - LLM provider abstraction
+  - [04-PROMPT-ENGINEERING](docs/specs/04-PROMPT-ENGINEERING.md) - Prompt construction
+  - [05-OUTPUT-RENDERING](docs/specs/05-OUTPUT-RENDERING.md) - Output formatting
+  - [06-NOISE-FILTERING](docs/specs/06-NOISE-FILTERING.md) - Confidence-based filtering
+  - [07-PLATFORM-DETECTION](docs/specs/07-PLATFORM-DETECTION.md) - CI/CD auto-detection
+  - [08-RISK-ASSESSMENT](docs/specs/08-RISK-ASSESSMENT.md) - Three-bucket risk model
+  - [09-PR-INTEGRATION](docs/specs/09-PR-INTEGRATION.md) - PR comment posting
+  - [10-GIT-DIFF](docs/specs/10-GIT-DIFF.md) - Git diff collection
+  - [11-TESTING-STRATEGY](docs/specs/11-TESTING-STRATEGY.md) - Test architecture
 
 ## Support
 

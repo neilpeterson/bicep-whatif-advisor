@@ -40,17 +40,27 @@ bicep-bicep-whatif-advisor/       # Root directory
 │       ├── github.py       # GitHub PR comments
 │       └── azdevops.py     # Azure DevOps PR comments
 ├── tests/
-│   └── fixtures/           # Sample What-If outputs
-├── bicep-sample/           # Example Bicep template for testing
+│   ├── fixtures/           # Sample What-If outputs
+│   └── sample-bicep-deployment/  # Example Bicep template for testing
 ├── docs/                   # Documentation
-│   ├── specs/              # Technical specifications
-│   │   ├── SPECIFICATION.md
-│   │   └── PLATFORM_AUTO_DETECTION_PLAN.md
+│   ├── specs/              # Technical specifications (00-11)
+│   │   ├── 00-OVERVIEW.md
+│   │   ├── 01-CLI-INTERFACE.md
+│   │   ├── 02-INPUT-VALIDATION.md
+│   │   ├── 03-PROVIDER-SYSTEM.md
+│   │   ├── 04-PROMPT-ENGINEERING.md
+│   │   ├── 05-OUTPUT-RENDERING.md
+│   │   ├── 06-NOISE-FILTERING.md
+│   │   ├── 07-PLATFORM-DETECTION.md
+│   │   ├── 08-RISK-ASSESSMENT.md
+│   │   ├── 09-PR-INTEGRATION.md
+│   │   ├── 10-GIT-DIFF.md
+│   │   └── 11-TESTING-STRATEGY.md
 │   └── guides/             # User guides
-│       ├── GETTING_STARTED.md
+│       ├── QUICKSTART.md
+│       ├── USER_GUIDE.md
 │       ├── CICD_INTEGRATION.md
-│       ├── RISK_ASSESSMENT.md
-│       └── CLI_REFERENCE.md
+│       └── RISK_ASSESSMENT.md
 ├── pyproject.toml          # Package configuration
 ├── README.md               # User documentation
 └── LICENSE                 # MIT license
@@ -227,40 +237,43 @@ Three-bucket risk assessment:
 
 Documentation is organized into two directories:
 
-**`/docs/specs/`** - Technical specifications and feature plans
-- `SPECIFICATION.md` - Complete technical design and architecture
-- `PLATFORM_AUTO_DETECTION_PLAN.md` - CI/CD auto-detection implementation
+**`/docs/specs/`** - Technical specifications (numbered 00-11 for reading order)
+- `00-OVERVIEW.md` - Project architecture, data flow, design principles
+- `01-CLI-INTERFACE.md` - CLI flags, orchestration, and smart defaults
+- `02-INPUT-VALIDATION.md` - Stdin processing and validation
+- `03-PROVIDER-SYSTEM.md` - LLM provider abstraction (Anthropic, Azure OpenAI, Ollama)
+- `04-PROMPT-ENGINEERING.md` - System/user prompts and dynamic schema generation
+- `05-OUTPUT-RENDERING.md` - Table/JSON/Markdown formatting
+- `06-NOISE-FILTERING.md` - Confidence scoring and pattern matching
+- `07-PLATFORM-DETECTION.md` - GitHub Actions & Azure DevOps auto-detection
+- `08-RISK-ASSESSMENT.md` - Three-bucket risk model and threshold logic
+- `09-PR-INTEGRATION.md` - GitHub & Azure DevOps PR comment posting
+- `10-GIT-DIFF.md` - Git diff collection for drift detection
+- `11-TESTING-STRATEGY.md` - Test architecture and fixtures
 
-**`/docs/guides/`** - User-facing guides
-- `GETTING_STARTED.md` - Installation and basic usage
+**`/docs/guides/`** - User-facing guides (clear progression for new users)
+- `QUICKSTART.md` - 5-minute getting started guide
+- `USER_GUIDE.md` - Complete feature reference and all CLI flags
 - `CICD_INTEGRATION.md` - CI/CD pipeline setup (GitHub Actions, Azure DevOps, etc.)
-- `RISK_ASSESSMENT.md` - How risk evaluation works
-- `CLI_REFERENCE.md` - Complete command reference
+- `RISK_ASSESSMENT.md` - Deep dive into AI risk evaluation
 
 The main `README.md` provides a concise overview with links to all documentation.
 
 ## Sample Bicep Template
 
-The `bicep-sample/` directory contains a working Azure API Management configuration example:
+The `tests/sample-bicep-deployment/` directory contains a working Azure deployment example:
 
 **Test What-If output:**
 ```bash
 # Generic command (replace <resource-group> with your Azure resource group)
 az deployment group what-if \
-  --template-file ./bicep-sample/main.bicep \
-  --parameters ./bicep-sample/tme-lab.bicepparam \
+  --template-file ./tests/sample-bicep-deployment/main.bicep \
+  --parameters ./tests/sample-bicep-deployment/pre-production.bicepparam \
   -g <resource-group> \
   --exclude-change-types NoChange Ignore
-
-# Example from original development environment:
-az deployment group what-if --template-file ./bicep-sample/main.bicep --parameters ./bicep-sample/tme-lab.bicepparam -g rg-api-gateway-tme-two --exclude-change-types NoChange Ignore
 ```
 
-This Bicep template:
-- Creates APIM policy fragments for JWT parsing and logging
-- Configures Application Insights diagnostics
-- Sets up Front Door ID validation
-- Uses `loadTextContent()` to inject XML policy files
+This directory contains sample Bicep templates and parameter files for testing the tool.
 
 ## Key Implementation Requirements
 
@@ -332,64 +345,30 @@ Mock LLM providers in tests to avoid API calls during unit testing.
 
 ## Future Improvements / Backlog
 
-### Priority: High - Simplify GitHub Actions Integration
+**Note:** Platform auto-detection for GitHub Actions and Azure DevOps is ✅ **COMPLETED**. The tool now automatically detects CI environments, extracts PR metadata, and posts comments with minimal configuration.
 
-**Problem:** Current GitHub Actions workflows are too complex with too much manual logic:
-- Manual PR details fetching using `gh pr view`
-- Complex error handling and file management
-- Manual PR comment posting
-- Excessive debugging code
-- Users need to understand workflow YAML internals
+### Potential Future Enhancements
 
-**Goal:** Make workflows as simple as possible - ideally 6 lines of logic:
+1. **Additional CI/CD Platforms**
+   - Add native auto-detection for GitLab CI, Jenkins, CircleCI
+   - Currently supported via manual `--ci` flag
 
-```yaml
-- name: Run What-If and AI Review
-  env:
-    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  run: |
-    az deployment group what-if ... | bicep-whatif-advisor --ci --post-comment
-```
+2. **Test Coverage**
+   - Implement Python test suite (fixtures exist, test framework to be added)
+   - Add integration tests with real LLM providers
+   - Mock-based unit tests for all modules
 
-**Implementation Tasks:**
+3. **Enhanced Noise Filtering**
+   - Configurable confidence thresholds (currently hardcoded)
+   - Custom noise pattern matching improvements
+   - Machine learning-based noise detection
 
-1. **Auto-detect GitHub Actions Environment**
-   - Detect `GITHUB_ACTIONS=true` environment variable
-   - Auto-extract PR details from `GITHUB_EVENT_PATH` JSON file
-   - Auto-set diff reference to PR base branch
-   - File: `cli.py`
+4. **Performance Optimizations**
+   - Parallel LLM requests for large What-If outputs
+   - Caching of LLM responses for identical inputs
+   - Streaming output for better UX
 
-2. **Auto-fetch PR Metadata**
-   - Read PR number, title, description from `GITHUB_EVENT_PATH`
-   - No need for `--pr-title` or `--pr-description` flags
-   - File: `ci/github.py`
-
-3. **Simplify PR Comment Posting**
-   - Use `GITHUB_TOKEN`, `GITHUB_REPOSITORY` automatically
-   - No manual `gh` CLI commands needed
-   - Better error messages if token missing
-   - File: `ci/github.py`
-
-4. **Smart Defaults**
-   - Default thresholds to `high` (already done)
-   - Auto-detect repository context
-   - Auto-enable `--post-comment` if `GITHUB_TOKEN` exists
-
-5. **Better Error Handling**
-   - Clear, actionable error messages
-   - Suggest fixes for common issues (missing API key, etc.)
-   - No need for workflow-level debugging
-
-6. **Update Documentation**
-   - Show simplified workflow examples in `PIPELINE.md`
-   - Update `GITHUB_ACTIONS_SETUP.md` with 6-line workflow
-   - Add troubleshooting guide
-
-**Benefits:**
-- Easier onboarding for new users
-- Less copy-paste errors
-- Workflows focus on Azure deployment, not tool orchestration
-- Reduced maintenance burden
-
-**Estimated Effort:** 4-6 hours implementation + testing
+5. **Additional Output Formats**
+   - HTML report generation
+   - SARIF format for security scanners
+   - Excel/CSV exports

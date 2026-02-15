@@ -38,7 +38,7 @@ Performs comprehensive project cleanup: removes unnecessary code, simplifies whe
    - Check Python package structure (bicep_whatif_advisor/)
    - Look for duplicate or redundant files
    - Verify test fixtures in tests/fixtures/ are current
-   - Verify bicep-sample/ examples are working
+   - Verify tests/sample-bicep-deployment/ examples are working
    - Check for temporary files (.pyc, __pycache__, .pytest_cache, etc.)
    - Check for empty __init__.py files that could be removed (Python 3.3+)
 
@@ -102,7 +102,7 @@ Performs comprehensive project cleanup: removes unnecessary code, simplifies whe
    - Ensure fixtures represent realistic What-If outputs
    - Remove any unused fixture files
 
-   **Bicep Sample (bicep-sample/):**
+   **Bicep Sample (tests/sample-bicep-deployment/):**
    - Verify the sample Bicep template still works
    - Test the documented What-If command
    - Check that parameter files are current
