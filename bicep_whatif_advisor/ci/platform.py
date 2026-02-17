@@ -124,16 +124,11 @@ def _detect_azuredevops() -> PlatformContext:
     """Extract metadata from Azure DevOps environment.
 
     Reads PR and branch information from Azure DevOps pipeline
-    environment variables.
+    environment variables. Optionally fetches PR title and description
+    from Azure DevOps REST API if SYSTEM_ACCESSTOKEN is available.
 
     Returns:
         PlatformContext with Azure DevOps-specific metadata
-
-    Note:
-        Azure DevOps does not expose PR title/description in environment
-        variables. To get this metadata, would need to call the Azure DevOps
-        REST API (requires SYSTEM_ACCESSTOKEN). For now, these fields will
-        be None unless provided manually via CLI flags.
     """
     ctx = PlatformContext(platform="azuredevops")
 
@@ -147,25 +142,92 @@ def _detect_azuredevops() -> PlatformContext:
     # Get repository name
     ctx.repository = os.environ.get("BUILD_REPOSITORY_NAME")
 
-    # Azure DevOps doesn't expose PR title/description in env vars
-    # Would need to call Azure DevOps REST API to fetch this data
-    # TODO: Optionally fetch PR metadata via Azure DevOps REST API
-    # if os.environ.get("SYSTEM_ACCESSTOKEN"):
-    #     ctx.pr_title, ctx.pr_description = _fetch_ado_pr_metadata(ctx)
+    # Fetch PR title/description from Azure DevOps REST API if token available
+    if ctx.pr_number and os.environ.get("SYSTEM_ACCESSTOKEN"):
+        pr_title, pr_description = _fetch_ado_pr_metadata(ctx)
+        if pr_title:
+            ctx.pr_title = pr_title
+        if pr_description:
+            ctx.pr_description = pr_description
 
     return ctx
 
 
-# Future: Optional API call to fetch Azure DevOps PR metadata
-# def _fetch_ado_pr_metadata(ctx: PlatformContext) -> tuple[Optional[str], Optional[str]]:
-#     """Fetch PR title and description from Azure DevOps REST API.
-#
-#     Args:
-#         ctx: Platform context with PR number and repository info
-#
-#     Returns:
-#         Tuple of (pr_title, pr_description)
-#     """
-#     # Requires: SYSTEM_ACCESSTOKEN, SYSTEM_COLLECTIONURI, SYSTEM_TEAMPROJECT
-#     # API: {collection_uri}/{project}/_apis/git/repositories/{repo_id}/pullRequests/{pr_id}
-#     pass
+def _fetch_ado_pr_metadata(ctx: PlatformContext) -> tuple[Optional[str], Optional[str]]:
+    """Fetch PR title and description from Azure DevOps REST API.
+
+    Args:
+        ctx: Platform context with PR number and repository info
+
+    Returns:
+        Tuple of (pr_title, pr_description), or (None, None) if fetch fails
+    """
+    import requests
+
+    # Get required environment variables
+    access_token = os.environ.get("SYSTEM_ACCESSTOKEN")
+    collection_uri = os.environ.get("SYSTEM_COLLECTIONURI")
+    team_project = os.environ.get("SYSTEM_TEAMPROJECT")
+    repo_id = os.environ.get("BUILD_REPOSITORY_ID")
+
+    # Validate required variables
+    if not all([access_token, collection_uri, team_project, ctx.pr_number]):
+        sys.stderr.write(
+            "Warning: Missing Azure DevOps environment variables for PR metadata fetch. "
+            "PR title/description will not be available.\n"
+        )
+        return None, None
+
+    # Build API URL
+    # API: {collection_uri}/{project}/_apis/git/repositories/{repo_id}/pullRequests/{pr_id}
+    # If repo_id not available, use repository name
+    repo_identifier = repo_id or ctx.repository
+    if not repo_identifier:
+        sys.stderr.write(
+            "Warning: Could not determine repository ID or name for Azure DevOps API call.\n"
+        )
+        return None, None
+
+    api_url = (
+        f"{collection_uri.rstrip('/')}/{team_project}/_apis/git/repositories/"
+        f"{repo_identifier}/pullrequests/{ctx.pr_number}?api-version=7.0"
+    )
+
+    # Make API request
+    try:
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        }
+
+        response = requests.get(api_url, headers=headers, timeout=10)
+        response.raise_for_status()
+
+        pr_data = response.json()
+
+        # Extract title and description
+        pr_title = pr_data.get("title")
+        pr_description = pr_data.get("description")
+
+        # Log success
+        if pr_title:
+            title_preview = pr_title[:60] + "..." if len(pr_title) > 60 else pr_title
+            sys.stderr.write(f"✅ Fetched PR title from Azure DevOps API: {title_preview}\n")
+
+        if pr_description:
+            desc_lines = len(pr_description.splitlines())
+            sys.stderr.write(f"✅ Fetched PR description from Azure DevOps API ({desc_lines} lines)\n")
+
+        return pr_title, pr_description
+
+    except requests.exceptions.RequestException as e:
+        sys.stderr.write(
+            f"Warning: Failed to fetch PR metadata from Azure DevOps API: {e}\n"
+            "PR title/description will not be available for intent analysis.\n"
+        )
+        return None, None
+    except (KeyError, ValueError) as e:
+        sys.stderr.write(
+            f"Warning: Failed to parse PR metadata from Azure DevOps API response: {e}\n"
+        )
+        return None, None

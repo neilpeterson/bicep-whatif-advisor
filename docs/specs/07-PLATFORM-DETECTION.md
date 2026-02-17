@@ -275,25 +275,20 @@ ctx.pr_description = pr_data.get("body")
 
 ## Azure DevOps Detection
 
-### _detect_azuredevops() Function (lines 123-156)
+### _detect_azuredevops() Function (lines 123-153)
 
-Extracts metadata from Azure DevOps environment:
+Extracts metadata from Azure DevOps environment and optionally fetches PR title/description via REST API:
 
 ```python
 def _detect_azuredevops() -> PlatformContext:
     """Extract metadata from Azure DevOps environment.
 
     Reads PR and branch information from Azure DevOps pipeline
-    environment variables.
+    environment variables. Optionally fetches PR title and description
+    from Azure DevOps REST API if SYSTEM_ACCESSTOKEN is available.
 
     Returns:
         PlatformContext with Azure DevOps-specific metadata
-
-    Note:
-        Azure DevOps does not expose PR title/description in environment
-        variables. To get this metadata, would need to call the Azure DevOps
-        REST API (requires SYSTEM_ACCESSTOKEN). For now, these fields will
-        be None unless provided manually via CLI flags.
     """
     ctx = PlatformContext(platform="azuredevops")
 
@@ -307,11 +302,13 @@ def _detect_azuredevops() -> PlatformContext:
     # Get repository name
     ctx.repository = os.environ.get("BUILD_REPOSITORY_NAME")
 
-    # Azure DevOps doesn't expose PR title/description in env vars
-    # Would need to call Azure DevOps REST API to fetch this data
-    # TODO: Optionally fetch PR metadata via Azure DevOps REST API
-    # if os.environ.get("SYSTEM_ACCESSTOKEN"):
-    #     ctx.pr_title, ctx.pr_description = _fetch_ado_pr_metadata(ctx)
+    # Fetch PR title/description from Azure DevOps REST API if token available
+    if ctx.pr_number and os.environ.get("SYSTEM_ACCESSTOKEN"):
+        pr_title, pr_description = _fetch_ado_pr_metadata(ctx)
+        if pr_title:
+            ctx.pr_title = pr_title
+        if pr_description:
+            ctx.pr_description = pr_description
 
     return ctx
 ```
@@ -326,6 +323,10 @@ def _detect_azuredevops() -> PlatformContext:
 | `SYSTEM_PULLREQUEST_TARGETBRANCH` | PR target branch | `"refs/heads/main"` |
 | `SYSTEM_PULLREQUEST_SOURCEBRANCH` | PR source branch | `"refs/heads/feature/monitoring"` |
 | `BUILD_REPOSITORY_NAME` | Repository name | `"MyProject/MyRepo"` |
+| `SYSTEM_ACCESSTOKEN` | Azure DevOps auth token | Auto-provided in pipelines |
+| `SYSTEM_COLLECTIONURI` | Organization URL | `"https://dev.azure.com/myorg/"` |
+| `SYSTEM_TEAMPROJECT` | Project name | `"MyProject"` |
+| `BUILD_REPOSITORY_ID` | Repository GUID | `"a1b2c3d4-..."` |
 
 **Branch Format:** Azure DevOps uses `refs/heads/` prefix (git ref format).
 
@@ -335,32 +336,65 @@ branch = self.base_branch.replace("refs/heads/", "")  # "main"
 return f"origin/{branch}"  # "origin/main"
 ```
 
-### PR Title/Description Limitation
+### PR Title/Description via REST API
 
-**Problem:** Azure DevOps does not expose PR title/description in environment variables.
+**Implementation:** Automatically fetches PR metadata from Azure DevOps REST API.
 
-**Current Behavior:** Fields remain `None`.
+**Function:** `_fetch_ado_pr_metadata()` (lines 156-227)
 
-**Workaround:** Users can provide via CLI flags:
+```python
+def _fetch_ado_pr_metadata(ctx: PlatformContext) -> tuple[Optional[str], Optional[str]]:
+    """Fetch PR title and description from Azure DevOps REST API.
+
+    Args:
+        ctx: Platform context with PR number and repository info
+
+    Returns:
+        Tuple of (pr_title, pr_description), or (None, None) if fetch fails
+    """
+```
+
+**API Endpoint:**
+```
+GET {collection_uri}/{project}/_apis/git/repositories/{repo_id}/pullrequests/{pr_id}?api-version=7.0
+```
+
+**Required Environment Variables:**
+- `SYSTEM_ACCESSTOKEN` - Auth token (auto-provided in Azure Pipelines)
+- `SYSTEM_COLLECTIONURI` - Organization URL
+- `SYSTEM_TEAMPROJECT` - Project name
+- `BUILD_REPOSITORY_ID` or `BUILD_REPOSITORY_NAME` - Repository identifier
+
+**Behavior:**
+- If all variables available → Makes REST API call
+- If any variable missing → Logs warning, returns `(None, None)`
+- If API call fails → Logs warning, returns `(None, None)`
+- If successful → Returns `(pr_title, pr_description)`
+
+**Error Handling:**
+```python
+try:
+    response = requests.get(api_url, headers=headers, timeout=10)
+    response.raise_for_status()
+    pr_data = response.json()
+    return pr_data.get("title"), pr_data.get("description")
+except requests.exceptions.RequestException as e:
+    sys.stderr.write(f"Warning: Failed to fetch PR metadata: {e}\n")
+    return None, None
+```
+
+**Logging:**
+```
+✅ Fetched PR title from Azure DevOps API: Removed mexico factory IP from NSG
+✅ Fetched PR description from Azure DevOps API (1 lines)
+```
+
+**Fallback:** Users can still override via CLI flags if API fetch fails:
 ```bash
 bicep-whatif-advisor --ci \
   --pr-title "Add monitoring" \
   --pr-description "This PR adds Application Insights"
 ```
-
-**Future Enhancement (lines 152-171):**
-```python
-# TODO: Optionally fetch PR metadata via Azure DevOps REST API
-# if os.environ.get("SYSTEM_ACCESSTOKEN"):
-#     ctx.pr_title, ctx.pr_description = _fetch_ado_pr_metadata(ctx)
-```
-
-**REST API Approach:**
-- Endpoint: `{collection_uri}/{project}/_apis/git/repositories/{repo_id}/pullRequests/{pr_id}`
-- Requires: `SYSTEM_ACCESSTOKEN`, `SYSTEM_COLLECTIONURI`, `SYSTEM_TEAMPROJECT`
-- API version: `7.0`
-
-**Trade-off:** Extra API call vs. manual flag provision.
 
 ## Integration with CLI
 
@@ -557,32 +591,6 @@ assert ctx.has_pr_metadata() == False  # No title or description
 - Test with missing metadata
 
 ## Future Enhancements
-
-### Azure DevOps REST API Fetch (lines 159-171)
-
-```python
-def _fetch_ado_pr_metadata(ctx: PlatformContext) -> tuple[Optional[str], Optional[str]]:
-    """Fetch PR title and description from Azure DevOps REST API.
-
-    Args:
-        ctx: Platform context with PR number and repository info
-
-    Returns:
-        Tuple of (pr_title, pr_description)
-    """
-    # Requires: SYSTEM_ACCESSTOKEN, SYSTEM_COLLECTIONURI, SYSTEM_TEAMPROJECT
-    # API: {collection_uri}/{project}/_apis/git/repositories/{repo_id}/pullRequests/{pr_id}
-    pass
-```
-
-**Implementation:**
-1. Check for `SYSTEM_ACCESSTOKEN`
-2. Construct REST API URL
-3. GET PR metadata
-4. Parse JSON response
-5. Return title and description
-
-**Cost:** Extra API call (~100ms latency).
 
 ### Additional Platforms
 
