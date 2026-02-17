@@ -274,9 +274,55 @@ jobs:
 
 ## Azure DevOps
 
-### Minimal Setup (Recommended)
+### Prerequisites
 
-Complete PR review pipeline:
+1. **Azure Setup:**
+   - Azure subscription with access to resource groups
+   - Azure service connection configured in Azure DevOps
+   - Resource group created
+
+2. **Anthropic API:**
+   - API key from https://console.anthropic.com/
+   - Free tier available for testing
+
+3. **Azure DevOps Repository:**
+   - Admin access to configure permissions and variables
+   - Bicep templates in your repo
+
+### Step 1: Configure Build Service Permissions
+
+**⚠️ CRITICAL:** The build service must have permission to post PR comments. Without this, you'll get a `403 Forbidden` error when the tool tries to post comments.
+
+1. Go to your Azure DevOps project
+2. **Project Settings** (gear icon, bottom left) → **Repositories**
+3. Select your repository (or click **Security** tab)
+4. Search for: **`{ProjectName} Build Service ({OrgName})`**
+   - Example: `MyProject Build Service (myorg)`
+   - If not found, click **Add** → search for "build service" → add it
+5. Set **"Contribute to pull requests"** permission to **Allow** ✓
+6. Click **Save changes**
+
+**Alternative:** Disable job authorization scope restrictions:
+- **Project Settings** → **Pipelines** → **Settings**
+- Turn **OFF**: _"Limit job authorization scope to current project for non-release pipelines"_
+
+### Step 2: Create Variable Group
+
+1. Go to **Pipelines → Library → Variable groups**
+2. Click **+ Variable group**
+3. Name: `bicep-whatif-advisor-config` (or your preferred name)
+4. Add variables:
+
+   | Variable | Type | Value | Description |
+   |----------|------|-------|-------------|
+   | `ANTHROPIC_API_KEY` | Secret (lock icon) | Your API key | From Anthropic console |
+   | `RESOURCE_GROUP` | Plain | Your RG name | Target resource group |
+
+5. Click **Save**
+
+### Step 3: Create Pipeline File
+
+Create `azure-pipelines.yml` in your repository:
 
 ```yaml
 trigger:
@@ -299,12 +345,16 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  BICEP_TEMPLATE: bicep/main.bicep
-  BICEP_PARAMS: bicep/main.bicepparam
+  - group: bicep-whatif-advisor-config  # Link your variable group
+  - name: BICEP_TEMPLATE
+    value: bicep/main.bicep
+  - name: BICEP_PARAMS
+    value: bicep/main.bicepparam
 
 stages:
   - stage: WhatIfReview
     displayName: 'What-If Review'
+    condition: eq(variables['Build.Reason'], 'PullRequest')
     jobs:
       - job: Review
         displayName: 'AI Safety Review'
@@ -315,7 +365,7 @@ stages:
           - task: AzureCLI@2
             displayName: 'What-If Analysis & AI Review'
             inputs:
-              azureSubscription: 'my-service-connection'
+              azureSubscription: 'my-service-connection'  # Your Azure service connection
               scriptType: bash
               scriptLocation: inlineScript
               inlineScript: |
@@ -332,22 +382,18 @@ stages:
               SYSTEM_ACCESSTOKEN: $(System.AccessToken)
 ```
 
+**That's it!** The tool automatically:
+- ✅ Detects Azure DevOps environment
+- ✅ Extracts PR ID and metadata
+- ✅ Sets git diff reference to PR target branch
+- ✅ Posts detailed PR comment
+- ✅ Blocks deployment if high risk detected
+
 **Auto-detection includes:**
 - CI mode enabled
 - PR ID from `SYSTEM_PULLREQUEST_PULLREQUESTID`
 - Diff reference from `SYSTEM_PULLREQUEST_TARGETBRANCH`
 - PR comments posted when `SYSTEM_ACCESSTOKEN` available
-
-### Required Variables
-
-Add these in **Pipelines → Library → Variable groups:**
-
-| Variable | Type | Description |
-|----------|------|-------------|
-| `ANTHROPIC_API_KEY` | Secret | From https://console.anthropic.com/ |
-| `RESOURCE_GROUP` | Plain | Your Azure resource group name |
-
-**Important:** Set `SYSTEM_ACCESSTOKEN` in pipeline YAML as shown above to enable PR comments.
 
 ### Azure DevOps Configuration Options
 
@@ -556,13 +602,16 @@ env:
   SYSTEM_ACCESSTOKEN: $(System.AccessToken)
 ```
 
-### Azure DevOps: Build service permissions
+### Azure DevOps: 403 Forbidden when posting PR comments
 
-**Cause:** Build service doesn't have permission to comment on PRs
+**Cause:** Build service doesn't have "Contribute to pull requests" permission
 
-**Fix:**
-1. Project Settings → Repositories → Security
-2. Grant "Contribute to pull requests" to build service
+**Fix:** See [Azure DevOps - Step 1: Configure Build Service Permissions](#step-1-configure-build-service-permissions) for detailed instructions
+
+**Quick fix:**
+1. **Project Settings** → **Repositories** → **Security**
+2. Find: `{ProjectName} Build Service ({OrgName})`
+3. Set **"Contribute to pull requests"** to **Allow** ✓
 
 ### "CI mode not detected"
 
