@@ -257,7 +257,15 @@ steps:
     SYSTEM_ACCESSTOKEN: $(System.AccessToken)
 ```
 
-**Permissions:** Build service must have "Contribute to pull requests" permission.
+**Permissions (CRITICAL):**
+The build service account must have **"Contribute to pull requests"** permission on the repository. Without this, API calls will fail with `403 Forbidden`.
+
+**How to grant:**
+1. Project Settings → Repositories → Security
+2. Find: `{ProjectName} Build Service ({OrgName})`
+3. Set **"Contribute to pull requests"** to **Allow**
+
+See [CICD_INTEGRATION.md - Azure DevOps Setup](../guides/CICD_INTEGRATION.md#step-1-configure-build-service-permissions) for detailed instructions.
 
 ### Error Handling
 

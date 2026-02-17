@@ -68,6 +68,7 @@ az deployment group what-if \
 
 **For CI/CD pipelines:**
 - [CICD_INTEGRATION.md](./CICD_INTEGRATION.md) - Set up deployment gates in GitHub Actions, Azure DevOps, etc.
+  - **Note:** Azure DevOps requires build service permissions to post PR comments (see guide for setup)
 
 **Understand the AI:**
 - [RISK_ASSESSMENT.md](./RISK_ASSESSMENT.md) - How the three-bucket risk model works
