@@ -385,6 +385,7 @@ stages:
 **That's it!** The tool automatically:
 - ✅ Detects Azure DevOps environment
 - ✅ Extracts PR ID and metadata
+- ✅ Fetches PR title and description via REST API
 - ✅ Sets git diff reference to PR target branch
 - ✅ Posts detailed PR comment
 - ✅ Blocks deployment if high risk detected
@@ -392,6 +393,7 @@ stages:
 **Auto-detection includes:**
 - CI mode enabled
 - PR ID from `SYSTEM_PULLREQUEST_PULLREQUESTID`
+- PR title/description via Azure DevOps REST API (requires `SYSTEM_ACCESSTOKEN`)
 - Diff reference from `SYSTEM_PULLREQUEST_TARGETBRANCH`
 - PR comments posted when `SYSTEM_ACCESSTOKEN` available
 
@@ -406,14 +408,22 @@ stages:
   --operations-threshold medium
 ```
 
-#### Manual PR Title/Description (Optional)
+#### PR Metadata Auto-Fetch
 
-If you want intent analysis in Azure DevOps:
+**Azure DevOps automatically fetches PR title and description** via the Azure DevOps REST API when `SYSTEM_ACCESSTOKEN` is available (automatically provided in Azure Pipelines).
+
+You'll see output like:
+```
+✅ Fetched PR title from Azure DevOps API: Add monitoring resources
+✅ Fetched PR description from Azure DevOps API (3 lines)
+```
+
+**Manual Override (Optional):** If you want to override the auto-fetched metadata:
 
 ```yaml
 | bicep-whatif-advisor \
-  --pr-title "$(System.PullRequest.Title)" \
-  --pr-description "$(System.PullRequest.Description)"
+  --pr-title "Custom title" \
+  --pr-description "Custom description"
 ```
 
 ---
