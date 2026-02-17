@@ -419,62 +419,98 @@ def main(
                 f"filtered, {num_remaining} high-confidence resources remain\n"
             )
 
-            # Build a filtered What-If output containing only high-confidence resources
-            # We'll reconstruct a minimal What-If output from the high-confidence resources
-            # and re-prompt the LLM for accurate risk assessment
-            filtered_whatif_lines = ["Resource changes:"]
-            for resource in high_confidence_data.get("resources", []):
-                # Reconstruct What-If format: "~ ResourceName"
-                action_symbol = {
-                    "create": "+",
-                    "modify": "~",
-                    "delete": "-",
-                    "deploy": "=",
-                    "nochange": "*",
-                    "ignore": "x"
-                }.get(resource.get("action", "").lower(), "~")
+            # Special case: If ALL resources were filtered as noise, skip LLM recalculation
+            # and set all risk buckets to low with no concerns
+            if num_remaining == 0:
+                sys.stderr.write("✅ All resources filtered as noise - setting all risk buckets to low\n")
 
-                filtered_whatif_lines.append(f"{action_symbol} {resource['resource_name']}")
-                filtered_whatif_lines.append(f"  Summary: {resource['summary']}")
+                # Build a clean risk assessment with no concerns
+                high_confidence_data["risk_assessment"] = {
+                    "drift": {
+                        "risk_level": "low",
+                        "concerns": [],
+                        "reasoning": "All detected changes were flagged as Azure What-If noise and excluded from analysis"
+                    },
+                    "operations": {
+                        "risk_level": "low",
+                        "concerns": [],
+                        "reasoning": "No high-confidence operations to evaluate"
+                    }
+                }
 
-            filtered_whatif_content = "\n".join(filtered_whatif_lines)
+                # Add intent bucket if PR metadata was provided
+                if pr_title or pr_description:
+                    high_confidence_data["risk_assessment"]["intent"] = {
+                        "risk_level": "low",
+                        "concerns": [],
+                        "reasoning": "No high-confidence changes to evaluate against PR intent"
+                    }
 
-            # Re-build prompts with filtered data
-            filtered_system_prompt = build_system_prompt(
-                verbose=verbose,
-                ci_mode=ci,
-                pr_title=pr_title,
-                pr_description=pr_description
-            )
-            filtered_user_prompt = build_user_prompt(
-                whatif_content=filtered_whatif_content,
-                diff_content=diff_content,
-                bicep_content=bicep_content,
-                pr_title=pr_title,
-                pr_description=pr_description
-            )
+                # Update verdict
+                high_confidence_data["verdict"] = {
+                    "safe": True,
+                    "highest_risk_bucket": "none",
+                    "overall_risk_level": "low",
+                    "reasoning": "All detected changes were identified as Azure What-If noise and excluded from risk analysis. No meaningful infrastructure changes detected."
+                }
+            else:
 
-            # Re-call LLM with filtered resources
-            sys.stderr.write("📡 Re-analyzing with filtered resources for accurate risk assessment...\n")
-            filtered_response_text = llm_provider.complete(filtered_system_prompt, filtered_user_prompt)
+                # Build a filtered What-If output containing only high-confidence resources
+                # We'll reconstruct a minimal What-If output from the high-confidence resources
+                # and re-prompt the LLM for accurate risk assessment
+                filtered_whatif_lines = ["Resource changes:"]
+                for resource in high_confidence_data.get("resources", []):
+                    # Reconstruct What-If format: "~ ResourceName"
+                    action_symbol = {
+                        "create": "+",
+                        "modify": "~",
+                        "delete": "-",
+                        "deploy": "=",
+                        "nochange": "*",
+                        "ignore": "x"
+                    }.get(resource.get("action", "").lower(), "~")
 
-            # Parse the new response
-            try:
-                filtered_data = extract_json(filtered_response_text)
+                    filtered_whatif_lines.append(f"{action_symbol} {resource['resource_name']}")
+                    filtered_whatif_lines.append(f"  Summary: {resource['summary']}")
 
-                # Extract the fresh risk_assessment and verdict
-                if "risk_assessment" in filtered_data:
-                    high_confidence_data["risk_assessment"] = filtered_data["risk_assessment"]
-                if "verdict" in filtered_data:
-                    high_confidence_data["verdict"] = filtered_data["verdict"]
+                filtered_whatif_content = "\n".join(filtered_whatif_lines)
 
-                sys.stderr.write("✅ Risk assessment recalculated based on high-confidence resources only\n")
-
-            except ValueError:
-                sys.stderr.write(
-                    "⚠️  Warning: Could not parse re-analysis response. "
-                    "Using original risk assessment (may be inaccurate).\n"
+                # Re-build prompts with filtered data
+                filtered_system_prompt = build_system_prompt(
+                    verbose=verbose,
+                    ci_mode=ci,
+                    pr_title=pr_title,
+                    pr_description=pr_description
                 )
+                filtered_user_prompt = build_user_prompt(
+                    whatif_content=filtered_whatif_content,
+                    diff_content=diff_content,
+                    bicep_content=bicep_content,
+                    pr_title=pr_title,
+                    pr_description=pr_description
+                )
+
+                # Re-call LLM with filtered resources
+                sys.stderr.write("📡 Re-analyzing with filtered resources for accurate risk assessment...\n")
+                filtered_response_text = llm_provider.complete(filtered_system_prompt, filtered_user_prompt)
+
+                # Parse the new response
+                try:
+                    filtered_data = extract_json(filtered_response_text)
+
+                    # Extract the fresh risk_assessment and verdict
+                    if "risk_assessment" in filtered_data:
+                        high_confidence_data["risk_assessment"] = filtered_data["risk_assessment"]
+                    if "verdict" in filtered_data:
+                        high_confidence_data["verdict"] = filtered_data["verdict"]
+
+                    sys.stderr.write("✅ Risk assessment recalculated based on high-confidence resources only\n")
+
+                except ValueError:
+                    sys.stderr.write(
+                        "⚠️  Warning: Could not parse re-analysis response. "
+                        "Using original risk assessment (may be inaccurate).\n"
+                    )
 
         # Render output
         if format == "table":
