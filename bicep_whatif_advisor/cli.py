@@ -177,19 +177,19 @@ def filter_by_confidence(data: dict) -> tuple[dict, dict]:
     "--drift-threshold",
     type=click.Choice(["low", "medium", "high"], case_sensitive=False),
     default="high",
-    help="Fail pipeline if drift risk meets or exceeds this level (CI mode only)"
+    help="Fail pipeline if drift risk meets or exceeds this level (only applies if drift bucket enabled)"
 )
 @click.option(
     "--intent-threshold",
     type=click.Choice(["low", "medium", "high"], case_sensitive=False),
     default="high",
-    help="Fail pipeline if intent alignment risk meets or exceeds this level (CI mode only)"
+    help="Fail pipeline if intent alignment risk meets or exceeds this level (only applies if intent bucket enabled)"
 )
 @click.option(
     "--operations-threshold",
     type=click.Choice(["low", "medium", "high"], case_sensitive=False),
     default="high",
-    help="Fail pipeline if operations risk meets or exceeds this level (CI mode only)"
+    help="Fail pipeline if operations risk meets or exceeds this level (only applies if operations bucket enabled)"
 )
 @click.option(
     "--post-comment",
@@ -224,6 +224,21 @@ def filter_by_confidence(data: dict) -> tuple[dict, dict]:
     "--no-block",
     is_flag=True,
     help="Don't fail pipeline even if deployment is unsafe - only report findings (CI mode only)"
+)
+@click.option(
+    "--skip-drift",
+    is_flag=True,
+    help="Skip infrastructure drift risk assessment (CI mode only)"
+)
+@click.option(
+    "--skip-intent",
+    is_flag=True,
+    help="Skip PR intent alignment risk assessment (CI mode only)"
+)
+@click.option(
+    "--skip-operations",
+    is_flag=True,
+    help="Skip risky operations risk assessment (CI mode only)"
 )
 @click.option(
     "--comment-title",
@@ -262,6 +277,9 @@ def main(
     pr_title: str,
     pr_description: str,
     no_block: bool,
+    skip_drift: bool,
+    skip_intent: bool,
+    skip_operations: bool,
     comment_title: str,
     noise_file: str,
     noise_threshold: int
@@ -337,6 +355,24 @@ def main(
             if bicep_dir:
                 bicep_content = _load_bicep_files(bicep_dir)
 
+        # Determine which risk buckets are enabled (CI mode only)
+        # Do this before getting provider to validate flags early
+        enabled_buckets = None
+        if ci:
+            from .ci.buckets import get_enabled_buckets
+            enabled_buckets = get_enabled_buckets(
+                skip_drift=skip_drift,
+                skip_intent=skip_intent,
+                skip_operations=skip_operations,
+                has_pr_metadata=bool(pr_title or pr_description)
+            )
+
+            # Validation: At least one bucket must be enabled in CI mode
+            if not enabled_buckets:
+                sys.stderr.write("❌ Error: At least one risk assessment bucket must be enabled in CI mode\n")
+                sys.stderr.write("   Remove one or more --skip-* flags to enable risk assessment.\n")
+                sys.exit(2)
+
         # Get provider
         llm_provider = get_provider(provider, model)
 
@@ -345,7 +381,8 @@ def main(
             verbose=verbose,
             ci_mode=ci,
             pr_title=pr_title,
-            pr_description=pr_description
+            pr_description=pr_description,
+            enabled_buckets=enabled_buckets
         )
         user_prompt = build_user_prompt(
             whatif_content=whatif_content,
@@ -424,26 +461,16 @@ def main(
             if num_remaining == 0:
                 sys.stderr.write("✅ All resources filtered as noise - setting all risk buckets to low\n")
 
-                # Build a clean risk assessment with no concerns
-                high_confidence_data["risk_assessment"] = {
-                    "drift": {
-                        "risk_level": "low",
-                        "concerns": [],
-                        "reasoning": "All detected changes were flagged as Azure What-If noise and excluded from analysis"
-                    },
-                    "operations": {
-                        "risk_level": "low",
-                        "concerns": [],
-                        "reasoning": "No high-confidence operations to evaluate"
-                    }
-                }
+                # Build a clean risk assessment with no concerns for enabled buckets only
+                from .ci.buckets import RISK_BUCKETS
+                high_confidence_data["risk_assessment"] = {}
 
-                # Add intent bucket if PR metadata was provided
-                if pr_title or pr_description:
-                    high_confidence_data["risk_assessment"]["intent"] = {
+                for bucket_id in enabled_buckets:
+                    bucket = RISK_BUCKETS[bucket_id]
+                    high_confidence_data["risk_assessment"][bucket_id] = {
                         "risk_level": "low",
                         "concerns": [],
-                        "reasoning": "No high-confidence changes to evaluate against PR intent"
+                        "reasoning": f"All detected changes were flagged as low-confidence noise. No high-confidence {bucket.display_name.lower()} concerns to evaluate."
                     }
 
                 # Update verdict
@@ -480,7 +507,8 @@ def main(
                     verbose=verbose,
                     ci_mode=ci,
                     pr_title=pr_title,
-                    pr_description=pr_description
+                    pr_description=pr_description,
+                    enabled_buckets=enabled_buckets
                 )
                 filtered_user_prompt = build_user_prompt(
                     whatif_content=filtered_whatif_content,
@@ -512,6 +540,10 @@ def main(
                         "Using original risk assessment (may be inaccurate).\n"
                     )
 
+        # Store enabled buckets in data for rendering (CI mode only)
+        if ci and enabled_buckets:
+            high_confidence_data["_enabled_buckets"] = enabled_buckets
+
         # Render output
         if format == "table":
             render_table(high_confidence_data, verbose=verbose, no_color=no_color, ci_mode=ci, low_confidence_data=low_confidence_data)
@@ -526,7 +558,11 @@ def main(
             from .ci.risk_buckets import evaluate_risk_buckets
 
             is_safe, failed_buckets, risk_assessment = evaluate_risk_buckets(
-                high_confidence_data, drift_threshold, intent_threshold, operations_threshold
+                high_confidence_data,
+                enabled_buckets,
+                drift_threshold,
+                intent_threshold,
+                operations_threshold
             )
 
             # Post comment if requested

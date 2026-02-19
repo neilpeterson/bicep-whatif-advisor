@@ -245,6 +245,31 @@ jobs:
 
 **For all threshold options,** see [USER_GUIDE.md - CI Mode Flags](./USER_GUIDE.md#ci-mode-flags)
 
+#### Skip Specific Risk Buckets
+
+```yaml
+# Skip infrastructure drift assessment (useful when state differs from code)
+| bicep-whatif-advisor --skip-drift
+
+# Skip PR intent alignment (useful for automated maintenance PRs)
+| bicep-whatif-advisor --skip-intent
+
+# Skip risky operations (focus only on drift and intent)
+| bicep-whatif-advisor --skip-operations
+
+# Combine skip flags - only evaluate operations bucket
+| bicep-whatif-advisor \
+  --skip-drift \
+  --skip-intent
+```
+
+**Use cases:**
+- `--skip-drift` - Infrastructure state managed outside of code (manual changes expected)
+- `--skip-intent` - Automated dependency updates, bot PRs, or when PR descriptions are minimal
+- `--skip-operations` - Focus assessment on drift and intent, allowing any Azure operations
+
+**Note:** At least one risk bucket must remain enabled.
+
 #### Use Different Providers
 
 **Azure OpenAI:**
@@ -407,6 +432,21 @@ stages:
   --intent-threshold medium \
   --operations-threshold medium
 ```
+
+#### Skip Specific Risk Buckets
+
+```yaml
+# Skip infrastructure drift assessment
+| bicep-whatif-advisor --skip-drift
+
+# Skip PR intent alignment
+| bicep-whatif-advisor --skip-intent
+
+# Combine skip flags
+| bicep-whatif-advisor --skip-drift --skip-operations
+```
+
+See [GitHub Actions - Skip Specific Risk Buckets](#skip-specific-risk-buckets) for detailed use cases.
 
 #### PR Metadata Auto-Fetch
 

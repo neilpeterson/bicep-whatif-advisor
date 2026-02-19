@@ -118,6 +118,31 @@ bicep-whatif-advisor \
 - `medium` - Block if medium or high risk detected
 - `high` - Only block on high risk (most permissive)
 
+### Skipping Risk Buckets
+
+You can selectively disable specific risk assessment buckets using skip flags:
+
+```bash
+# Skip infrastructure drift assessment (only evaluate intent + operations)
+bicep-whatif-advisor --skip-drift
+
+# Skip PR intent alignment assessment (only evaluate drift + operations)
+bicep-whatif-advisor --skip-intent
+
+# Skip risky operations assessment (only evaluate drift + intent)
+bicep-whatif-advisor --skip-operations
+
+# Combine skip flags (only evaluate drift)
+bicep-whatif-advisor --skip-intent --skip-operations
+```
+
+**Use cases:**
+- `--skip-drift` - Useful when infrastructure state is expected to differ from code
+- `--skip-intent` - Useful for automated maintenance PRs or when PR descriptions are unavailable
+- `--skip-operations` - Useful when you want to focus only on drift and intent alignment
+
+**Note:** At least one risk bucket must remain enabled in CI mode.
+
 ### Alternative LLM Providers
 
 By default, the tool uses Anthropic Claude. You can also use Azure OpenAI or local Ollama:

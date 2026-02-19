@@ -5,7 +5,8 @@ def build_system_prompt(
     verbose: bool = False,
     ci_mode: bool = False,
     pr_title: str = None,
-    pr_description: str = None
+    pr_description: str = None,
+    enabled_buckets: list = None
 ) -> str:
     """Build the system prompt for the LLM.
 
@@ -14,12 +15,14 @@ def build_system_prompt(
         ci_mode: Enable CI mode with risk assessment and verdict
         pr_title: Pull request title for intent analysis (CI mode only)
         pr_description: Pull request description for intent analysis (CI mode only)
+        enabled_buckets: List of bucket IDs to include (e.g., ["drift", "operations"])
+                        If None, defaults to all buckets
 
     Returns:
         System prompt string
     """
     if ci_mode:
-        return _build_ci_system_prompt(pr_title, pr_description)
+        return _build_ci_system_prompt(pr_title, pr_description, enabled_buckets)
     else:
         return _build_standard_system_prompt(verbose)
 
@@ -85,127 +88,82 @@ You must respond with ONLY valid JSON matching this schema, no other text:
     return prompt
 
 
-def _build_ci_system_prompt(pr_title: str = None, pr_description: str = None) -> str:
-    """Build system prompt for CI mode with risk assessment."""
+def _build_ci_system_prompt(
+    pr_title: str = None,
+    pr_description: str = None,
+    enabled_buckets: list = None
+) -> str:
+    """Build system prompt for CI mode with risk assessment.
+
+    Args:
+        pr_title: Optional PR title
+        pr_description: Optional PR description
+        enabled_buckets: List of bucket IDs to include (e.g., ["drift", "operations"])
+                        If None, defaults to all buckets
+
+    Returns:
+        System prompt string with dynamic bucket configuration
+    """
+    from .ci.buckets import RISK_BUCKETS, get_enabled_buckets
+
+    # Default to all buckets if not specified
+    if enabled_buckets is None:
+        enabled_buckets = get_enabled_buckets(
+            has_pr_metadata=bool(pr_title or pr_description)
+        )
+
     base_prompt = '''You are an Azure infrastructure deployment safety reviewer. You are given:
 1. The Azure What-If output showing planned infrastructure changes
 2. The source code diff (Bicep/ARM template changes) that produced these changes'''
 
-    # Add PR intent context if available
-    if pr_title or pr_description:
+    # Add PR intent context if available and intent bucket is enabled
+    if (pr_title or pr_description) and "intent" in enabled_buckets:
         base_prompt += (
             '\n3. The pull request title and description stating the '
             'INTENDED purpose of this change'
         )
 
+    # Dynamic bucket count
+    bucket_count = len(enabled_buckets)
+    bucket_word = "bucket" if bucket_count == 1 else "buckets"
     base_prompt += (
-        '\n\nEvaluate the deployment for safety and correctness across '
-        'three independent risk buckets:'
+        f'\n\nEvaluate the deployment for safety and correctness across '
+        f'{bucket_count} independent risk {bucket_word}:'
     )
 
-    # Build schema based on whether intent bucket is included
-    if pr_title or pr_description:
-        risk_assessment_schema = '''"risk_assessment": {
-    "drift": {
+    # Build risk_assessment schema dynamically based on enabled buckets
+    risk_buckets_schema = []
+    for bucket_id in enabled_buckets:
+        bucket = RISK_BUCKETS[bucket_id]
+        risk_buckets_schema.append(f'''    "{bucket_id}": {{
       "risk_level": "low|medium|high",
-      "concerns": ["string — list of specific drift concerns"],
-      "reasoning": "string — explanation of drift risk"
-    },
-    "intent": {
-      "risk_level": "low|medium|high",
-      "concerns": ["string — list of intent misalignment concerns"],
-      "reasoning": "string — explanation of intent risk"
-    },
-    "operations": {
-      "risk_level": "low|medium|high",
-      "concerns": ["string — list of risky operation concerns"],
-      "reasoning": "string — explanation of operations risk"
-    }
-  }'''
-    else:
-        risk_assessment_schema = '''"risk_assessment": {
-    "drift": {
-      "risk_level": "low|medium|high",
-      "concerns": ["string — list of specific drift concerns"],
-      "reasoning": "string — explanation of drift risk"
-    },
-    "operations": {
-      "risk_level": "low|medium|high",
-      "concerns": ["string — list of risky operation concerns"],
-      "reasoning": "string — explanation of operations risk"
-    }
-  }'''
+      "concerns": ["array of specific concerns"],
+      "reasoning": "explanation of risk assessment"
+    }}''')
 
-    # Build bucket-specific instructions
-    bucket_instructions = '''
+    risk_assessment_block = ",\n".join(risk_buckets_schema)
+    risk_assessment_schema = f'''"risk_assessment": {{
+{risk_assessment_block}
+  }}'''
 
-## Risk Bucket 1: Infrastructure Drift
+    # Build instructions for each enabled bucket
+    bucket_instructions_list = []
+    for i, bucket_id in enumerate(enabled_buckets, 1):
+        bucket = RISK_BUCKETS[bucket_id]
+        bucket_instructions_list.append(f'''
+## Risk Bucket {i}: {bucket.display_name}
+{bucket.prompt_instructions}''')
 
-Compare the What-If output to the code diff. Identify any resources
-changing that are NOT modified in the diff. This indicates infrastructure
-drift (out-of-band changes made outside of this PR).
+    bucket_instructions = "\n".join(bucket_instructions_list)
 
-Risk levels for drift:
-- high: Critical resources drifting (security, identity, stateful),
-  broad scope drift
-- medium: Multiple resources drifting, configuration drift on
-  important resources
-- low: Minor drift (tags, display names), single resource drift on
-  non-critical resources
-
-## Risk Bucket 2: Risky Azure Operations
-
-Evaluate the inherent risk of the operations being performed,
-regardless of intent.
-
-Risk levels for operations:
-- high: Deletion of stateful resources (databases, storage, vaults),
-  deletion of identity/RBAC, network security changes that open broad
-  access, encryption modifications, SKU downgrades
-- medium: Modifications to existing resources that change behavior
-  (policy changes, scaling config), new public endpoints, firewall changes
-- low: Adding new resources, tags, diagnostic/monitoring resources,
-  modifying descriptions'''
-
-    # Add intent bucket instructions only if PR metadata provided
-    if pr_title or pr_description:
-        bucket_instructions += '''
-
-## Risk Bucket 3: Pull Request Intent Alignment
-
-Compare the What-If output to the PR title and description. Flag any changes that:
-- Are NOT mentioned in the PR description
-- Do not align with the stated purpose
-- Seem unrelated or unexpected given the PR intent
-- Are destructive (Delete actions) but not explicitly mentioned
-
-Risk levels for intent:
-- high: Destructive changes (Delete) not mentioned in PR, security/auth changes not mentioned
-- medium: Resource modifications not aligned with PR intent, unexpected resource types
-- low: New resources not mentioned but aligned with intent, minor scope differences'''
-    else:
-        bucket_instructions += '''
-
-## Risk Bucket 3: Pull Request Intent Alignment
-
-NOTE: PR title and description were not provided, so intent alignment analysis is SKIPPED.
-Do NOT include the "intent" bucket in your risk_assessment response.'''
-
-    # Build verdict schema
-    if pr_title or pr_description:
-        verdict_schema = '''"verdict": {
+    # Build verdict schema with dynamic highest_risk_bucket options
+    bucket_options = "|".join(enabled_buckets)
+    verdict_schema = f'''"verdict": {{
     "safe": true/false,
-    "highest_risk_bucket": "drift|intent|operations|none",
+    "highest_risk_bucket": "{bucket_options}|none",
     "overall_risk_level": "low|medium|high",
     "reasoning": "string — 2-3 sentence explanation considering all buckets"
-  }'''
-    else:
-        verdict_schema = '''"verdict": {
-    "safe": true/false,
-    "highest_risk_bucket": "drift|operations|none",
-    "overall_risk_level": "low|medium|high",
-    "reasoning": "string — 2-3 sentence explanation considering all buckets"
-  }'''
+  }}'''
 
     confidence_instructions = '''
 

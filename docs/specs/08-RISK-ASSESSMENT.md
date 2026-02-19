@@ -314,6 +314,72 @@ if ci:
 
 **See:** [00-OVERVIEW.md](00-OVERVIEW.md) for complete exit code contract.
 
+## Bucket Configuration
+
+### Skipping Risk Buckets
+
+As of version 1.6.0, individual risk buckets can be disabled using skip flags:
+
+| Flag | Purpose |
+|------|---------|
+| `--skip-drift` | Skip infrastructure drift risk assessment |
+| `--skip-intent` | Skip PR intent alignment risk assessment |
+| `--skip-operations` | Skip risky operations risk assessment |
+
+**Implementation:**
+- Bucket registry: `bicep_whatif_advisor/ci/buckets.py` - Central registry with bucket metadata
+- Dynamic evaluation: Only enabled buckets are evaluated by `evaluate_risk_buckets()`
+- Dynamic prompt generation: LLM only receives prompts for enabled buckets
+- Dynamic rendering: Output only displays enabled buckets
+
+**Validation:** At least one bucket must remain enabled in CI mode. Attempting to skip all buckets results in exit code 2 with error message.
+
+**Use Cases:**
+
+| Scenario | Recommended Skip Flags |
+|----------|----------------------|
+| Infrastructure managed outside of code | `--skip-drift` |
+| Automated dependency update PRs | `--skip-intent` |
+| Focus only on drift detection | `--skip-intent --skip-operations` |
+| Focus only on operation safety | `--skip-drift --skip-intent` |
+
+**Example:**
+```bash
+# Only evaluate infrastructure drift
+az deployment group what-if ... | bicep-whatif-advisor \
+  --ci \
+  --skip-intent \
+  --skip-operations
+```
+
+### Bucket Registry (buckets.py)
+
+**Purpose:** Centralize all bucket metadata in one location to eliminate hardcoded string duplication.
+
+**Structure:**
+```python
+@dataclass
+class RiskBucket:
+    id: str                     # Internal identifier: "drift", "intent", "operations"
+    display_name: str           # User-facing name: "Infrastructure Drift"
+    description: str            # Brief description for help text
+    prompt_instructions: str    # LLM prompt instructions for this bucket
+    optional: bool = False      # True if bucket can be omitted (like intent)
+
+RISK_BUCKETS: Dict[str, RiskBucket] = {
+    "drift": RiskBucket(...),
+    "intent": RiskBucket(...),
+    "operations": RiskBucket(...)
+}
+```
+
+**Benefits:**
+- **DRY:** Bucket names, descriptions, and prompts defined once
+- **Maintainability:** Easy to add new buckets in the future
+- **Consistency:** All modules use same bucket definitions from registry
+
+**See:** `bicep_whatif_advisor/ci/buckets.py` for complete implementation.
+
 ## Example Workflows
 
 ### Example 1: All Buckets Pass

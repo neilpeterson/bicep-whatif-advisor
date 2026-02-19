@@ -67,7 +67,8 @@ def render_table(
 
     # Print risk bucket summary first in CI mode
     if ci_mode:
-        _print_risk_bucket_summary(console, data.get("risk_assessment", {}), use_color)
+        enabled_buckets = data.get("_enabled_buckets")
+        _print_risk_bucket_summary(console, data.get("risk_assessment", {}), use_color, enabled_buckets)
 
     # Print overall summary before the table
     overall_summary = data.get("overall_summary", "")
@@ -186,10 +187,24 @@ def _print_noise_section(console: Console, low_confidence_data: dict, use_color:
     console.print()
 
 
-def _print_risk_bucket_summary(console: Console, risk_assessment: dict, use_color: bool) -> None:
-    """Print risk bucket summary table in CI mode."""
+def _print_risk_bucket_summary(console: Console, risk_assessment: dict, use_color: bool, enabled_buckets: list = None) -> None:
+    """Print risk bucket summary table in CI mode.
+
+    Args:
+        console: Rich console for output
+        risk_assessment: Risk assessment dict from LLM
+        use_color: Whether to use color output
+        enabled_buckets: List of bucket IDs that were evaluated (e.g., ["drift", "operations"])
+                        If None, defaults to all buckets present in risk_assessment
+    """
     if not risk_assessment:
         return
+
+    from .ci.buckets import RISK_BUCKETS
+
+    # If enabled_buckets not provided, use all buckets present in risk_assessment
+    if enabled_buckets is None:
+        enabled_buckets = list(risk_assessment.keys())
 
     # Create risk bucket table
     bucket_table = Table(box=box.ROUNDED, show_header=True, padding=(0, 1))
@@ -198,58 +213,23 @@ def _print_risk_bucket_summary(console: Console, risk_assessment: dict, use_colo
     bucket_table.add_column("Status", justify="center")
     bucket_table.add_column("Key Concerns")
 
-    # Drift bucket
-    drift = risk_assessment.get("drift", {})
-    if drift:
-        drift_risk = drift.get("risk_level", "low")
-        _, risk_color = RISK_STYLES.get(drift_risk, ("?", "white"))
-        concerns = drift.get("concerns", [])
-        concern_text = concerns[0] if concerns else "None"
+    # Render only enabled buckets
+    for bucket_id in enabled_buckets:
+        bucket = RISK_BUCKETS[bucket_id]
+        bucket_data = risk_assessment.get(bucket_id, {})
 
-        bucket_table.add_row(
-            "Infrastructure Drift",
-            _colorize(drift_risk.capitalize(), risk_color, use_color),
-            _colorize("●", risk_color, use_color),
-            concern_text
-        )
+        if bucket_data:
+            risk_level = bucket_data.get("risk_level", "low")
+            _, risk_color = RISK_STYLES.get(risk_level, ("?", "white"))
+            concerns = bucket_data.get("concerns", [])
+            concern_text = concerns[0] if concerns else "None"
 
-    # Intent bucket (may not exist if PR metadata not provided)
-    intent = risk_assessment.get("intent")
-    if intent is not None:
-        intent_risk = intent.get("risk_level", "low")
-        _, risk_color = RISK_STYLES.get(intent_risk, ("?", "white"))
-        concerns = intent.get("concerns", [])
-        concern_text = concerns[0] if concerns else "None"
-
-        bucket_table.add_row(
-            "PR Intent Alignment",
-            _colorize(intent_risk.capitalize(), risk_color, use_color),
-            _colorize("●", risk_color, use_color),
-            concern_text
-        )
-    else:
-        # Intent bucket skipped
-        bucket_table.add_row(
-            "PR Intent Alignment",
-            _colorize("Not evaluated", "dim", use_color),
-            _colorize("—", "dim", use_color),
-            "No PR metadata provided"
-        )
-
-    # Operations bucket
-    operations = risk_assessment.get("operations", {})
-    if operations:
-        operations_risk = operations.get("risk_level", "low")
-        _, risk_color = RISK_STYLES.get(operations_risk, ("?", "white"))
-        concerns = operations.get("concerns", [])
-        concern_text = concerns[0] if concerns else "None"
-
-        bucket_table.add_row(
-            "Risky Operations",
-            _colorize(operations_risk.capitalize(), risk_color, use_color),
-            _colorize("●", risk_color, use_color),
-            concern_text
-        )
+            bucket_table.add_row(
+                bucket.display_name,
+                _colorize(risk_level.capitalize(), risk_color, use_color),
+                _colorize("●", risk_color, use_color),
+                concern_text
+            )
 
     # Print the bucket table
     console.print(bucket_table)
@@ -345,36 +325,28 @@ def render_markdown(data: dict, ci_mode: bool = False, custom_title: str = None,
         # Add risk bucket summary
         risk_assessment = data.get("risk_assessment", {})
         if risk_assessment:
+            from .ci.buckets import RISK_BUCKETS
+
+            # Get enabled buckets (default to all if not specified)
+            enabled_buckets = data.get("_enabled_buckets")
+            if enabled_buckets is None:
+                enabled_buckets = list(risk_assessment.keys())
+
             lines.append("### Risk Assessment")
             lines.append("")
             lines.append("| Risk Bucket | Risk Level | Key Concerns |")
             lines.append("|-------------|------------|--------------|")
 
-            # Drift bucket
-            drift = risk_assessment.get("drift", {})
-            if drift:
-                drift_risk = drift.get("risk_level", "low").capitalize()
-                concerns = drift.get("concerns", [])
-                concern_text = concerns[0] if concerns else "None"
-                lines.append(f"| Infrastructure Drift | {drift_risk} | {concern_text} |")
+            # Render enabled buckets dynamically
+            for bucket_id in enabled_buckets:
+                bucket = RISK_BUCKETS[bucket_id]
+                bucket_data = risk_assessment.get(bucket_id, {})
 
-            # Intent bucket (may not exist)
-            intent = risk_assessment.get("intent")
-            if intent is not None:
-                intent_risk = intent.get("risk_level", "low").capitalize()
-                concerns = intent.get("concerns", [])
-                concern_text = concerns[0] if concerns else "None"
-                lines.append(f"| PR Intent Alignment | {intent_risk} | {concern_text} |")
-            else:
-                lines.append("| PR Intent Alignment | Not evaluated | No PR metadata provided |")
-
-            # Operations bucket
-            operations = risk_assessment.get("operations", {})
-            if operations:
-                operations_risk = operations.get("risk_level", "low").capitalize()
-                concerns = operations.get("concerns", [])
-                concern_text = concerns[0] if concerns else "None"
-                lines.append(f"| Risky Operations | {operations_risk} | {concern_text} |")
+                if bucket_data:
+                    risk_level = bucket_data.get("risk_level", "low").capitalize()
+                    concerns = bucket_data.get("concerns", [])
+                    concern_text = concerns[0] if concerns else "None"
+                    lines.append(f"| {bucket.display_name} | {risk_level} | {concern_text} |")
 
             lines.append("")
 
