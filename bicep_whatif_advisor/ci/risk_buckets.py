@@ -21,11 +21,12 @@ def _validate_risk_level(risk_level: str) -> str:
 
 def evaluate_risk_buckets(
     data: dict,
-    drift_threshold: str,
-    intent_threshold: str,
-    operations_threshold: str
+    enabled_buckets: List[str],
+    drift_threshold: str = "high",
+    intent_threshold: str = "high",
+    operations_threshold: str = "high"
 ) -> Tuple[bool, List[str], Dict[str, Any]]:
-    """Evaluate risk buckets and determine if deployment is safe.
+    """Evaluate enabled risk buckets and determine if deployment is safe.
 
     NOTE: This function expects pre-filtered data containing only medium/high-confidence
     resources. Low-confidence resources (likely Azure What-If noise) should be filtered
@@ -33,9 +34,10 @@ def evaluate_risk_buckets(
 
     Args:
         data: Parsed LLM response with risk_assessment (should contain only high-confidence resources)
-        drift_threshold: Risk threshold for infrastructure drift bucket
-        intent_threshold: Risk threshold for PR intent alignment bucket
-        operations_threshold: Risk threshold for risky operations bucket
+        enabled_buckets: List of bucket IDs to evaluate (e.g., ["drift", "operations"])
+        drift_threshold: Risk threshold for drift bucket (only used if enabled)
+        intent_threshold: Risk threshold for intent bucket (only used if enabled)
+        operations_threshold: Risk threshold for operations bucket (only used if enabled)
 
     Returns:
         Tuple of (is_safe: bool, failed_buckets: list, risk_assessment: dict)
@@ -43,39 +45,42 @@ def evaluate_risk_buckets(
     risk_assessment = data.get("risk_assessment", {})
 
     if not risk_assessment:
-        # No risk assessment provided - assume safe but warn
-        return True, [], {
-            "drift": {"risk_level": "low", "concerns": [], "reasoning": "No risk assessment provided"},
-            "operations": {"risk_level": "low", "concerns": [], "reasoning": "No risk assessment provided"}
-        }
+        # No risk assessment provided - build default low-risk assessment for enabled buckets
+        default_assessment = {}
+        for bucket_id in enabled_buckets:
+            default_assessment[bucket_id] = {
+                "risk_level": "low",
+                "concerns": [],
+                "reasoning": "No risk assessment provided"
+            }
+        return True, [], default_assessment
 
-    # Extract bucket assessments
-    drift_bucket = risk_assessment.get("drift", {})
-    intent_bucket = risk_assessment.get("intent")  # May be None if not evaluated
-    operations_bucket = risk_assessment.get("operations", {})
+    # Threshold map for each bucket
+    thresholds = {
+        "drift": drift_threshold,
+        "intent": intent_threshold,
+        "operations": operations_threshold
+    }
 
-    # Validate and normalize risk levels
-    drift_risk = _validate_risk_level(drift_bucket.get("risk_level", "low"))
-    operations_risk = _validate_risk_level(operations_bucket.get("risk_level", "low"))
-
-    # Evaluate each bucket against its threshold
+    # Evaluate each enabled bucket
     failed_buckets = []
 
-    # Drift bucket
-    if _exceeds_threshold(drift_risk, drift_threshold):
-        failed_buckets.append("drift")
+    for bucket_id in enabled_buckets:
+        bucket_data = risk_assessment.get(bucket_id)
 
-    # Intent bucket (only if evaluated)
-    if intent_bucket is not None:
-        intent_risk = _validate_risk_level(intent_bucket.get("risk_level", "low"))
-        if _exceeds_threshold(intent_risk, intent_threshold):
-            failed_buckets.append("intent")
+        # Skip if bucket not in LLM response (shouldn't happen but fail-safe)
+        if bucket_data is None:
+            continue
 
-    # Operations bucket
-    if _exceeds_threshold(operations_risk, operations_threshold):
-        failed_buckets.append("operations")
+        # Get and validate risk level
+        risk_level = _validate_risk_level(bucket_data.get("risk_level", "low"))
 
-    # Overall safety: all buckets must pass
+        # Check against threshold
+        threshold = thresholds.get(bucket_id, "high")
+        if _exceeds_threshold(risk_level, threshold):
+            failed_buckets.append(bucket_id)
+
+    # Overall safety: all enabled buckets must pass
     is_safe = len(failed_buckets) == 0
 
     return is_safe, failed_buckets, risk_assessment
