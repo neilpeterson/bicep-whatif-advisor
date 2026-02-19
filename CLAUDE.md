@@ -331,6 +331,23 @@ cat whatif-output.txt | bicep-whatif-advisor \
 
 **Optional CI flags:**
 - `--no-block`: Report findings without failing pipeline (exit code 0 even if unsafe)
+- `--skip-drift`: Skip infrastructure drift risk assessment (CI mode only)
+- `--skip-intent`: Skip PR intent alignment risk assessment (CI mode only)
+- `--skip-operations`: Skip risky operations risk assessment (CI mode only)
+
+**Note:** At least one risk bucket must remain enabled when using skip flags.
+
+**Skip flag examples:**
+```bash
+# Skip drift assessment (useful when infrastructure state differs from code)
+cat whatif-output.txt | bicep-whatif-advisor --ci --skip-drift
+
+# Skip intent assessment (useful for automated maintenance PRs)
+cat whatif-output.txt | bicep-whatif-advisor --ci --skip-intent
+
+# Only evaluate operations (skip drift and intent)
+cat whatif-output.txt | bicep-whatif-advisor --ci --skip-drift --skip-intent
+```
 
 ## Testing Strategy
 

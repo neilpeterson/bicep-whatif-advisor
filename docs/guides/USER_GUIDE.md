@@ -344,6 +344,9 @@ az deployment group what-if ... | bicep-whatif-advisor --ci --diff-ref origin/ma
 | `--drift-threshold` | Drift bucket threshold: `low`, `medium`, `high` | `high` |
 | `--intent-threshold` | Intent bucket threshold: `low`, `medium`, `high` | `high` |
 | `--operations-threshold` | Operations bucket threshold: `low`, `medium`, `high` | `high` |
+| `--skip-drift` | Skip infrastructure drift risk assessment | `false` |
+| `--skip-intent` | Skip PR intent alignment risk assessment | `false` |
+| `--skip-operations` | Skip risky operations risk assessment | `false` |
 | `--post-comment` | Post analysis as PR comment (auto-enabled if token exists) | `false` |
 | `--comment-title` | Custom title for PR comment | `What-If Deployment Review` |
 | `--no-block` | Report findings without failing pipeline (exit code 0) | `false` |
@@ -427,6 +430,34 @@ az deployment group what-if -g my-rg -f main.bicep | bicep-whatif-advisor \
   --intent-threshold low \
   --operations-threshold low
 ```
+
+### Skipping Risk Buckets
+
+```bash
+# Skip infrastructure drift assessment (useful when state differs from code)
+az deployment group what-if ... | bicep-whatif-advisor \
+  --ci \
+  --skip-drift
+
+# Skip PR intent alignment (useful for automated maintenance PRs)
+az deployment group what-if ... | bicep-whatif-advisor \
+  --ci \
+  --skip-intent
+
+# Skip risky operations assessment (focus only on drift and intent)
+az deployment group what-if ... | bicep-whatif-advisor \
+  --ci \
+  --skip-operations
+
+# Combine skip flags (only evaluate drift bucket)
+az deployment group what-if ... | bicep-whatif-advisor \
+  --ci \
+  --skip-intent \
+  --skip-operations \
+  --pr-title "Update configuration"
+```
+
+**Note:** At least one risk bucket must remain enabled in CI mode.
 
 ### Different Providers
 
