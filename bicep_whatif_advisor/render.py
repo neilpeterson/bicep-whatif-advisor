@@ -77,7 +77,7 @@ def render_table(
         console.print()
 
     # Create table
-    table = Table(box=box.ROUNDED, show_lines=True, padding=(0, 1))
+    table = Table(box=box.ROUNDED, show_lines=False, padding=(0, 1))
 
     # Add columns
     table.add_column("#", style="dim", width=4)
@@ -153,7 +153,7 @@ def _print_noise_section(console: Console, low_confidence_data: dict, use_color:
     console.print()
 
     # Create noise table
-    noise_table = Table(box=box.ROUNDED, show_lines=True, padding=(0, 1))
+    noise_table = Table(box=box.ROUNDED, show_lines=False, padding=(0, 1))
     noise_table.add_column("#", style="dim", width=4)
     noise_table.add_column("Resource", style="bold")
     noise_table.add_column("Type")
@@ -423,8 +423,6 @@ def render_markdown(data: dict, ci_mode: bool = False, custom_title: str = None,
 
     # Add collapsible noise section for low-confidence resources
     if low_confidence_data and low_confidence_data.get("resources"):
-        lines.append("---")
-        lines.append("")
         lines.append("<details>")
         lines.append("<summary>⚠️ Potential Azure What-If Noise (Low Confidence)</summary>")
         lines.append("")
