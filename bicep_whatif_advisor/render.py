@@ -65,17 +65,17 @@ def render_table(
 
     console = Console(force_terminal=use_color, no_color=not use_color, width=reduced_width)
 
-    # Print overall summary before the table
+    # Print risk bucket summary in CI mode
+    if ci_mode:
+        enabled_buckets = data.get("_enabled_buckets")
+        _print_risk_bucket_summary(console, data.get("risk_assessment", {}), use_color, enabled_buckets)
+
+    # Print overall summary after risk assessment table
     overall_summary = data.get("overall_summary", "")
     if overall_summary:
         summary_label = _colorize("Summary:", "bold", use_color)
         console.print(f"{summary_label} {overall_summary}")
         console.print()
-
-    # Print risk bucket summary in CI mode
-    if ci_mode:
-        enabled_buckets = data.get("_enabled_buckets")
-        _print_risk_bucket_summary(console, data.get("risk_assessment", {}), use_color, enabled_buckets)
 
     # Create table
     table = Table(box=box.ROUNDED, show_lines=False, padding=(0, 1))
@@ -325,14 +325,7 @@ def render_markdown(data: dict, ci_mode: bool = False, custom_title: str = None,
         lines.append(f"## {title}")
         lines.append("")
 
-    # Overall summary (moved before risk assessment)
-    overall_summary = data.get("overall_summary", "")
-    if overall_summary:
-        lines.append(f"**Summary:** {overall_summary}")
-        lines.append("")
-
-    if ci_mode:
-        # Add risk bucket summary
+        # Add risk bucket summary (without heading label)
         risk_assessment = data.get("risk_assessment", {})
         if risk_assessment:
             from .ci.buckets import RISK_BUCKETS
@@ -342,8 +335,6 @@ def render_markdown(data: dict, ci_mode: bool = False, custom_title: str = None,
             if enabled_buckets is None:
                 enabled_buckets = list(risk_assessment.keys())
 
-            lines.append("### Risk Assessment")
-            lines.append("")
             lines.append("| Risk Assessment | Risk Level | Key Concerns |")
             lines.append("|-----------------|------------|--------------|")
 
@@ -359,6 +350,12 @@ def render_markdown(data: dict, ci_mode: bool = False, custom_title: str = None,
                     lines.append(f"| {bucket.display_name} | {risk_level} | {concern_text} |")
 
             lines.append("")
+
+    # Overall summary (after risk assessment table)
+    overall_summary = data.get("overall_summary", "")
+    if overall_summary:
+        lines.append(f"**Summary:** {overall_summary}")
+        lines.append("")
 
     # Collapsible section for resource changes with high confidence label and count
     resource_count = len(data.get("resources", []))
