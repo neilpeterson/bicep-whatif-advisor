@@ -325,6 +325,13 @@ def render_markdown(data: dict, ci_mode: bool = False, custom_title: str = None,
         lines.append(f"## {title}")
         lines.append("")
 
+    # Overall summary (moved before risk assessment)
+    overall_summary = data.get("overall_summary", "")
+    if overall_summary:
+        lines.append(f"**Summary:** {overall_summary}")
+        lines.append("")
+
+    if ci_mode:
         # Add risk bucket summary
         risk_assessment = data.get("risk_assessment", {})
         if risk_assessment:
@@ -352,12 +359,6 @@ def render_markdown(data: dict, ci_mode: bool = False, custom_title: str = None,
                     lines.append(f"| {bucket.display_name} | {risk_level} | {concern_text} |")
 
             lines.append("")
-
-    # Overall summary (moved before resource list)
-    overall_summary = data.get("overall_summary", "")
-    if overall_summary:
-        lines.append(f"**Summary:** {overall_summary}")
-        lines.append("")
 
     # Collapsible section for resource changes with high confidence label and count
     resource_count = len(data.get("resources", []))
