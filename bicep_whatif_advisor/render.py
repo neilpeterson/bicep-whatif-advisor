@@ -118,8 +118,9 @@ def render_table(
         row.append(summary)
         table.add_row(*row)
 
-    # Print table with high confidence label
-    high_conf_label = _colorize("High Confidence Resources:", "bold cyan", use_color)
+    # Print table with high confidence label and count
+    resource_count = len(resources)
+    high_conf_label = _colorize(f"High Confidence Resources: ({resource_count})", "bold cyan", use_color)
     console.print(high_conf_label)
     console.print(table)
     console.print()
@@ -143,8 +144,9 @@ def _print_noise_section(console: Console, low_confidence_data: dict, use_color:
     if not resources:
         return
 
-    # Print header
-    header = _colorize("⚠️  Potential Azure What-If Noise (Low Confidence)", "yellow bold", use_color)
+    # Print header with count
+    resource_count = len(resources)
+    header = _colorize(f"⚠️  Potential Azure What-If Noise (Low Confidence): ({resource_count})", "yellow bold", use_color)
     console.print(header)
     console.print(_colorize(
         "The following changes were flagged as likely What-If noise and excluded from risk analysis:",
@@ -382,9 +384,10 @@ def render_markdown(data: dict, ci_mode: bool = False, custom_title: str = None,
         lines.append(f"**Summary:** {overall_summary}")
         lines.append("")
 
-    # Collapsible section for resource changes with high confidence label
+    # Collapsible section for resource changes with high confidence label and count
+    resource_count = len(data.get("resources", []))
     lines.append("<details>")
-    lines.append("<summary>📋 View changed resources (High Confidence)</summary>")
+    lines.append(f"<summary>📋 View changed resources (High Confidence): ({resource_count})</summary>")
     lines.append("")
 
     # Table header (with Summary column)
@@ -423,8 +426,9 @@ def render_markdown(data: dict, ci_mode: bool = False, custom_title: str = None,
 
     # Add collapsible noise section for low-confidence resources
     if low_confidence_data and low_confidence_data.get("resources"):
+        low_conf_count = len(low_confidence_data.get("resources", []))
         lines.append("<details>")
-        lines.append("<summary>⚠️ Potential Azure What-If Noise (Low Confidence)</summary>")
+        lines.append(f"<summary>⚠️ Potential Azure What-If Noise (Low Confidence): ({low_conf_count})</summary>")
         lines.append("")
         lines.append("The following changes were flagged as likely What-If noise and **excluded from risk analysis**:")
         lines.append("")
