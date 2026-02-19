@@ -65,12 +65,12 @@ def render_table(
 
     console = Console(force_terminal=use_color, no_color=not use_color, width=reduced_width)
 
-    # Print risk bucket summary first in CI mode
+    # Print risk bucket summary in CI mode
     if ci_mode:
         enabled_buckets = data.get("_enabled_buckets")
         _print_risk_bucket_summary(console, data.get("risk_assessment", {}), use_color, enabled_buckets)
 
-    # Print overall summary before the table
+    # Print overall summary after risk assessment table
     overall_summary = data.get("overall_summary", "")
     if overall_summary:
         summary_label = _colorize("Summary:", "bold", use_color)
@@ -145,6 +145,9 @@ def _print_noise_section(console: Console, low_confidence_data: dict, use_color:
     if not resources:
         return
 
+    # Add spacing before noise section
+    console.print()
+
     # Print header with count
     resource_count = len(resources)
     header = _colorize(f"⚠️  Potential Azure What-If Noise ({resource_count} Low Confidence)", "yellow bold", use_color)
@@ -208,7 +211,7 @@ def _print_risk_bucket_summary(console: Console, risk_assessment: dict, use_colo
 
     # Create risk bucket table
     bucket_table = Table(box=box.ROUNDED, show_header=True, padding=(0, 1))
-    bucket_table.add_column("Risk Bucket", style="bold")
+    bucket_table.add_column("Risk Assessment", style="bold")
     bucket_table.add_column("Risk Level", justify="center")
     bucket_table.add_column("Status", justify="center")
     bucket_table.add_column("Key Concerns")
@@ -322,7 +325,7 @@ def render_markdown(data: dict, ci_mode: bool = False, custom_title: str = None,
         lines.append(f"## {title}")
         lines.append("")
 
-        # Add risk bucket summary
+        # Add risk bucket summary (without heading label)
         risk_assessment = data.get("risk_assessment", {})
         if risk_assessment:
             from .ci.buckets import RISK_BUCKETS
@@ -332,10 +335,8 @@ def render_markdown(data: dict, ci_mode: bool = False, custom_title: str = None,
             if enabled_buckets is None:
                 enabled_buckets = list(risk_assessment.keys())
 
-            lines.append("### Risk Assessment")
-            lines.append("")
-            lines.append("| Risk Bucket | Risk Level | Key Concerns |")
-            lines.append("|-------------|------------|--------------|")
+            lines.append("| Risk Assessment | Risk Level | Key Concerns |")
+            lines.append("|-----------------|------------|--------------|")
 
             # Render enabled buckets dynamically
             for bucket_id in enabled_buckets:
@@ -350,7 +351,7 @@ def render_markdown(data: dict, ci_mode: bool = False, custom_title: str = None,
 
             lines.append("")
 
-    # Overall summary (moved before resource list)
+    # Overall summary (after risk assessment table)
     overall_summary = data.get("overall_summary", "")
     if overall_summary:
         lines.append(f"**Summary:** {overall_summary}")
