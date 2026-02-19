@@ -9,7 +9,7 @@ from . import __version__
 from .input import read_stdin, InputError
 from .prompt import build_system_prompt, build_user_prompt
 from .providers import get_provider
-from .render import render_table, render_json, render_markdown
+from .render import render_table, render_json, render_markdown, print_banner
 from .ci.platform import detect_platform
 from .noise_filter import apply_noise_filtering
 
@@ -342,6 +342,10 @@ def main(
                 if has_token:
                     sys.stderr.write("💬 Auto-enabling PR comments (auth token detected)\n")
                     post_comment = True
+
+        # Print banner in CI/CD mode only
+        if ci:
+            print_banner()
 
         # Get diff content if CI mode
         diff_content = None

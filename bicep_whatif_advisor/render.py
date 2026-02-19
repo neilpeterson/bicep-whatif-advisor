@@ -8,6 +8,17 @@ from rich.table import Table
 from rich import box
 
 
+def print_banner() -> None:
+    """Print ASCII banner to identify tool output in CI/CD logs."""
+    banner = """
+┌─────────────────────────────────────────────────────────┐
+│  🛡️  BICEP WHAT-IF ADVISOR                              │
+│     AI-Powered Deployment Safety Review                 │
+└─────────────────────────────────────────────────────────┘
+"""
+    print(banner, file=sys.stderr)
+
+
 # Action symbols and colors
 ACTION_STYLES = {
     "Create": ("✅", "green"),
@@ -395,6 +406,8 @@ def render_markdown(data: dict, ci_mode: bool = False, custom_title: str = None,
 
     lines.append("")
     lines.append("</details>")
+    lines.append("")
+    lines.append("<br>")  # Add explicit spacing for Azure DevOps compatibility
     lines.append("")
 
     # Add collapsible noise section for low-confidence resources
