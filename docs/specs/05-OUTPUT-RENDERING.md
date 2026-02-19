@@ -207,7 +207,7 @@ for idx, resource in enumerate(resources, 1):
 
 #### Output Sections (lines 114-135)
 
-The table rendering outputs multiple sections:
+The table rendering outputs multiple sections in the following order:
 
 1. **Risk Bucket Summary** (CI mode only)
    ```python
@@ -215,17 +215,19 @@ The table rendering outputs multiple sections:
        _print_risk_bucket_summary(console, data.get("risk_assessment", {}), use_color)
    ```
 
-2. **Main Resource Table**
-   ```python
-   console.print(table)
-   ```
-
-3. **Overall Summary**
+2. **Overall Summary** (displayed before resource table)
    ```python
    overall_summary = data.get("overall_summary", "")
    if overall_summary:
        summary_label = _colorize("Summary:", "bold", use_color)
        console.print(f"{summary_label} {overall_summary}")
+   ```
+
+3. **Main Resource Table** (with "High Confidence Resources" label)
+   ```python
+   high_conf_label = _colorize("High Confidence Resources:", "bold cyan", use_color)
+   console.print(high_conf_label)
+   console.print(table)
    ```
 
 4. **Verbose Details** (if `--verbose` flag, standard mode only)
@@ -245,6 +247,8 @@ The table rendering outputs multiple sections:
    if low_confidence_data and low_confidence_data.get("resources"):
        _print_noise_section(console, low_confidence_data, use_color, ci_mode)
    ```
+
+**Note:** Summary is now displayed before the resource table to provide context before viewing detailed changes. The resource table is explicitly labeled as "High Confidence Resources" to distinguish it from potential noise.
 
 ### Helper Function: _print_noise_section() (lines 138-183)
 
@@ -335,15 +339,15 @@ def _print_ci_verdict(
 
 **Output Format:**
 ```
-Verdict: ✅ Safe to deploy
-Overall Risk: Low
-Highest Risk Bucket: Operations
+Verdict: ✅ SAFE
 Reasoning: Changes align with PR intent. Only low-risk operations detected.
 ```
 
 **Verdict Display:**
-- Safe → ✅ Safe to deploy (green)
-- Unsafe → ❌ Deployment blocked (red)
+- Safe → ✅ SAFE (green bold)
+- Unsafe → ❌ UNSAFE (red bold)
+
+**Note:** Overall Risk Level and Highest Risk Bucket fields have been removed from the verdict display to reduce redundancy, as this information is already shown in the Risk Assessment table above.
 
 ### Helper Function: _colorize() (lines 29-40)
 
@@ -435,16 +439,16 @@ Generates markdown suitable for GitHub/Azure DevOps PR comments.
 
 **Standard Mode:**
 ```markdown
+**Summary:** 1 resource created.
+
 <details>
-<summary>📋 View changed resources</summary>
+<summary>📋 View changed resources (High Confidence)</summary>
 
 | # | Resource | Type | Action | Summary |
 |---|----------|------|--------|---------|
 | 1 | myApp    | Web  | Create | Creates web app |
 
 </details>
-
-**Summary:** 1 resource created.
 ```
 
 **CI Mode:**
@@ -459,8 +463,10 @@ Generates markdown suitable for GitHub/Azure DevOps PR comments.
 | PR Intent Alignment | Low | Changes match PR |
 | Risky Operations | Medium | New public endpoint |
 
+**Summary:** 1 resource created.
+
 <details>
-<summary>📋 View changed resources</summary>
+<summary>📋 View changed resources (High Confidence)</summary>
 
 | # | Resource | Type | Action | Risk | Summary |
 |---|----------|------|--------|------|---------|
@@ -470,13 +476,8 @@ Generates markdown suitable for GitHub/Azure DevOps PR comments.
 
 ---
 
-### Deployment Verdict
-
-✅ **Safe to deploy**
-
-- **Overall Risk:** Low
-- **Highest Risk Bucket:** Operations
-- **Reasoning:** Changes align with PR intent. Only low-risk operations detected.
+### Verdict: ✅ SAFE
+**Reasoning:** Changes align with PR intent. Only low-risk operations detected.
 ```
 
 #### Key Features
@@ -492,11 +493,11 @@ lines.append(f"## {title}")
 
 **Use Case:** Custom titles for multiple deployment stages (e.g., "Production Deployment Review").
 
-**2. Collapsible Resource Table (lines 389-392)**
+**2. Collapsible Resource Table with High Confidence Label (lines 389-392)**
 
 ```markdown
 <details>
-<summary>📋 View changed resources</summary>
+<summary>📋 View changed resources (High Confidence)</summary>
 ...
 </details>
 ```
@@ -505,6 +506,7 @@ lines.append(f"## {title}")
 - Reduces PR comment noise
 - Allows reviewers to expand only if needed
 - Keeps focus on risk assessment (CI mode)
+- Explicitly labels resources as "High Confidence" to distinguish from potential noise
 
 **3. Noise Section (lines 439-461)**
 
