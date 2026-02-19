@@ -69,8 +69,15 @@ def render_table(
     if ci_mode:
         _print_risk_bucket_summary(console, data.get("risk_assessment", {}), use_color)
 
+    # Print overall summary before the table
+    overall_summary = data.get("overall_summary", "")
+    if overall_summary:
+        summary_label = _colorize("Summary:", "bold", use_color)
+        console.print(f"{summary_label} {overall_summary}")
+        console.print()
+
     # Create table
-    table = Table(box=box.ROUNDED, show_lines=True, padding=(0, 1))
+    table = Table(box=box.ROUNDED, show_lines=False, padding=(0, 1))
 
     # Add columns
     table.add_column("#", style="dim", width=4)
@@ -111,16 +118,12 @@ def render_table(
         row.append(summary)
         table.add_row(*row)
 
-    # Print table
+    # Print table with high confidence label and count
+    resource_count = len(resources)
+    high_conf_label = _colorize(f"High Confidence Resources ({resource_count})", "bold cyan", use_color)
+    console.print(high_conf_label)
     console.print(table)
     console.print()
-
-    # Print overall summary
-    overall_summary = data.get("overall_summary", "")
-    if overall_summary:
-        summary_label = _colorize("Summary:", "bold", use_color)
-        console.print(f"{summary_label} {overall_summary}")
-        console.print()
 
     # Print verbose details if requested
     if verbose and not ci_mode:
@@ -141,8 +144,9 @@ def _print_noise_section(console: Console, low_confidence_data: dict, use_color:
     if not resources:
         return
 
-    # Print header
-    header = _colorize("⚠️  Potential Azure What-If Noise (Low Confidence)", "yellow bold", use_color)
+    # Print header with count
+    resource_count = len(resources)
+    header = _colorize(f"⚠️  Potential Azure What-If Noise ({resource_count} Low Confidence)", "yellow bold", use_color)
     console.print(header)
     console.print(_colorize(
         "The following changes were flagged as likely What-If noise and excluded from risk analysis:",
@@ -151,7 +155,7 @@ def _print_noise_section(console: Console, low_confidence_data: dict, use_color:
     console.print()
 
     # Create noise table
-    noise_table = Table(box=box.ROUNDED, show_lines=True, padding=(0, 1))
+    noise_table = Table(box=box.ROUNDED, show_lines=False, padding=(0, 1))
     noise_table.add_column("#", style="dim", width=4)
     noise_table.add_column("Resource", style="bold")
     noise_table.add_column("Type")
@@ -278,30 +282,18 @@ def _print_ci_verdict(console: Console, verdict: dict, use_color: bool) -> None:
         return
 
     safe = verdict.get("safe", True)
-    overall_risk = verdict.get("overall_risk_level", "low")
-    highest_bucket = verdict.get("highest_risk_bucket", "none")
     reasoning = verdict.get("reasoning", "")
 
     # Verdict header
     if safe:
-        verdict_text = "SAFE"
+        verdict_text = "✅ SAFE"
         verdict_style = "green bold"
     else:
-        verdict_text = "UNSAFE"
+        verdict_text = "❌ UNSAFE"
         verdict_style = "red bold"
 
     verdict_display = _colorize(f"Verdict: {verdict_text}", verdict_style, use_color)
     console.print(verdict_display)
-    console.print()
-
-    # Overall risk level
-    label = _colorize("Overall Risk Level:", "bold", use_color)
-    console.print(f"{label} {overall_risk.capitalize()}")
-
-    # Highest risk bucket
-    if highest_bucket != "none":
-        label = _colorize("Highest Risk Bucket:", "bold", use_color)
-        console.print(f"{label} {highest_bucket.capitalize()}")
 
     # Reasoning
     if reasoning:
@@ -386,9 +378,16 @@ def render_markdown(data: dict, ci_mode: bool = False, custom_title: str = None,
 
             lines.append("")
 
-    # Collapsible section for resource changes
+    # Overall summary (moved before resource list)
+    overall_summary = data.get("overall_summary", "")
+    if overall_summary:
+        lines.append(f"**Summary:** {overall_summary}")
+        lines.append("")
+
+    # Collapsible section for resource changes with high confidence label and count
+    resource_count = len(data.get("resources", []))
     lines.append("<details>")
-    lines.append("<summary>📋 View changed resources</summary>")
+    lines.append(f"<summary>📋 View changed resources ({resource_count} High Confidence)</summary>")
     lines.append("")
 
     # Table header (with Summary column)
@@ -425,18 +424,11 @@ def render_markdown(data: dict, ci_mode: bool = False, custom_title: str = None,
     lines.append("</details>")
     lines.append("")
 
-    # Overall summary
-    overall_summary = data.get("overall_summary", "")
-    if overall_summary:
-        lines.append(f"**Summary:** {overall_summary}")
-        lines.append("")
-
     # Add collapsible noise section for low-confidence resources
     if low_confidence_data and low_confidence_data.get("resources"):
-        lines.append("---")
-        lines.append("")
+        low_conf_count = len(low_confidence_data.get("resources", []))
         lines.append("<details>")
-        lines.append("<summary>⚠️ Potential Azure What-If Noise (Low Confidence)</summary>")
+        lines.append(f"<summary>⚠️ Potential Azure What-If Noise ({low_conf_count} Low Confidence)</summary>")
         lines.append("")
         lines.append("The following changes were flagged as likely What-If noise and **excluded from risk analysis**:")
         lines.append("")
@@ -462,24 +454,17 @@ def render_markdown(data: dict, ci_mode: bool = False, custom_title: str = None,
         verdict = data.get("verdict", {})
         if verdict:
             safe = verdict.get("safe", True)
-            overall_risk = verdict.get("overall_risk_level", "low")
-            highest_bucket = verdict.get("highest_risk_bucket", "none")
             reasoning = verdict.get("reasoning", "")
 
             # Verdict header
             verdict_text = "✅ SAFE" if safe else "❌ UNSAFE"
             lines.append(f"### Verdict: {verdict_text}")
-            lines.append("")
-
-            lines.append(f"**Overall Risk Level:** {overall_risk.capitalize()}")
-            if highest_bucket != "none":
-                lines.append(f"**Highest Risk Bucket:** {highest_bucket.capitalize()}")
             if reasoning:
                 lines.append(f"**Reasoning:** {reasoning}")
             lines.append("")
 
     if ci_mode:
         lines.append("---")
-        lines.append("*Generated by [bicep-whatif-advisor](https://github.com/yourorg/bicep-whatif-advisor)*")
+        lines.append("*Generated by [bicep-whatif-advisor](https://github.com/neilpeterson/bicep-whatif-advisor)*")
 
     return "\n".join(lines)

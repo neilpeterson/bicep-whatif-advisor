@@ -418,8 +418,10 @@ if ci:
 | PR Intent Alignment | Low | Changes match PR |
 | Risky Operations | Medium | New public endpoint |
 
+**Summary:** 1 resource created.
+
 <details>
-<summary>📋 View changed resources</summary>
+<summary>📋 View changed resources (High Confidence)</summary>
 
 | # | Resource | Type | Action | Risk | Summary |
 |---|----------|------|--------|------|---------|
@@ -429,13 +431,8 @@ if ci:
 
 ---
 
-### Deployment Verdict
-
-✅ **Safe to deploy**
-
-- **Overall Risk:** Low
-- **Highest Risk Bucket:** Operations
-- **Reasoning:** Changes align with PR intent. Only low-risk operations detected.
+### Verdict: ✅ SAFE
+**Reasoning:** Changes align with PR intent. Only low-risk operations detected.
 ```
 
 ### Blocked Deployment
@@ -451,15 +448,19 @@ if ci:
 | PR Intent Alignment | Low | Changes match PR |
 | Risky Operations | Low | No risky operations |
 
+**Summary:** Critical infrastructure drift detected.
+
+<details>
+<summary>📋 View changed resources (High Confidence)</summary>
+
 ...
 
-### Deployment Verdict
+</details>
 
-❌ **Deployment blocked**
+---
 
-- **Overall Risk:** High
-- **Highest Risk Bucket:** Drift
-- **Reasoning:** Detected drift on critical security resources not modified in this PR.
+### Verdict: ❌ UNSAFE
+**Reasoning:** Detected drift on critical security resources not modified in this PR.
 ```
 
 ## Benefits

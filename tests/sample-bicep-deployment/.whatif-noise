@@ -110,4 +110,11 @@ System-managed property changing
 # Add your organization-specific noise patterns below
 # Example: Common recurring changes in your environment
 Removing blob delete retention policy configuration
+Swaps two security rules
+Changes subnet reference from hardcoded ID to dynamic reference expression and removes IPv6 flag
+Removing logAnalyticsDestinationType property and retention policy settings from Key Vault diagnostic settings
+Removing retention policy settings and capacity metrics from storage blob diagnostic settings
+Removing retention policy settings and capacity metrics from storage account diagnostic settings
+Removing deleteRetentionPolicy properties
+
 
