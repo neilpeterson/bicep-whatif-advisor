@@ -1,0 +1,52 @@
+Resource and property changes are indicated with these symbols:
+  - Delete
+  ~ Modify
+  + Create
+
+The deployment will update the following scope:
+
+Scope: /subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-test
+
+  ~ Microsoft.Network/virtualNetworks/myvnet [2022-07-01]
+
+      id:   "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-test/providers/Microsoft.Network/virtualNetworks/myvnet"
+      name: "myvnet"
+      type: "Microsoft.Network/virtualNetworks"
+
+      ~ properties.etag: "W/\"abc123\"" => "W/\"def456\""
+      ~ properties.provisioningState: "Succeeded" => "Updating"
+      ~ properties.subnets[0].properties.ipv6AddressSpace.addressPrefixes[0]: null => ""
+      ~ properties.resourceGuid: "guid-1234-abcd" => "guid-5678-efgh"
+      ~ properties.addressSpace.addressPrefixes[0]: "10.0.0.0/16" => "10.0.0.0/8"
+
+  ~ Microsoft.Insights/components/myappinsights [2020-02-02]
+
+      id:   "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-test/providers/Microsoft.Insights/components/myappinsights"
+      name: "myappinsights"
+      type: "Microsoft.Insights/components"
+
+      ~ properties.etag: "W/\"aaabbb\"" => "W/\"cccddd\""
+      ~ properties.provisioningState: "Succeeded" => "Updating"
+      ~ properties.RetentionInDays: 30 => 90
+
+  ~ Microsoft.Network/networkInterfaces/mynic [2022-11-01]
+
+      id:   "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-test/providers/Microsoft.Network/networkInterfaces/mynic"
+      name: "mynic"
+      type: "Microsoft.Network/networkInterfaces"
+
+      ~ properties.etag: "W/\"111\"" => "W/\"222\""
+      ~ properties.enableIPv6Addressing: false => true
+      ~ properties.appliedDnsServers: [] => ["10.0.0.1"]
+      ~ properties.dnsSettings.dnsServers: [] => ["10.0.0.1"]
+
+  + Microsoft.Storage/storageAccounts/newstorage [2023-01-01]
+
+      id:       "/subscriptions/12345678-1234-1234-1234-123456789012/resourceGroups/rg-test/providers/Microsoft.Storage/storageAccounts/newstorage"
+      kind:     "StorageV2"
+      location: "eastus"
+      name:     "newstorage"
+      sku.name: "Standard_LRS"
+      type:     "Microsoft.Storage/storageAccounts"
+
+Resource changes: 1 to create, 3 to modify.

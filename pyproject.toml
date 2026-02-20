@@ -60,6 +60,9 @@ Issues = "https://github.com/neilpeterson/bicep-whatif-advisor/issues"
 where = ["."]
 include = ["bicep_whatif_advisor*"]
 
+[tool.setuptools.package-data]
+bicep_whatif_advisor = ["data/*.txt"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]

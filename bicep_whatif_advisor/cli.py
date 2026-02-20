@@ -1,17 +1,19 @@
 """CLI entry point for bicep-whatif-advisor."""
 
+import json
 import os
 import sys
-import json
 from typing import Optional
+
 import click
+
 from . import __version__
-from .input import read_stdin, InputError
+from .ci.platform import detect_platform
+from .input import InputError, read_stdin
+from .noise_filter import filter_whatif_text, load_builtin_patterns, load_user_patterns
 from .prompt import build_system_prompt, build_user_prompt
 from .providers import get_provider
-from .render import render_table, render_json, render_markdown, print_banner
-from .ci.platform import detect_platform
-from .noise_filter import apply_noise_filtering
+from .render import print_banner, render_json, render_markdown, render_table
 
 
 def extract_json(text: str) -> dict:
@@ -250,13 +252,18 @@ def filter_by_confidence(data: dict) -> tuple[dict, dict]:
     "--noise-file",
     type=str,
     default=None,
-    help="Path to noise patterns file for summary-based filtering"
+    help="Path to additional noise patterns file (additive with built-in patterns)"
 )
 @click.option(
     "--noise-threshold",
     type=int,
     default=80,
-    help="Similarity threshold percentage for noise pattern matching (default: 80)"
+    help="Similarity threshold percentage for 'fuzzy:' prefix patterns only (default: 80)"
+)
+@click.option(
+    "--no-builtin-patterns",
+    is_flag=True,
+    help="Disable the built-in Azure What-If noise patterns"
 )
 @click.version_option(version=__version__)
 def main(
@@ -282,7 +289,8 @@ def main(
     skip_operations: bool,
     comment_title: str,
     noise_file: str,
-    noise_threshold: int
+    noise_threshold: int,
+    no_builtin_patterns: bool
 ):
     """Analyze Azure What-If deployment output using LLMs.
 
@@ -377,6 +385,31 @@ def main(
                 sys.stderr.write("   Remove one or more --skip-* flags to enable risk assessment.\n")
                 sys.exit(2)
 
+        # Apply pre-LLM noise filtering to raw What-If text
+        noise_patterns = []
+        if not no_builtin_patterns:
+            noise_patterns.extend(load_builtin_patterns())
+        if noise_file:
+            try:
+                noise_patterns.extend(load_user_patterns(noise_file))
+            except FileNotFoundError as e:
+                sys.stderr.write(f"Error: {e}\n")
+                sys.exit(2)
+            except IOError as e:
+                sys.stderr.write(f"Error reading noise file: {e}\n")
+                sys.exit(2)
+
+        if noise_patterns:
+            fuzzy_threshold = noise_threshold / 100.0
+            whatif_content, num_filtered = filter_whatif_text(
+                whatif_content, noise_patterns, fuzzy_threshold
+            )
+            if num_filtered > 0:
+                sys.stderr.write(
+                    f"🔕 Pre-filtered {num_filtered} known-noisy property "
+                    f"line(s) from What-If output\n"
+                )
+
         # Get provider
         llm_provider = get_provider(provider, model)
 
@@ -426,24 +459,6 @@ def main(
                 resource["confidence_level"] = "medium"  # Default to include in analysis
             if "confidence_reason" not in resource:
                 resource["confidence_reason"] = "No confidence assessment provided"
-
-        # Apply summary-based noise filtering (if noise file provided)
-        if noise_file:
-            try:
-                # Convert threshold from percentage to ratio (0-1)
-                threshold_ratio = noise_threshold / 100.0
-                data = apply_noise_filtering(data, noise_file, threshold_ratio)
-            except FileNotFoundError as e:
-                sys.stderr.write(f"Error: {e}\n")
-                sys.exit(2)
-            except IOError as e:
-                sys.stderr.write(f"Error reading noise file: {e}\n")
-                sys.exit(2)
-
-        # TODO: Add --show-all-confidence flag to display medium/high/low separately
-        # TODO: Consider adding --confidence-threshold to make filtering configurable
-        # TODO: If LLM-only confidence scoring proves unreliable, evaluate hybrid
-        #       approach combining LLM + hardcoded noise patterns
 
         # Filter by confidence (always-on behavior)
         high_confidence_data, low_confidence_data = filter_by_confidence(data)
