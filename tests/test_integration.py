@@ -4,9 +4,9 @@ import json
 
 import pytest
 from click.testing import CliRunner
+from conftest import MockProvider
 
 from bicep_whatif_advisor.cli import main
-from conftest import MockProvider
 
 
 def _runner():
