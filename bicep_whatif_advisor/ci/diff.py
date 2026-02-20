@@ -1,8 +1,8 @@
 """Git diff collection for CI mode."""
 
+import os
 import subprocess
 import sys
-import os
 
 
 def get_diff(diff_path: str = None, diff_ref: str = "HEAD~1") -> str:
@@ -25,7 +25,7 @@ def get_diff(diff_path: str = None, diff_ref: str = "HEAD~1") -> str:
             sys.exit(1)
 
         try:
-            with open(diff_path, 'r') as f:
+            with open(diff_path, "r") as f:
                 return f.read()
         except Exception as e:
             sys.stderr.write(f"Error reading diff file: {e}\n")
@@ -35,10 +35,7 @@ def get_diff(diff_path: str = None, diff_ref: str = "HEAD~1") -> str:
         # Run git diff
         try:
             result = subprocess.run(
-                ["git", "diff", diff_ref],
-                capture_output=True,
-                text=True,
-                timeout=30
+                ["git", "diff", diff_ref], capture_output=True, text=True, timeout=30
             )
 
             if result.returncode != 0:
@@ -54,8 +51,7 @@ def get_diff(diff_path: str = None, diff_ref: str = "HEAD~1") -> str:
 
         except FileNotFoundError:
             sys.stderr.write(
-                "Error: git command not found.\n"
-                "Install git or provide diff via --diff flag.\n"
+                "Error: git command not found.\nInstall git or provide diff via --diff flag.\n"
             )
             sys.exit(1)
 

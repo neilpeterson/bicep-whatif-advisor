@@ -1,6 +1,6 @@
 """Risk bucket evaluation for CI mode deployment gates."""
 
-from typing import Tuple, List, Dict, Any
+from typing import Any, Dict, List, Tuple
 
 # Import risk levels from verdict module
 from .verdict import RISK_LEVELS
@@ -24,7 +24,7 @@ def evaluate_risk_buckets(
     enabled_buckets: List[str],
     drift_threshold: str = "high",
     intent_threshold: str = "high",
-    operations_threshold: str = "high"
+    operations_threshold: str = "high",
 ) -> Tuple[bool, List[str], Dict[str, Any]]:
     """Evaluate enabled risk buckets and determine if deployment is safe.
 
@@ -33,7 +33,8 @@ def evaluate_risk_buckets(
     out before calling this function to avoid noise contaminating risk assessment.
 
     Args:
-        data: Parsed LLM response with risk_assessment (should contain only high-confidence resources)
+        data: Parsed LLM response with risk_assessment
+              (should contain only high-confidence resources)
         enabled_buckets: List of bucket IDs to evaluate (e.g., ["drift", "operations"])
         drift_threshold: Risk threshold for drift bucket (only used if enabled)
         intent_threshold: Risk threshold for intent bucket (only used if enabled)
@@ -51,7 +52,7 @@ def evaluate_risk_buckets(
             default_assessment[bucket_id] = {
                 "risk_level": "low",
                 "concerns": [],
-                "reasoning": "No risk assessment provided"
+                "reasoning": "No risk assessment provided",
             }
         return True, [], default_assessment
 
@@ -59,7 +60,7 @@ def evaluate_risk_buckets(
     thresholds = {
         "drift": drift_threshold,
         "intent": intent_threshold,
-        "operations": operations_threshold
+        "operations": operations_threshold,
     }
 
     # Evaluate each enabled bucket

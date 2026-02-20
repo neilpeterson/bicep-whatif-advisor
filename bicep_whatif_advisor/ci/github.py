@@ -1,8 +1,8 @@
 """GitHub PR comment posting for CI mode."""
 
 import os
-import sys
 import re
+import sys
 
 
 def post_github_comment(markdown: str, pr_url: str = None) -> bool:
@@ -30,7 +30,7 @@ def post_github_comment(markdown: str, pr_url: str = None) -> bool:
     # Get repository and PR number
     if pr_url:
         # Parse from URL: https://github.com/owner/repo/pull/123
-        match = re.search(r'github\.com/([^/]+)/([^/]+)/pull/(\d+)', pr_url)
+        match = re.search(r"github\.com/([^/]+)/([^/]+)/pull/(\d+)", pr_url)
         if not match:
             sys.stderr.write(f"Warning: Invalid GitHub PR URL: {pr_url}\n")
             return False
@@ -41,7 +41,7 @@ def post_github_comment(markdown: str, pr_url: str = None) -> bool:
 
         # Try to get PR number from GITHUB_REF (format: refs/pull/123/merge)
         github_ref = os.environ.get("GITHUB_REF", "")
-        pr_match = re.search(r'refs/pull/(\d+)/', github_ref)
+        pr_match = re.search(r"refs/pull/(\d+)/", github_ref)
 
         if not repository or not pr_match:
             sys.stderr.write(
@@ -64,10 +64,7 @@ def post_github_comment(markdown: str, pr_url: str = None) -> bool:
 
     # Post comment via GitHub API
     url = f"https://api.github.com/repos/{owner}/{repo}/issues/{pr_number}/comments"
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Accept": "application/vnd.github.v3+json"
-    }
+    headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github.v3+json"}
     payload = {"body": markdown}
 
     try:

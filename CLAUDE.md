@@ -21,7 +21,7 @@ az deployment group what-if -g my-rg -f main.bicep | bicep-whatif-advisor
 The implementation follows this structure:
 
 ```
-bicep-bicep-whatif-advisor/       # Root directory
+bicep-whatif-advisor/             # Root directory
 ├── bicep_whatif_advisor/         # Main Python package
 │   ├── __init__.py
 │   ├── cli.py              # Entry point using click
@@ -38,15 +38,36 @@ bicep-bicep-whatif-advisor/       # Root directory
 │   │   └── ollama.py       # Ollama provider
 │   └── ci/                 # CI/CD deployment gate features
 │       ├── __init__.py
+│       ├── buckets.py      # Risk bucket registry and definitions
+│       ├── platform.py     # CI/CD platform auto-detection
+│       ├── risk_buckets.py # Risk evaluation and threshold logic
 │       ├── diff.py         # Git diff collection
 │       ├── verdict.py      # Safety verdict evaluation
 │       ├── github.py       # GitHub PR comments
 │       └── azdevops.py     # Azure DevOps PR comments
 ├── tests/
+│   ├── conftest.py         # Shared fixtures, MockProvider, sample responses
 │   ├── fixtures/           # Sample What-If outputs
-│   └── sample-bicep-deployment/  # Example Bicep template for testing
+│   ├── sample-bicep-deployment/  # Example Bicep template for testing
+│   ├── test_input.py       # Input validation tests
+│   ├── test_noise_filter.py # Noise filtering tests
+│   ├── test_buckets.py     # Risk bucket registry tests
+│   ├── test_risk_buckets.py # Risk evaluation tests
+│   ├── test_prompt.py      # Prompt construction tests
+│   ├── test_render.py      # Output rendering tests
+│   ├── test_platform.py    # Platform detection tests
+│   ├── test_diff.py        # Git diff tests
+│   ├── test_providers.py   # Provider system tests
+│   ├── test_github.py      # GitHub PR comment tests
+│   ├── test_azdevops.py    # Azure DevOps PR comment tests
+│   ├── test_cli.py         # CLI entry point tests
+│   └── test_integration.py # End-to-end pipeline tests
+├── .github/workflows/
+│   ├── test.yml            # CI test suite (Python 3.9/3.11/3.13)
+│   ├── publish-pypi.yml    # PyPI publishing on release
+│   └── bicep-sample-pipeline.yml  # Sample Bicep deployment pipeline
 ├── docs/                   # Documentation
-│   ├── specs/              # Technical specifications (00-11)
+│   ├── specs/              # Technical specifications (00-12)
 │   │   ├── 00-OVERVIEW.md
 │   │   ├── 01-CLI-INTERFACE.md
 │   │   ├── 02-INPUT-VALIDATION.md
@@ -58,7 +79,8 @@ bicep-bicep-whatif-advisor/       # Root directory
 │   │   ├── 08-RISK-ASSESSMENT.md
 │   │   ├── 09-PR-INTEGRATION.md
 │   │   ├── 10-GIT-DIFF.md
-│   │   └── 11-TESTING-STRATEGY.md
+│   │   ├── 11-TESTING-STRATEGY.md
+│   │   └── 12-BACKLOG.md
 │   └── guides/             # User guides
 │       ├── QUICKSTART.md
 │       ├── USER_GUIDE.md
@@ -357,9 +379,21 @@ cat whatif-output.txt | bicep-whatif-advisor --ci --skip-intent
 cat whatif-output.txt | bicep-whatif-advisor --ci --skip-drift --skip-intent
 ```
 
-## Testing Strategy
+## Testing
 
-Required test fixtures in `tests/fixtures/`:
+**Test suite:** 223 tests (214 unit + 9 integration), ~82% coverage, runs in ~1.5s.
+
+**Run tests:**
+```bash
+pytest                              # Run all tests
+pytest -m unit                      # Unit tests only
+pytest -m integration               # Integration tests only
+pytest --cov=bicep_whatif_advisor    # With coverage report
+```
+
+**CI workflow:** `.github/workflows/test.yml` runs tests on Python 3.9, 3.11, and 3.13 with lint/format checks.
+
+**Test fixtures in `tests/fixtures/`:**
 - `create_only.txt` — Only create operations
 - `mixed_changes.txt` — Creates, modifies, and deletes
 - `deletes.txt` — Only deletion operations
@@ -367,7 +401,7 @@ Required test fixtures in `tests/fixtures/`:
 - `large_output.txt` — 50+ resources for truncation testing
 - `noisy_changes.txt` — Real changes mixed with known-noisy properties (etag, provisioningState, IPv6)
 
-Mock LLM providers in tests to avoid API calls during unit testing.
+All tests use `MockProvider` from `conftest.py` — no real API calls during testing.
 
 ## Future Improvements / Backlog
 
@@ -379,10 +413,9 @@ Mock LLM providers in tests to avoid API calls during unit testing.
    - Add native auto-detection for GitLab CI, Jenkins, CircleCI
    - Currently supported via manual `--ci` flag
 
-2. **Test Coverage**
-   - Implement Python test suite (fixtures exist, test framework to be added)
-   - Add integration tests with real LLM providers
-   - Mock-based unit tests for all modules
+2. **Test Coverage** ✅ **COMPLETED**
+   - 223 tests (214 unit + 9 integration), ~82% coverage
+   - CI workflow on Python 3.9/3.11/3.13
 
 3. **Enhanced Noise Filtering** (pre-LLM property filtering ✅ implemented)
    - Configurable confidence thresholds (currently hardcoded)

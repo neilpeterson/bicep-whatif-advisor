@@ -56,20 +56,13 @@ Auto-detection is currently implemented for GitHub Actions and Azure DevOps. Use
 
 ## F-03: Test Coverage
 
-**Status:** Open
+**Status:** ✅ Completed
 **Area:** Testing
 **Related spec:** 11-TESTING-STRATEGY.md
 
-### Problem
+### Resolution
 
-Fixtures exist in `tests/fixtures/` but there is no automated test suite. Changes to prompt logic, risk classification, or rendering are unverified until manual testing.
-
-### Goals
-
-- Unit tests with mocked LLM providers for all modules
-- Cover the noise filtering + recalculation flow (known edge case: all resources filtered → false positive drift)
-- Cover CI mode verdict logic across all threshold combinations
-- Integration test path using fixture files end-to-end
+Implemented 223 tests (214 unit + 9 integration) with ~82% overall coverage. CI workflow runs on Python 3.9, 3.11, and 3.13. All modules covered including noise filtering recalculation flow, CI mode verdict logic, and end-to-end fixture-based integration tests.
 
 ---
 

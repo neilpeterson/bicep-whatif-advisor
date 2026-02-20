@@ -37,21 +37,22 @@ _CHANGE_SYMBOLS = frozenset({"+", "-", "~"})
 class ParsedPattern:
     """A noise pattern parsed from a patterns file."""
 
-    raw: str           # Original line from the file
+    raw: str  # Original line from the file
     pattern_type: str  # "keyword", "regex", or "fuzzy"
-    value: str         # The pattern value to match against
+    value: str  # The pattern value to match against
 
 
 # ---------------------------------------------------------------------------
 # Pattern loading
 # ---------------------------------------------------------------------------
 
+
 def _parse_pattern_line(line: str) -> ParsedPattern:
     """Parse a single patterns-file line, detecting its prefix type."""
     if line.startswith("regex:"):
-        return ParsedPattern(raw=line, pattern_type="regex", value=line[len("regex:"):].strip())
+        return ParsedPattern(raw=line, pattern_type="regex", value=line[len("regex:") :].strip())
     if line.startswith("fuzzy:"):
-        return ParsedPattern(raw=line, pattern_type="fuzzy", value=line[len("fuzzy:"):].strip())
+        return ParsedPattern(raw=line, pattern_type="fuzzy", value=line[len("fuzzy:") :].strip())
     return ParsedPattern(raw=line, pattern_type="keyword", value=line)
 
 
@@ -101,6 +102,7 @@ def load_user_patterns(file_path: str) -> list:
 # Line classification and matching
 # ---------------------------------------------------------------------------
 
+
 def _is_property_change_line(line: str) -> bool:
     """Return True if this line is a property-level change line in What-If output.
 
@@ -146,6 +148,7 @@ def _matches_pattern(line: str, pattern: ParsedPattern, fuzzy_threshold: float =
 # Main filtering function
 # ---------------------------------------------------------------------------
 
+
 def filter_whatif_text(
     whatif_content: str,
     patterns: list,
@@ -185,6 +188,7 @@ def filter_whatif_text(
 # ---------------------------------------------------------------------------
 # Legacy helpers — kept for backwards compatibility with any external callers
 # ---------------------------------------------------------------------------
+
 
 def load_noise_patterns(file_path: str) -> list:
     """Load raw pattern strings from a file (legacy helper).

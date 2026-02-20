@@ -3,6 +3,7 @@
 import os
 import sys
 import time
+
 from . import Provider
 
 
@@ -59,16 +60,13 @@ class AnthropicProvider(Provider):
                     max_tokens=4096,
                     temperature=0,
                     system=system_prompt,
-                    messages=[
-                        {"role": "user", "content": user_prompt}
-                    ]
+                    messages=[{"role": "user", "content": user_prompt}],
                 )
                 return response.content[0].text
 
             except RateLimitError as e:
                 sys.stderr.write(
-                    f"Error: Rate limited by Anthropic API.\n"
-                    f"Try again in a moment. Details: {e}\n"
+                    f"Error: Rate limited by Anthropic API.\nTry again in a moment. Details: {e}\n"
                 )
                 sys.exit(1)
 
@@ -87,10 +85,7 @@ class AnthropicProvider(Provider):
                     sys.exit(1)
 
             except Exception as e:
-                sys.stderr.write(
-                    f"Error: Unexpected error calling Anthropic API.\n"
-                    f"Details: {e}\n"
-                )
+                sys.stderr.write(f"Error: Unexpected error calling Anthropic API.\nDetails: {e}\n")
                 sys.exit(1)
 
         # Should not reach here

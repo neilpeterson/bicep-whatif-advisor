@@ -1,10 +1,10 @@
 """Unified CI/CD platform detection for GitHub Actions and Azure DevOps."""
 
-import os
 import json
+import os
 import sys
 from dataclasses import dataclass
-from typing import Optional, Literal
+from typing import Literal, Optional
 
 PlatformType = Literal["github", "azuredevops", "local"]
 
@@ -99,7 +99,7 @@ def _detect_github() -> PlatformContext:
         event_path = os.environ.get("GITHUB_EVENT_PATH")
         if event_path and os.path.exists(event_path):
             try:
-                with open(event_path, 'r', encoding='utf-8') as f:
+                with open(event_path, "r", encoding="utf-8") as f:
                     event_data = json.load(f)
                     pr_data = event_data.get("pull_request", {})
 
@@ -113,9 +113,7 @@ def _detect_github() -> PlatformContext:
 
             except (OSError, json.JSONDecodeError) as e:
                 # Failed to read event file - metadata unavailable
-                sys.stderr.write(
-                    f"Warning: Could not read GitHub event file: {e}\n"
-                )
+                sys.stderr.write(f"Warning: Could not read GitHub event file: {e}\n")
 
     return ctx
 
@@ -195,10 +193,7 @@ def _fetch_ado_pr_metadata(ctx: PlatformContext) -> tuple[Optional[str], Optiona
 
     # Make API request
     try:
-        headers = {
-            "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json"
-        }
+        headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
 
         response = requests.get(api_url, headers=headers, timeout=10)
         response.raise_for_status()
@@ -216,7 +211,9 @@ def _fetch_ado_pr_metadata(ctx: PlatformContext) -> tuple[Optional[str], Optiona
 
         if pr_description:
             desc_lines = len(pr_description.splitlines())
-            sys.stderr.write(f"✅ Fetched PR description from Azure DevOps API ({desc_lines} lines)\n")
+            sys.stderr.write(
+                f"✅ Fetched PR description from Azure DevOps API ({desc_lines} lines)\n"
+            )
 
         return pr_title, pr_description
 
