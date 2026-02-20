@@ -306,7 +306,7 @@ elif action == "Modify" and property == "publicNetworkAccess":
 - Three-bucket system provides redundancy
 - Your thresholds control the final decision
 
-## Noise Filtering with Confidence Scoring
+## Noise Filtering
 
 Azure What-If output contains significant "noise" — false positives that aren't actual infrastructure changes. These can contaminate risk assessments and cause false alarms.
 
@@ -324,19 +324,34 @@ Azure What-If output contains significant "noise" — false positives that aren'
 - **Intent bucket:** PR says "Add 1 resource" but What-If shows 20 changes → intent misalignment false alarm
 - **Operations bucket:** Less affected, but still includes noise in analysis
 
-### The Solution
+### The Solution: Two Layers
 
-The tool uses **LLM-based confidence scoring** to intelligently filter noise:
+**Layer 1 — Pre-LLM property filtering (deterministic):**
 
-**How it works:**
+Known-noisy Azure property names are removed from the raw What-If text before the LLM call. This runs on every execution automatically.
 
 ```
-1. LLM analyzes each resource change
+Raw What-If text
+     ↓
+noise_filter.py strips property lines matching built-in keywords:
+  etag, provisioningState, resourceGuid, IPv6 flags, hidden tags, ...
+     ↓
+Cleaned What-If text → LLM
+```
+
+The LLM never sees these lines, so it cannot misreport them as real changes. Users can add project-specific patterns with `--noise-file` or disable built-ins with `--no-builtin-patterns`.
+
+**Layer 2 — Post-LLM confidence scoring (contextual):**
+
+The LLM assigns a confidence level to each remaining resource change, handling noise that is ambiguous or context-dependent.
+
+```
+1. LLM analyzes each remaining resource change
      ↓
 2. Assigns confidence level:
    - HIGH: Real infrastructure change
    - MEDIUM: Potentially real, uncertain
-   - LOW: Likely What-If noise
+   - LOW: Likely What-If noise the LLM identified
      ↓
 3. Filtering:
    - HIGH + MEDIUM: Included in risk analysis
@@ -409,20 +424,18 @@ The following changes were flagged as likely What-If noise and excluded from ris
 - Automatic filtering
 - Smart defaults
 
-### Why LLM-based?
+### Why Two Layers?
 
-**Instead of hardcoded patterns:**
-```python
-# What we DON'T do:
-if property in ["etag", "id", "provisioningState"]:
-    confidence = "low"
-```
+**Layer 1 (pre-LLM patterns) handles deterministic noise:**
+- Property names like `etag`, `provisioningState`, `resourceGuid` are reliably noise across all resource types
+- A single keyword covers every resource type that has that property
+- Runs before the LLM call, reducing token usage and eliminating false positives at the source
 
-**LLM advantages:**
-- ✅ Understands context (is this etag change part of a larger real change?)
-- ✅ Adapts to new noise patterns automatically
-- ✅ Handles nuance (IPv6 flags might be real or noise depending on context)
+**Layer 2 (LLM confidence) handles contextual noise:**
+- ✅ Understands context (is this change part of a larger real change?)
+- ✅ Handles nuance (some properties are real in certain contexts)
 - ✅ Explains reasoning for each confidence assessment
+- ✅ Catches novel noise patterns not in the built-in list
 
 ### JSON Output
 
@@ -443,22 +456,26 @@ When using `--format json`, both confidence levels are included:
 
 This allows custom post-processing if needed.
 
-### FAQ: Confidence Scoring
+### FAQ: Noise Filtering
 
-**Q: Can I disable confidence filtering?**
+**Q: Can I disable noise filtering?**
 
-A: Currently it's always-on. Future enhancement planned for `--no-confidence-filtering` flag.
-
-**Q: What if a real change is marked as low confidence?**
-
-A: Review the "Potential Noise" section output. If you see a real change incorrectly filtered:
-1. The LLM provides reasoning for each confidence assessment
-2. The change is still visible (not hidden)
-3. Report as an issue for improvement
+A: Partially. The two layers are independently controllable:
+- **Pre-LLM built-in patterns:** Disable with `--no-builtin-patterns`
+- **Pre-LLM custom patterns:** Only active when `--noise-file` is specified
+- **Post-LLM confidence scoring:** Always-on (future enhancement planned for a disable flag)
 
 **Q: Can I customize what's considered noise?**
 
-A: Not currently. Future enhancement planned for configurable confidence thresholds.
+A: Yes:
+- Add project-specific property keywords to `--noise-file` (one per line)
+- Use `regex:` prefix for complex property-path patterns
+- Use `--no-builtin-patterns` to replace built-ins with only your custom patterns
+- See [USER_GUIDE.md - Noise Filtering](./USER_GUIDE.md#noise-filtering) for full details
+
+**Q: What if a real change is incorrectly filtered?**
+
+A: All filtered items are still visible in the "Potential Noise" section — nothing is hidden. For pre-LLM filtering, check if a built-in pattern is too broad for your environment and use `--no-builtin-patterns` with a custom `--noise-file`. For post-LLM confidence filtering, the LLM provides reasoning for each assessment.
 
 **Q: Does this affect the drift/intent/operations buckets?**
 

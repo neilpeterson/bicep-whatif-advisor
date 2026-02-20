@@ -43,7 +43,8 @@ def main(
     no_block: bool,
     comment_title: str,
     noise_file: str,
-    noise_threshold: int
+    noise_threshold: int,
+    no_builtin_patterns: bool
 ):
     """Analyze Azure What-If deployment output using LLMs."""
 ```
@@ -184,14 +185,16 @@ bicep-whatif-advisor --ci \
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--bicep-dir` | String | `.` | Path to Bicep source files for context |
-| `--noise-file` | String | `None` | Path to noise patterns file |
-| `--noise-threshold` | Integer | `80` | Similarity threshold percentage (0-100) |
+| `--noise-file` | String | `None` | Path to custom noise patterns file (additive with built-ins) |
+| `--noise-threshold` | Integer | `80` | Similarity threshold % for `fuzzy:` prefix patterns only (0-100) |
+| `--no-builtin-patterns` | Flag | `False` | Disable the bundled built-in noise patterns |
 
 **Implementation:**
 ```python
 @click.option("--bicep-dir", type=str, default=".", help="Path to Bicep source files for context (CI mode only)")
-@click.option("--noise-file", type=str, default=None, help="Path to noise patterns file for summary-based filtering")
-@click.option("--noise-threshold", type=int, default=80, help="Similarity threshold percentage for noise pattern matching (default: 80)")
+@click.option("--noise-file", type=str, default=None, help="Path to additional noise patterns file (additive with built-in patterns)")
+@click.option("--noise-threshold", type=int, default=80, help="Similarity threshold percentage for 'fuzzy:' prefix patterns only (default: 80)")
+@click.option("--no-builtin-patterns", is_flag=True, help="Disable the built-in Azure What-If noise patterns")
 ```
 
 **Usage:**
@@ -199,8 +202,11 @@ bicep-whatif-advisor --ci \
 # Load Bicep source for context
 bicep-whatif-advisor --ci --bicep-dir ./infrastructure
 
-# Use custom noise patterns
-bicep-whatif-advisor --noise-file ./patterns.txt --noise-threshold 90
+# Add custom noise patterns (built-ins still active)
+bicep-whatif-advisor --noise-file ./patterns.txt
+
+# Use only custom patterns, disable built-ins
+bicep-whatif-advisor --no-builtin-patterns --noise-file ./patterns.txt --noise-threshold 90
 ```
 
 ## Orchestration Flow
@@ -228,29 +234,31 @@ def main(...):
             diff_content = get_diff(diff, diff_ref)
             bicep_content = _load_bicep_files(bicep_dir)
 
-        # 5. Get LLM provider
-        llm_provider = get_provider(provider, model)  # Line 341
+        # 5. Apply pre-LLM noise filtering
+        noise_patterns = load_builtin_patterns()  # Always loaded unless --no-builtin-patterns
+        if noise_file:
+            noise_patterns += load_user_patterns(noise_file)  # Additive with built-ins
+        whatif_content, num_filtered = filter_whatif_text(whatif_content, noise_patterns)
 
-        # 6. Build prompts
-        system_prompt = build_system_prompt(...)  # Lines 344-349
+        # 6. Get LLM provider
+        llm_provider = get_provider(provider, model)
+
+        # 7. Build prompts (receives already-cleaned whatif_content)
+        system_prompt = build_system_prompt(...)
         user_prompt = build_user_prompt(...)
 
-        # 7. Call LLM
-        response_text = llm_provider.complete(system_prompt, user_prompt)  # Line 359
+        # 8. Call LLM
+        response_text = llm_provider.complete(system_prompt, user_prompt)
 
-        # 8. Parse JSON response
-        data = extract_json(response_text)  # Lines 362-371
+        # 9. Parse JSON response
+        data = extract_json(response_text)
 
-        # 9. Validate required fields
-        if "resources" not in data:  # Lines 374-380
+        # 10. Validate required fields
+        if "resources" not in data:
             # Warn and add empty list
 
-        # 10. Apply noise filtering (optional)
-        if noise_file:  # Lines 390-400
-            data = apply_noise_filtering(data, noise_file, threshold_ratio)
-
-        # 11. Filter by confidence
-        high_confidence_data, low_confidence_data = filter_by_confidence(data)  # Line 408
+        # 11. Filter by LLM-assigned confidence
+        high_confidence_data, low_confidence_data = filter_by_confidence(data)
 
         # 12. Re-analyze if noise filtered in CI mode
         if ci and low_confidence_data.get("resources"):  # Lines 413-478
