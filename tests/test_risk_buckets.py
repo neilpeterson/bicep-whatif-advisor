@@ -11,7 +11,6 @@ from bicep_whatif_advisor.ci.risk_buckets import (
 
 @pytest.mark.unit
 class TestValidateRiskLevel:
-
     def test_valid_low(self):
         assert _validate_risk_level("low") == "low"
 
@@ -50,7 +49,6 @@ def test_exceeds_threshold(risk_level, threshold, expected):
 
 @pytest.mark.unit
 class TestEvaluateRiskBuckets:
-
     def test_safe_all_low(self):
         data = {
             "risk_assessment": {
@@ -80,7 +78,11 @@ class TestEvaluateRiskBuckets:
     def test_unsafe_drift_medium_with_medium_threshold(self):
         data = {
             "risk_assessment": {
-                "drift": {"risk_level": "medium", "concerns": ["drift found"], "reasoning": "drift"},
+                "drift": {
+                    "risk_level": "medium",
+                    "concerns": ["drift found"],
+                    "reasoning": "drift",
+                },
                 "operations": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
             }
         }
@@ -145,7 +147,5 @@ class TestEvaluateRiskBuckets:
                 "drift": {"risk_level": "EXTREME", "concerns": [], "reasoning": ""},
             }
         }
-        is_safe, failed, ra = evaluate_risk_buckets(
-            data, ["drift"], "high", "high", "high"
-        )
+        is_safe, failed, ra = evaluate_risk_buckets(data, ["drift"], "high", "high", "high")
         assert is_safe is True  # Invalid -> "low" -> below "high" threshold

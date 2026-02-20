@@ -3,6 +3,7 @@
 import os
 import sys
 import time
+
 from . import Provider
 
 
@@ -51,9 +52,7 @@ class OllamaProvider(Provider):
             "model": self.model,
             "prompt": combined_prompt,
             "stream": False,
-            "options": {
-                "temperature": 0
-            }
+            "options": {"temperature": 0},
         }
 
         # Try with automatic retry on network errors
@@ -68,7 +67,7 @@ class OllamaProvider(Provider):
             except requests.exceptions.ConnectionError:
                 if attempt == 0:
                     # First attempt failed, retry once
-                    sys.stderr.write(f"Connection error, retrying...\n")
+                    sys.stderr.write("Connection error, retrying...\n")
                     time.sleep(1)
                     continue
                 else:
@@ -82,23 +81,17 @@ class OllamaProvider(Provider):
 
             except requests.exceptions.Timeout:
                 sys.stderr.write(
-                    f"Error: Request to Ollama timed out.\n"
-                    f"The model may be too slow or the prompt too large.\n"
+                    "Error: Request to Ollama timed out.\n"
+                    "The model may be too slow or the prompt too large.\n"
                 )
                 sys.exit(1)
 
             except requests.exceptions.HTTPError as e:
-                sys.stderr.write(
-                    f"Error: HTTP error from Ollama API.\n"
-                    f"Details: {e}\n"
-                )
+                sys.stderr.write(f"Error: HTTP error from Ollama API.\nDetails: {e}\n")
                 sys.exit(1)
 
             except Exception as e:
-                sys.stderr.write(
-                    f"Error: Unexpected error calling Ollama API.\n"
-                    f"Details: {e}\n"
-                )
+                sys.stderr.write(f"Error: Unexpected error calling Ollama API.\nDetails: {e}\n")
                 sys.exit(1)
 
         # Should not reach here

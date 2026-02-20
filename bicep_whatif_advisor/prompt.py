@@ -6,7 +6,7 @@ def build_system_prompt(
     ci_mode: bool = False,
     pr_title: str = None,
     pr_description: str = None,
-    enabled_buckets: list = None
+    enabled_buckets: list = None,
 ) -> str:
     """Build the system prompt for the LLM.
 
@@ -29,7 +29,7 @@ def build_system_prompt(
 
 def _build_standard_system_prompt(verbose: bool) -> str:
     """Build system prompt for standard (non-CI) mode."""
-    base_schema = '''{
+    base_schema = """{
   "resources": [
     {
       "resource_name": "string — the short resource name",
@@ -41,14 +41,14 @@ def _build_standard_system_prompt(verbose: bool) -> str:
     }
   ],
   "overall_summary": "string — brief summary with action counts and intent"
-}'''
+}"""
 
-    verbose_addition = '''
+    verbose_addition = """
 For resources with action "Modify", also include a "changes" field:
 an array of strings describing each property-level change.
-'''
+"""
 
-    confidence_instructions = '''
+    confidence_instructions = """
 
 ## Confidence Assessment
 
@@ -71,14 +71,14 @@ For each resource, assess confidence that the change is REAL vs Azure What-If no
 - Computed properties (resourceGuid)
 - Read-only or system-managed properties
 
-Use your judgment - these are guidelines, not rigid patterns.'''
+Use your judgment - these are guidelines, not rigid patterns."""
 
-    prompt = f'''You are an Azure infrastructure expert. You analyze Azure Resource Manager
+    prompt = f"""You are an Azure infrastructure expert. You analyze Azure Resource Manager
 What-If deployment output and produce concise, accurate summaries.
 
 You must respond with ONLY valid JSON matching this schema, no other text:
 
-{base_schema}'''
+{base_schema}"""
 
     if verbose:
         prompt += "\n" + verbose_addition
@@ -89,9 +89,7 @@ You must respond with ONLY valid JSON matching this schema, no other text:
 
 
 def _build_ci_system_prompt(
-    pr_title: str = None,
-    pr_description: str = None,
-    enabled_buckets: list = None
+    pr_title: str = None, pr_description: str = None, enabled_buckets: list = None
 ) -> str:
     """Build system prompt for CI mode with risk assessment.
 
@@ -108,27 +106,25 @@ def _build_ci_system_prompt(
 
     # Default to all buckets if not specified
     if enabled_buckets is None:
-        enabled_buckets = get_enabled_buckets(
-            has_pr_metadata=bool(pr_title or pr_description)
-        )
+        enabled_buckets = get_enabled_buckets(has_pr_metadata=bool(pr_title or pr_description))
 
-    base_prompt = '''You are an Azure infrastructure deployment safety reviewer. You are given:
+    base_prompt = """You are an Azure infrastructure deployment safety reviewer. You are given:
 1. The Azure What-If output showing planned infrastructure changes
-2. The source code diff (Bicep/ARM template changes) that produced these changes'''
+2. The source code diff (Bicep/ARM template changes) that produced these changes"""
 
     # Add PR intent context if available and intent bucket is enabled
     if (pr_title or pr_description) and "intent" in enabled_buckets:
         base_prompt += (
-            '\n3. The pull request title and description stating the '
-            'INTENDED purpose of this change'
+            "\n3. The pull request title and description stating the "
+            "INTENDED purpose of this change"
         )
 
     # Dynamic bucket count
     bucket_count = len(enabled_buckets)
     bucket_word = "bucket" if bucket_count == 1 else "buckets"
     base_prompt += (
-        f'\n\nEvaluate the deployment for safety and correctness across '
-        f'{bucket_count} independent risk {bucket_word}:'
+        f"\n\nEvaluate the deployment for safety and correctness across "
+        f"{bucket_count} independent risk {bucket_word}:"
     )
 
     # Build risk_assessment schema dynamically based on enabled buckets
@@ -142,17 +138,17 @@ def _build_ci_system_prompt(
     }}''')
 
     risk_assessment_block = ",\n".join(risk_buckets_schema)
-    risk_assessment_schema = f'''"risk_assessment": {{
+    risk_assessment_schema = f""""risk_assessment": {{
 {risk_assessment_block}
-  }}'''
+  }}"""
 
     # Build instructions for each enabled bucket
     bucket_instructions_list = []
     for i, bucket_id in enumerate(enabled_buckets, 1):
         bucket = RISK_BUCKETS[bucket_id]
-        bucket_instructions_list.append(f'''
+        bucket_instructions_list.append(f"""
 ## Risk Bucket {i}: {bucket.display_name}
-{bucket.prompt_instructions}''')
+{bucket.prompt_instructions}""")
 
     bucket_instructions = "\n".join(bucket_instructions_list)
 
@@ -165,7 +161,7 @@ def _build_ci_system_prompt(
     "reasoning": "string — 2-3 sentence explanation considering all buckets"
   }}'''
 
-    confidence_instructions = '''
+    confidence_instructions = """
 
 ## Confidence Assessment
 
@@ -188,9 +184,13 @@ For each resource, assess confidence that the change is REAL vs Azure What-If no
 - Computed properties (resourceGuid)
 - Read-only or system-managed properties
 
-Use your judgment - these are guidelines, not rigid patterns.'''
+Use your judgment - these are guidelines, not rigid patterns."""
 
-    return base_prompt + bucket_instructions + confidence_instructions + f'''
+    return (
+        base_prompt
+        + bucket_instructions
+        + confidence_instructions
+        + f"""
 
 Respond with ONLY valid JSON matching this schema:
 
@@ -210,7 +210,8 @@ Respond with ONLY valid JSON matching this schema:
   "overall_summary": "string",
   {risk_assessment_schema},
   {verdict_schema}
-}}'''
+}}"""
+    )
 
 
 def build_user_prompt(
@@ -218,7 +219,7 @@ def build_user_prompt(
     diff_content: str = None,
     bicep_content: str = None,
     pr_title: str = None,
-    pr_description: str = None
+    pr_description: str = None,
 ) -> str:
     """Build the user prompt with What-If output and optional context.
 
@@ -234,18 +235,18 @@ def build_user_prompt(
     """
     if diff_content is not None:
         # CI mode with diff
-        prompt = f'''Review this Azure deployment for safety.'''
+        prompt = """Review this Azure deployment for safety."""
 
         # Add PR intent context if available
         if pr_title or pr_description:
-            prompt += f'''
+            prompt += f"""
 
 <pull_request_intent>
 Title: {pr_title or "Not provided"}
 Description: {pr_description or "Not provided"}
-</pull_request_intent>'''
+</pull_request_intent>"""
 
-        prompt += f'''
+        prompt += f"""
 
 <whatif_output>
 {whatif_content}
@@ -253,20 +254,20 @@ Description: {pr_description or "Not provided"}
 
 <code_diff>
 {diff_content}
-</code_diff>'''
+</code_diff>"""
 
         if bicep_content:
-            prompt += f'''
+            prompt += f"""
 
 <bicep_source>
 {bicep_content}
-</bicep_source>'''
+</bicep_source>"""
 
         return prompt
     else:
         # Standard mode
-        return f'''Analyze the following Azure What-If output:
+        return f"""Analyze the following Azure What-If output:
 
 <whatif_output>
 {whatif_content}
-</whatif_output>'''
+</whatif_output>"""

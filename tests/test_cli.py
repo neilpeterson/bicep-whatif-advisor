@@ -12,14 +12,13 @@ from bicep_whatif_advisor.cli import (
     main,
 )
 
-
 # ---------------------------------------------------------------------------
 # extract_json
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestExtractJson:
-
     def test_pure_json(self):
         result = extract_json('{"key": "value"}')
         assert result == {"key": "value"}
@@ -53,7 +52,7 @@ class TestExtractJson:
             extract_json("{invalid json content]")
 
     def test_markdown_fenced_json(self):
-        text = "```json\n{\"resources\": []}\n```"
+        text = '```json\n{"resources": []}\n```'
         result = extract_json(text)
         assert result == {"resources": []}
 
@@ -62,9 +61,9 @@ class TestExtractJson:
 # filter_by_confidence
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestFilterByConfidence:
-
     def test_splits_by_confidence(self):
         data = {
             "resources": [
@@ -115,9 +114,9 @@ class TestFilterByConfidence:
 # _load_bicep_files
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestLoadBicepFiles:
-
     def test_loads_bicep_files(self, tmp_path):
         bicep = tmp_path / "main.bicep"
         bicep.write_text("param location string")
@@ -151,9 +150,9 @@ class TestLoadBicepFiles:
 # CLI invocations via CliRunner
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestCLIMain:
-
     def _make_runner(self):
         return CliRunner(mix_stderr=False)
 
@@ -172,7 +171,9 @@ class TestCLIMain:
         result = runner.invoke(main, [], input=None)
         assert result.exit_code == 2
 
-    def test_standard_mode_table_output(self, clean_env, monkeypatch, mocker, sample_standard_response):
+    def test_standard_mode_table_output(
+        self, clean_env, monkeypatch, mocker, sample_standard_response
+    ):
         runner = self._make_runner()
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
         mocker.patch(
@@ -185,7 +186,9 @@ class TestCLIMain:
         parsed = json.loads(result.output)
         assert "high_confidence" in parsed
 
-    def test_standard_mode_markdown_output(self, clean_env, monkeypatch, mocker, sample_standard_response):
+    def test_standard_mode_markdown_output(
+        self, clean_env, monkeypatch, mocker, sample_standard_response
+    ):
         runner = self._make_runner()
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
         mocker.patch(
@@ -221,7 +224,9 @@ class TestCLIMain:
         result = runner.invoke(main, ["--ci", "--format", "json"], input=whatif_input)
         assert result.exit_code == 1
 
-    def test_ci_mode_no_block_exit_0(self, clean_env, monkeypatch, mocker, sample_ci_response_unsafe):
+    def test_ci_mode_no_block_exit_0(
+        self, clean_env, monkeypatch, mocker, sample_ci_response_unsafe
+    ):
         runner = self._make_runner()
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
         mocker.patch(
@@ -250,6 +255,7 @@ class TestCLIMain:
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
 
         from tests.conftest import MockProvider
+
         provider = MockProvider(response="This is not valid JSON at all")
         mocker.patch("bicep_whatif_advisor.cli.get_provider", return_value=provider)
 
@@ -287,7 +293,9 @@ class TestCLIMain:
             return_value=_mock_provider(sample_standard_response),
         )
         whatif_input = "Resource changes: 1\n+ Microsoft.Storage/test"
-        result = runner.invoke(main, ["--provider", "anthropic", "--format", "json"], input=whatif_input)
+        result = runner.invoke(
+            main, ["--provider", "anthropic", "--format", "json"], input=whatif_input
+        )
         assert result.exit_code == 0
         mock_get.assert_called_once_with("anthropic", None)
 
@@ -296,7 +304,9 @@ class TestCLIMain:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _mock_provider(response: dict):
     """Create a MockProvider that returns the given response dict."""
     from tests.conftest import MockProvider
+
     return MockProvider(response=response)

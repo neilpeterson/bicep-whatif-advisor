@@ -7,7 +7,6 @@ from bicep_whatif_advisor.prompt import build_system_prompt, build_user_prompt
 
 @pytest.mark.unit
 class TestBuildSystemPrompt:
-
     def test_standard_mode_returns_string(self):
         result = build_system_prompt()
         assert isinstance(result, str)
@@ -26,7 +25,7 @@ class TestBuildSystemPrompt:
 
     def test_standard_mode_non_verbose_no_changes_field(self):
         result = build_system_prompt(verbose=False)
-        assert "also include a \"changes\" field" not in result
+        assert 'also include a "changes" field' not in result
 
     def test_ci_mode_includes_risk_assessment(self):
         result = build_system_prompt(ci_mode=True)
@@ -52,9 +51,7 @@ class TestBuildSystemPrompt:
         assert "PR Intent Alignment" in result
 
     def test_ci_mode_custom_enabled_buckets(self):
-        result = build_system_prompt(
-            ci_mode=True, enabled_buckets=["operations"]
-        )
+        result = build_system_prompt(ci_mode=True, enabled_buckets=["operations"])
         assert "Risky Operations" in result
         assert "Infrastructure Drift" not in result
 
@@ -79,7 +76,6 @@ class TestBuildSystemPrompt:
 
 @pytest.mark.unit
 class TestBuildUserPrompt:
-
     def test_standard_mode_wraps_whatif(self):
         result = build_user_prompt(whatif_content="Resource changes: 1")
         assert "<whatif_output>" in result
@@ -87,9 +83,7 @@ class TestBuildUserPrompt:
         assert "Analyze the following Azure What-If output" in result
 
     def test_ci_mode_includes_diff(self):
-        result = build_user_prompt(
-            whatif_content="changes", diff_content="diff --git a/main.bicep"
-        )
+        result = build_user_prompt(whatif_content="changes", diff_content="diff --git a/main.bicep")
         assert "<code_diff>" in result
         assert "diff --git" in result
 

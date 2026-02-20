@@ -12,7 +12,6 @@ from bicep_whatif_advisor.ci.buckets import (
 
 @pytest.mark.unit
 class TestRiskBucketsRegistry:
-
     def test_registry_has_three_buckets(self):
         assert len(RISK_BUCKETS) == 3
 
@@ -41,7 +40,6 @@ class TestRiskBucketsRegistry:
 
 @pytest.mark.unit
 class TestGetEnabledBuckets:
-
     def test_default_no_pr_metadata(self):
         """Without PR metadata, intent is excluded by default."""
         result = get_enabled_buckets()
@@ -68,9 +66,7 @@ class TestGetEnabledBuckets:
         assert "drift" in result
 
     def test_skip_all_returns_empty(self):
-        result = get_enabled_buckets(
-            skip_drift=True, skip_intent=True, skip_operations=True
-        )
+        result = get_enabled_buckets(skip_drift=True, skip_intent=True, skip_operations=True)
         assert result == []
 
     def test_intent_not_enabled_without_pr_metadata_even_if_not_skipped(self):

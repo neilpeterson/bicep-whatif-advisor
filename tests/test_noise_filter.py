@@ -14,14 +14,13 @@ from bicep_whatif_advisor.noise_filter import (
     match_noise_pattern,
 )
 
-
 # ---------------------------------------------------------------------------
 # Pattern parsing
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestParsePatternLine:
-
     def test_keyword_pattern(self):
         p = _parse_pattern_line("etag")
         assert p.pattern_type == "keyword"
@@ -50,17 +49,17 @@ class TestParsePatternLine:
 # Property change line detection
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestIsPropertyChangeLine:
-
     def test_property_modify_line(self):
-        assert _is_property_change_line("      ~ properties.etag: \"old\" => \"new\"") is True
+        assert _is_property_change_line('      ~ properties.etag: "old" => "new"') is True
 
     def test_property_add_line(self):
-        assert _is_property_change_line("      + properties.newField: \"value\"") is True
+        assert _is_property_change_line('      + properties.newField: "value"') is True
 
     def test_property_remove_line(self):
-        assert _is_property_change_line("      - properties.oldField: \"value\"") is True
+        assert _is_property_change_line('      - properties.oldField: "value"') is True
 
     def test_resource_header_line_rejected(self):
         """Resource-level header (2-space indent) should not match."""
@@ -68,7 +67,7 @@ class TestIsPropertyChangeLine:
 
     def test_attribute_line_rejected(self):
         """Attribute lines (no change symbol) should not match."""
-        assert _is_property_change_line("      id:   \"/subscriptions/123\"") is False
+        assert _is_property_change_line('      id:   "/subscriptions/123"') is False
 
     def test_empty_line_rejected(self):
         assert _is_property_change_line("") is False
@@ -84,9 +83,9 @@ class TestIsPropertyChangeLine:
 # Pattern matching
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestMatchesPattern:
-
     def test_keyword_match_case_insensitive(self):
         p = ParsedPattern(raw="etag", pattern_type="keyword", value="etag")
         assert _matches_pattern("      ~ properties.ETAG: old => new", p) is True
@@ -126,9 +125,9 @@ class TestMatchesPattern:
 # filter_whatif_text
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestFilterWhatifText:
-
     def test_no_patterns_returns_unchanged(self):
         text = "some text\nmore lines\n"
         result, count = filter_whatif_text(text, [])
@@ -163,7 +162,9 @@ class TestFilterWhatifText:
         )
         patterns = [
             ParsedPattern(raw="etag", pattern_type="keyword", value="etag"),
-            ParsedPattern(raw="provisioningState", pattern_type="keyword", value="provisioningState"),
+            ParsedPattern(
+                raw="provisioningState", pattern_type="keyword", value="provisioningState"
+            ),
         ]
         result, count = filter_whatif_text(text, patterns)
         assert count == 2
@@ -180,9 +181,9 @@ class TestFilterWhatifText:
 # Pattern loading
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestLoadPatterns:
-
     def test_builtin_patterns_load_successfully(self):
         patterns = load_builtin_patterns()
         assert len(patterns) > 0
@@ -216,9 +217,9 @@ class TestLoadPatterns:
 # Legacy helpers
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.unit
 class TestLegacyHelpers:
-
     def test_calculate_similarity_identical(self):
         assert calculate_similarity("hello", "hello") == 1.0
 

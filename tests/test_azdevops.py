@@ -1,15 +1,13 @@
 """Tests for bicep_whatif_advisor.ci.azdevops module."""
 
-import requests
-
 import pytest
+import requests
 
 from bicep_whatif_advisor.ci.azdevops import post_azdevops_comment
 
 
 @pytest.mark.unit
 class TestPostAzDevOpsComment:
-
     @pytest.fixture
     def ado_env(self, monkeypatch):
         """Set all required ADO env vars."""
@@ -26,8 +24,13 @@ class TestPostAzDevOpsComment:
         assert result is False
 
     def test_missing_multiple_vars(self, monkeypatch):
-        for var in ["SYSTEM_ACCESSTOKEN", "SYSTEM_COLLECTIONURI", "SYSTEM_TEAMPROJECT",
-                     "SYSTEM_PULLREQUEST_PULLREQUESTID", "BUILD_REPOSITORY_ID"]:
+        for var in [
+            "SYSTEM_ACCESSTOKEN",
+            "SYSTEM_COLLECTIONURI",
+            "SYSTEM_TEAMPROJECT",
+            "SYSTEM_PULLREQUEST_PULLREQUESTID",
+            "BUILD_REPOSITORY_ID",
+        ]:
             monkeypatch.delenv(var, raising=False)
         result = post_azdevops_comment("test")
         assert result is False

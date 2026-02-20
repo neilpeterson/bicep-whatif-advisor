@@ -7,7 +7,6 @@ from bicep_whatif_advisor.providers import Provider, get_provider
 
 @pytest.mark.unit
 class TestProviderRegistry:
-
     def test_get_provider_invalid_name(self, clean_env):
         with pytest.raises(ValueError, match="Unknown provider"):
             get_provider("invalid-provider")
@@ -26,7 +25,6 @@ class TestProviderRegistry:
 
 @pytest.mark.unit
 class TestAnthropicProvider:
-
     def test_missing_api_key_exits(self, monkeypatch):
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
         with pytest.raises(SystemExit):
@@ -77,6 +75,7 @@ class TestAnthropicProvider:
 
         mock_client = mocker.Mock()
         from anthropic import RateLimitError
+
         mock_resp = mocker.Mock()
         mock_resp.status_code = 429
         mock_resp.headers = {}
@@ -99,6 +98,7 @@ class TestAnthropicProvider:
 
         mock_client = mocker.Mock()
         from anthropic import APIError
+
         err = APIError(
             message="server error",
             request=mocker.Mock(),
@@ -116,7 +116,6 @@ class TestAnthropicProvider:
 
 @pytest.mark.unit
 class TestAzureOpenAIProvider:
-
     def test_missing_env_vars_exits(self, monkeypatch):
         monkeypatch.delenv("AZURE_OPENAI_ENDPOINT", raising=False)
         monkeypatch.delenv("AZURE_OPENAI_API_KEY", raising=False)
@@ -151,7 +150,6 @@ class TestAzureOpenAIProvider:
 
 @pytest.mark.unit
 class TestOllamaProvider:
-
     def test_default_model_and_host(self, monkeypatch):
         monkeypatch.delenv("WHATIF_PROVIDER", raising=False)
         monkeypatch.delenv("WHATIF_MODEL", raising=False)
@@ -186,6 +184,7 @@ class TestOllamaProvider:
         provider = get_provider("ollama")
 
         import requests
+
         mocker.patch("requests.post", side_effect=requests.exceptions.ConnectionError("fail"))
         mocker.patch("time.sleep")
 
@@ -198,6 +197,7 @@ class TestOllamaProvider:
         provider = get_provider("ollama")
 
         import requests
+
         mocker.patch("requests.post", side_effect=requests.exceptions.Timeout("timeout"))
 
         with pytest.raises(SystemExit):

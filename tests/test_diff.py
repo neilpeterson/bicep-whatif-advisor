@@ -9,7 +9,6 @@ from bicep_whatif_advisor.ci.diff import get_diff
 
 @pytest.mark.unit
 class TestGetDiff:
-
     def test_reads_from_file(self, tmp_path):
         diff_file = tmp_path / "test.diff"
         diff_file.write_text("diff --git a/main.bicep b/main.bicep\n+resource")

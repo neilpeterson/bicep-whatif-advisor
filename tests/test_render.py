@@ -14,7 +14,6 @@ from bicep_whatif_advisor.render import (
 
 @pytest.mark.unit
 class TestColorize:
-
     def test_colorize_enabled(self):
         result = _colorize("hello", "red", use_color=True)
         assert result == "[red]hello[/red]"
@@ -26,7 +25,6 @@ class TestColorize:
 
 @pytest.mark.unit
 class TestRenderJson:
-
     def test_basic_json_output(self, capsys):
         data = {"resources": [], "overall_summary": "Nothing"}
         render_json(data)
@@ -54,7 +52,6 @@ class TestRenderJson:
 
 @pytest.mark.unit
 class TestRenderMarkdown:
-
     def test_standard_mode_has_table(self):
         data = {
             "resources": [
@@ -194,7 +191,6 @@ class TestRenderMarkdown:
 
 @pytest.mark.unit
 class TestRenderTable:
-
     def test_render_table_does_not_crash(self, capsys, mocker):
         """Smoke test: render_table should not raise."""
         mocker.patch("sys.stdout.isatty", return_value=False)
@@ -235,9 +231,9 @@ class TestRenderTable:
     def test_terminal_width_reduction(self, mocker):
         """Table should use 85% of terminal width."""
         import os
+
         fake_size = os.terminal_size((100, 24))
-        mocker.patch("bicep_whatif_advisor.render.shutil.get_terminal_size",
-                      return_value=fake_size)
+        mocker.patch("bicep_whatif_advisor.render.shutil.get_terminal_size", return_value=fake_size)
         mocker.patch("sys.stdout.isatty", return_value=False)
         data = {"resources": [], "overall_summary": ""}
         # Should not raise; the width is used internally

@@ -3,6 +3,7 @@
 import os
 import sys
 import time
+
 from . import Provider
 
 
@@ -49,7 +50,7 @@ class AzureOpenAIProvider(Provider):
             SystemExit: On API errors after retry
         """
         try:
-            from openai import AzureOpenAI, APIError, RateLimitError
+            from openai import APIError, AzureOpenAI, RateLimitError
         except ImportError:
             sys.stderr.write(
                 "Error: openai package not installed.\n"
@@ -58,9 +59,7 @@ class AzureOpenAIProvider(Provider):
             sys.exit(1)
 
         client = AzureOpenAI(
-            azure_endpoint=self.endpoint,
-            api_key=self.api_key,
-            api_version="2024-02-15-preview"
+            azure_endpoint=self.endpoint, api_key=self.api_key, api_version="2024-02-15-preview"
         )
 
         # Try with automatic retry on network errors
@@ -71,8 +70,8 @@ class AzureOpenAIProvider(Provider):
                     temperature=0,
                     messages=[
                         {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ]
+                        {"role": "user", "content": user_prompt},
+                    ],
                 )
                 return response.choices[0].message.content
 
@@ -99,8 +98,7 @@ class AzureOpenAIProvider(Provider):
 
             except Exception as e:
                 sys.stderr.write(
-                    f"Error: Unexpected error calling Azure OpenAI API.\n"
-                    f"Details: {e}\n"
+                    f"Error: Unexpected error calling Azure OpenAI API.\nDetails: {e}\n"
                 )
                 sys.exit(1)
 

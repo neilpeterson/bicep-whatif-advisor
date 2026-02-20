@@ -5,6 +5,7 @@ import sys
 
 class InputError(Exception):
     """Exception raised for input validation errors."""
+
     pass
 
 

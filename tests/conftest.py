@@ -1,9 +1,8 @@
 """Shared test fixtures for bicep-whatif-advisor."""
 
 import json
-import os
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import List, Tuple, Union
 
 import pytest
 
@@ -15,6 +14,7 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures"
 # ---------------------------------------------------------------------------
 # MockProvider
 # ---------------------------------------------------------------------------
+
 
 class MockProvider(Provider):
     """Mock LLM provider for testing. Records calls and returns canned JSON."""
@@ -33,6 +33,7 @@ class MockProvider(Provider):
 # ---------------------------------------------------------------------------
 # Fixture file loaders (session-scoped — read once)
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="session")
 def create_only_fixture():
@@ -67,6 +68,7 @@ def noisy_changes_fixture():
 # ---------------------------------------------------------------------------
 # Sample LLM responses
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def sample_standard_response():
@@ -238,6 +240,7 @@ def sample_ci_response_with_intent():
 # Environment variable helpers
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def github_env(monkeypatch):
     """Set GitHub Actions environment variables."""
@@ -267,16 +270,30 @@ def azdevops_env(monkeypatch):
 def clean_env(monkeypatch):
     """Remove all CI-related environment variables."""
     for var in [
-        "GITHUB_ACTIONS", "GITHUB_REPOSITORY", "GITHUB_BASE_REF",
-        "GITHUB_HEAD_REF", "GITHUB_EVENT_NAME", "GITHUB_EVENT_PATH",
-        "GITHUB_REF", "GITHUB_TOKEN",
-        "TF_BUILD", "AGENT_ID",
-        "SYSTEM_PULLREQUEST_PULLREQUESTID", "SYSTEM_PULLREQUEST_TARGETBRANCH",
-        "SYSTEM_PULLREQUEST_SOURCEBRANCH", "BUILD_REPOSITORY_NAME",
-        "BUILD_REPOSITORY_ID", "SYSTEM_COLLECTIONURI", "SYSTEM_TEAMPROJECT",
+        "GITHUB_ACTIONS",
+        "GITHUB_REPOSITORY",
+        "GITHUB_BASE_REF",
+        "GITHUB_HEAD_REF",
+        "GITHUB_EVENT_NAME",
+        "GITHUB_EVENT_PATH",
+        "GITHUB_REF",
+        "GITHUB_TOKEN",
+        "TF_BUILD",
+        "AGENT_ID",
+        "SYSTEM_PULLREQUEST_PULLREQUESTID",
+        "SYSTEM_PULLREQUEST_TARGETBRANCH",
+        "SYSTEM_PULLREQUEST_SOURCEBRANCH",
+        "BUILD_REPOSITORY_NAME",
+        "BUILD_REPOSITORY_ID",
+        "SYSTEM_COLLECTIONURI",
+        "SYSTEM_TEAMPROJECT",
         "SYSTEM_ACCESSTOKEN",
-        "ANTHROPIC_API_KEY", "AZURE_OPENAI_ENDPOINT",
-        "AZURE_OPENAI_API_KEY", "AZURE_OPENAI_DEPLOYMENT",
-        "OLLAMA_HOST", "WHATIF_PROVIDER", "WHATIF_MODEL",
+        "ANTHROPIC_API_KEY",
+        "AZURE_OPENAI_ENDPOINT",
+        "AZURE_OPENAI_API_KEY",
+        "AZURE_OPENAI_DEPLOYMENT",
+        "OLLAMA_HOST",
+        "WHATIF_PROVIDER",
+        "WHATIF_MODEL",
     ]:
         monkeypatch.delenv(var, raising=False)

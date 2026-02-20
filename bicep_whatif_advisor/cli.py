@@ -36,7 +36,7 @@ def extract_json(text: str) -> dict:
 
     # Try to find JSON in the text by looking for balanced braces
     # This handles deeply nested JSON properly
-    start = text.find('{')
+    start = text.find("{")
     if start == -1:
         raise ValueError("Could not extract valid JSON from LLM response")
 
@@ -52,7 +52,7 @@ def extract_json(text: str) -> dict:
             escape_next = False
             continue
 
-        if char == '\\':
+        if char == "\\":
             escape_next = True
             continue
 
@@ -63,13 +63,13 @@ def extract_json(text: str) -> dict:
         if in_string:
             continue
 
-        if char == '{':
+        if char == "{":
             brace_count += 1
-        elif char == '}':
+        elif char == "}":
             brace_count -= 1
             if brace_count == 0:
                 # Found the matching closing brace
-                json_str = text[start:i+1]
+                json_str = text[start : i + 1]
                 try:
                     return json.loads(json_str)
                 except json.JSONDecodeError:
@@ -111,7 +111,7 @@ def filter_by_confidence(data: dict) -> tuple[dict, dict]:
     # Build high-confidence data dict (includes CI fields if present)
     high_confidence_data = {
         "resources": high_confidence_resources,
-        "overall_summary": data.get("overall_summary", "")
+        "overall_summary": data.get("overall_summary", ""),
     }
 
     # Preserve CI mode fields in high-confidence data
@@ -123,7 +123,7 @@ def filter_by_confidence(data: dict) -> tuple[dict, dict]:
     # Build low-confidence data dict (no CI fields - these are excluded from risk analysis)
     low_confidence_data = {
         "resources": low_confidence_resources,
-        "overall_summary": ""  # No separate summary for noise
+        "overall_summary": "",  # No separate summary for noise
     }
 
     return high_confidence_data, low_confidence_data
@@ -131,139 +131,114 @@ def filter_by_confidence(data: dict) -> tuple[dict, dict]:
 
 @click.command()
 @click.option(
-    "--provider", "-p",
+    "--provider",
+    "-p",
     type=click.Choice(["anthropic", "azure-openai", "ollama"], case_sensitive=False),
     default="anthropic",
-    help="LLM provider to use"
+    help="LLM provider to use",
 )
 @click.option(
-    "--model", "-m",
-    type=str,
-    default=None,
-    help="Override the default model for the provider"
+    "--model", "-m", type=str, default=None, help="Override the default model for the provider"
 )
 @click.option(
-    "--format", "-f",
+    "--format",
+    "-f",
     type=click.Choice(["table", "json", "markdown"], case_sensitive=False),
     default="table",
-    help="Output format"
+    help="Output format",
 )
 @click.option(
-    "--verbose", "-v",
+    "--verbose",
+    "-v",
     is_flag=True,
-    help="Include property-level change details for modified resources"
+    help="Include property-level change details for modified resources",
 )
+@click.option("--no-color", is_flag=True, help="Disable colored output")
+@click.option("--ci", is_flag=True, help="Enable CI mode with risk assessment and deployment gate")
+@click.option("--diff", "-d", type=str, default=None, help="Path to git diff file (CI mode only)")
 @click.option(
-    "--no-color",
-    is_flag=True,
-    help="Disable colored output"
-)
-@click.option(
-    "--ci",
-    is_flag=True,
-    help="Enable CI mode with risk assessment and deployment gate"
-)
-@click.option(
-    "--diff", "-d",
-    type=str,
-    default=None,
-    help="Path to git diff file (CI mode only)"
-)
-@click.option(
-    "--diff-ref",
-    type=str,
-    default="HEAD~1",
-    help="Git reference to diff against (default: HEAD~1)"
+    "--diff-ref", type=str, default="HEAD~1", help="Git reference to diff against (default: HEAD~1)"
 )
 @click.option(
     "--drift-threshold",
     type=click.Choice(["low", "medium", "high"], case_sensitive=False),
     default="high",
-    help="Fail pipeline if drift risk meets or exceeds this level (only applies if drift bucket enabled)"
+    help="Fail pipeline if drift risk meets or exceeds this level"
+    " (only applies if drift bucket enabled)",
 )
 @click.option(
     "--intent-threshold",
     type=click.Choice(["low", "medium", "high"], case_sensitive=False),
     default="high",
-    help="Fail pipeline if intent alignment risk meets or exceeds this level (only applies if intent bucket enabled)"
+    help="Fail pipeline if intent alignment risk meets or exceeds"
+    " this level (only applies if intent bucket enabled)",
 )
 @click.option(
     "--operations-threshold",
     type=click.Choice(["low", "medium", "high"], case_sensitive=False),
     default="high",
-    help="Fail pipeline if operations risk meets or exceeds this level (only applies if operations bucket enabled)"
+    help="Fail pipeline if operations risk meets or exceeds"
+    " this level (only applies if operations bucket enabled)",
 )
-@click.option(
-    "--post-comment",
-    is_flag=True,
-    help="Post summary as PR comment (CI mode only)"
-)
+@click.option("--post-comment", is_flag=True, help="Post summary as PR comment (CI mode only)")
 @click.option(
     "--pr-url",
     type=str,
     default=None,
-    help="PR URL for posting comments (auto-detected if not provided)"
+    help="PR URL for posting comments (auto-detected if not provided)",
 )
 @click.option(
     "--bicep-dir",
     type=str,
     default=".",
-    help="Path to Bicep source files for context (CI mode only)"
+    help="Path to Bicep source files for context (CI mode only)",
 )
 @click.option(
     "--pr-title",
     type=str,
     default=None,
-    help="Pull request title for intent analysis (CI mode only)"
+    help="Pull request title for intent analysis (CI mode only)",
 )
 @click.option(
     "--pr-description",
     type=str,
     default=None,
-    help="Pull request description for intent analysis (CI mode only)"
+    help="Pull request description for intent analysis (CI mode only)",
 )
 @click.option(
     "--no-block",
     is_flag=True,
-    help="Don't fail pipeline even if deployment is unsafe - only report findings (CI mode only)"
+    help="Don't fail pipeline even if deployment is unsafe - only report findings (CI mode only)",
 )
 @click.option(
-    "--skip-drift",
-    is_flag=True,
-    help="Skip infrastructure drift risk assessment (CI mode only)"
+    "--skip-drift", is_flag=True, help="Skip infrastructure drift risk assessment (CI mode only)"
 )
 @click.option(
-    "--skip-intent",
-    is_flag=True,
-    help="Skip PR intent alignment risk assessment (CI mode only)"
+    "--skip-intent", is_flag=True, help="Skip PR intent alignment risk assessment (CI mode only)"
 )
 @click.option(
-    "--skip-operations",
-    is_flag=True,
-    help="Skip risky operations risk assessment (CI mode only)"
+    "--skip-operations", is_flag=True, help="Skip risky operations risk assessment (CI mode only)"
 )
 @click.option(
     "--comment-title",
     type=str,
     default=None,
-    help="Custom title for PR comment (default: 'What-If Deployment Review')"
+    help="Custom title for PR comment (default: 'What-If Deployment Review')",
 )
 @click.option(
     "--noise-file",
     type=str,
     default=None,
-    help="Path to additional noise patterns file (additive with built-in patterns)"
+    help="Path to additional noise patterns file (additive with built-in patterns)",
 )
 @click.option(
     "--noise-threshold",
     type=int,
     default=80,
-    help="Similarity threshold percentage for 'fuzzy:' prefix patterns only (default: 80)"
+    help="Similarity threshold percentage for 'fuzzy:' prefix patterns only (default: 80)",
 )
 @click.option(
-    "--no-builtin-patterns",
-    is_flag=True,
-    help="Disable the built-in Azure What-If noise patterns"
+    "--no-builtin-patterns", is_flag=True, help="Disable the built-in Azure What-If noise patterns"
 )
 @click.version_option(version=__version__)
 def main(
@@ -290,7 +265,7 @@ def main(
     comment_title: str,
     noise_file: str,
     noise_threshold: int,
-    no_builtin_patterns: bool
+    no_builtin_patterns: bool,
 ):
     """Analyze Azure What-If deployment output using LLMs.
 
@@ -317,8 +292,7 @@ def main(
             # Auto-enable CI mode in pipeline environments
             if not ci:
                 platform_name = (
-                    "GitHub Actions" if platform_ctx.platform == "github"
-                    else "Azure DevOps"
+                    "GitHub Actions" if platform_ctx.platform == "github" else "Azure DevOps"
                 )
                 sys.stderr.write(
                     f"🤖 Auto-detected {platform_name} environment - enabling CI mode\n"
@@ -344,8 +318,9 @@ def main(
             # Auto-enable PR comments if token available
             if not post_comment:
                 has_token = (
-                    (platform_ctx.platform == "github" and os.environ.get("GITHUB_TOKEN")) or
-                    (platform_ctx.platform == "azuredevops" and os.environ.get("SYSTEM_ACCESSTOKEN"))
+                    platform_ctx.platform == "github" and os.environ.get("GITHUB_TOKEN")
+                ) or (
+                    platform_ctx.platform == "azuredevops" and os.environ.get("SYSTEM_ACCESSTOKEN")
                 )
                 if has_token:
                     sys.stderr.write("💬 Auto-enabling PR comments (auth token detected)\n")
@@ -361,6 +336,7 @@ def main(
 
         if ci:
             from .ci.diff import get_diff
+
             diff_content = get_diff(diff, diff_ref)
 
             # Optionally load Bicep source files
@@ -372,17 +348,22 @@ def main(
         enabled_buckets = None
         if ci:
             from .ci.buckets import get_enabled_buckets
+
             enabled_buckets = get_enabled_buckets(
                 skip_drift=skip_drift,
                 skip_intent=skip_intent,
                 skip_operations=skip_operations,
-                has_pr_metadata=bool(pr_title or pr_description)
+                has_pr_metadata=bool(pr_title or pr_description),
             )
 
             # Validation: At least one bucket must be enabled in CI mode
             if not enabled_buckets:
-                sys.stderr.write("❌ Error: At least one risk assessment bucket must be enabled in CI mode\n")
-                sys.stderr.write("   Remove one or more --skip-* flags to enable risk assessment.\n")
+                sys.stderr.write(
+                    "❌ Error: At least one risk assessment bucket must be enabled in CI mode\n"
+                )
+                sys.stderr.write(
+                    "   Remove one or more --skip-* flags to enable risk assessment.\n"
+                )
                 sys.exit(2)
 
         # Apply pre-LLM noise filtering to raw What-If text
@@ -419,14 +400,14 @@ def main(
             ci_mode=ci,
             pr_title=pr_title,
             pr_description=pr_description,
-            enabled_buckets=enabled_buckets
+            enabled_buckets=enabled_buckets,
         )
         user_prompt = build_user_prompt(
             whatif_content=whatif_content,
             diff_content=diff_content,
             bicep_content=bicep_content,
             pr_title=pr_title,
-            pr_description=pr_description
+            pr_description=pr_description,
         )
 
         # Call LLM
@@ -478,10 +459,13 @@ def main(
             # Special case: If ALL resources were filtered as noise, skip LLM recalculation
             # and set all risk buckets to low with no concerns
             if num_remaining == 0:
-                sys.stderr.write("✅ All resources filtered as noise - setting all risk buckets to low\n")
+                sys.stderr.write(
+                    "✅ All resources filtered as noise - setting all risk buckets to low\n"
+                )
 
                 # Build a clean risk assessment with no concerns for enabled buckets only
                 from .ci.buckets import RISK_BUCKETS
+
                 high_confidence_data["risk_assessment"] = {}
 
                 for bucket_id in enabled_buckets:
@@ -489,7 +473,12 @@ def main(
                     high_confidence_data["risk_assessment"][bucket_id] = {
                         "risk_level": "low",
                         "concerns": [],
-                        "reasoning": f"All detected changes were flagged as low-confidence noise. No high-confidence {bucket.display_name.lower()} concerns to evaluate."
+                        "reasoning": (
+                            f"All detected changes were flagged as"
+                            f" low-confidence noise. No high-confidence"
+                            f" {bucket.display_name.lower()}"
+                            f" concerns to evaluate."
+                        ),
                     }
 
                 # Update verdict
@@ -497,10 +486,13 @@ def main(
                     "safe": True,
                     "highest_risk_bucket": "none",
                     "overall_risk_level": "low",
-                    "reasoning": "All detected changes were identified as Azure What-If noise and excluded from risk analysis. No meaningful infrastructure changes detected."
+                    "reasoning": (
+                        "All detected changes were identified as Azure"
+                        " What-If noise and excluded from risk analysis."
+                        " No meaningful infrastructure changes detected."
+                    ),
                 }
             else:
-
                 # Build a filtered What-If output containing only high-confidence resources
                 # We'll reconstruct a minimal What-If output from the high-confidence resources
                 # and re-prompt the LLM for accurate risk assessment
@@ -513,7 +505,7 @@ def main(
                         "delete": "-",
                         "deploy": "=",
                         "nochange": "*",
-                        "ignore": "x"
+                        "ignore": "x",
                     }.get(resource.get("action", "").lower(), "~")
 
                     filtered_whatif_lines.append(f"{action_symbol} {resource['resource_name']}")
@@ -527,19 +519,23 @@ def main(
                     ci_mode=ci,
                     pr_title=pr_title,
                     pr_description=pr_description,
-                    enabled_buckets=enabled_buckets
+                    enabled_buckets=enabled_buckets,
                 )
                 filtered_user_prompt = build_user_prompt(
                     whatif_content=filtered_whatif_content,
                     diff_content=diff_content,
                     bicep_content=bicep_content,
                     pr_title=pr_title,
-                    pr_description=pr_description
+                    pr_description=pr_description,
                 )
 
                 # Re-call LLM with filtered resources
-                sys.stderr.write("📡 Re-analyzing with filtered resources for accurate risk assessment...\n")
-                filtered_response_text = llm_provider.complete(filtered_system_prompt, filtered_user_prompt)
+                sys.stderr.write(
+                    "📡 Re-analyzing with filtered resources for accurate risk assessment...\n"
+                )
+                filtered_response_text = llm_provider.complete(
+                    filtered_system_prompt, filtered_user_prompt
+                )
 
                 # Parse the new response
                 try:
@@ -551,7 +547,9 @@ def main(
                     if "verdict" in filtered_data:
                         high_confidence_data["verdict"] = filtered_data["verdict"]
 
-                    sys.stderr.write("✅ Risk assessment recalculated based on high-confidence resources only\n")
+                    sys.stderr.write(
+                        "✅ Risk assessment recalculated based on high-confidence resources only\n"
+                    )
 
                 except ValueError:
                     sys.stderr.write(
@@ -565,11 +563,23 @@ def main(
 
         # Render output
         if format == "table":
-            render_table(high_confidence_data, verbose=verbose, no_color=no_color, ci_mode=ci, low_confidence_data=low_confidence_data)
+            render_table(
+                high_confidence_data,
+                verbose=verbose,
+                no_color=no_color,
+                ci_mode=ci,
+                low_confidence_data=low_confidence_data,
+            )
         elif format == "json":
             render_json(high_confidence_data, low_confidence_data=low_confidence_data)
         elif format == "markdown":
-            markdown = render_markdown(high_confidence_data, ci_mode=ci, custom_title=comment_title, no_block=no_block, low_confidence_data=low_confidence_data)
+            markdown = render_markdown(
+                high_confidence_data,
+                ci_mode=ci,
+                custom_title=comment_title,
+                no_block=no_block,
+                low_confidence_data=low_confidence_data,
+            )
             print(markdown)
 
         # CI mode: evaluate verdict and post comment
@@ -581,12 +591,18 @@ def main(
                 enabled_buckets,
                 drift_threshold,
                 intent_threshold,
-                operations_threshold
+                operations_threshold,
             )
 
             # Post comment if requested
             if post_comment:
-                markdown = render_markdown(high_confidence_data, ci_mode=True, custom_title=comment_title, no_block=no_block, low_confidence_data=low_confidence_data)
+                markdown = render_markdown(
+                    high_confidence_data,
+                    ci_mode=True,
+                    custom_title=comment_title,
+                    no_block=no_block,
+                    low_confidence_data=low_confidence_data,
+                )
                 _post_pr_comment(markdown, pr_url)
 
             # Exit with appropriate code
@@ -597,9 +613,15 @@ def main(
                 if failed_buckets:
                     bucket_names = ", ".join(failed_buckets)
                     if no_block:
-                        sys.stderr.write(f"⚠️  Warning: Failed risk buckets: {bucket_names} (pipeline not blocked due to --no-block)\n")
+                        sys.stderr.write(
+                            f"⚠️  Warning: Failed risk buckets:"
+                            f" {bucket_names} (pipeline not blocked"
+                            f" due to --no-block)\n"
+                        )
                     else:
-                        sys.stderr.write(f"❌ Deployment blocked: Failed risk buckets: {bucket_names}\n")
+                        sys.stderr.write(
+                            f"❌ Deployment blocked: Failed risk buckets: {bucket_names}\n"
+                        )
 
                 # Exit with 0 if --no-block is set, otherwise exit with 1
                 if no_block:
@@ -644,8 +666,7 @@ def _load_bicep_files(bicep_dir: str) -> Optional[str]:
 
     if not base_path.exists() or not base_path.is_dir():
         sys.stderr.write(
-            f"Warning: Bicep directory does not exist or is not "
-            f"a directory: {bicep_dir}\n"
+            f"Warning: Bicep directory does not exist or is not a directory: {bicep_dir}\n"
         )
         return None
 
@@ -677,7 +698,7 @@ def _load_bicep_files(bicep_dir: str) -> Optional[str]:
     contents = []
     for file_path in bicep_files[:5]:
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 rel_path = file_path.relative_to(base_path)
                 contents.append(f"// File: {rel_path}\n{f.read()}")
         except (OSError, UnicodeDecodeError) as e:
@@ -699,6 +720,7 @@ def _post_pr_comment(markdown: str, pr_url: str = None) -> None:
     # Detect GitHub or Azure DevOps
     if os.environ.get("GITHUB_TOKEN"):
         from .ci.github import post_github_comment
+
         success = post_github_comment(markdown, pr_url)
         if success:
             sys.stderr.write("Posted comment to GitHub PR.\n")
@@ -707,6 +729,7 @@ def _post_pr_comment(markdown: str, pr_url: str = None) -> None:
 
     elif os.environ.get("SYSTEM_ACCESSTOKEN"):
         from .ci.azdevops import post_azdevops_comment
+
         success = post_azdevops_comment(markdown)
         if success:
             sys.stderr.write("Posted comment to Azure DevOps PR.\n")

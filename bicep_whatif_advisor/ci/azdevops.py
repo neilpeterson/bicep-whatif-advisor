@@ -47,33 +47,29 @@ def post_azdevops_comment(markdown: str) -> bool:
         return False
 
     # Validate collection_uri uses HTTPS
-    if not collection_uri.startswith('https://'):
-        sys.stderr.write(
-            f"Warning: SYSTEM_COLLECTIONURI must use HTTPS. Got: {collection_uri}\n"
-        )
+    if not collection_uri.startswith("https://"):
+        sys.stderr.write(f"Warning: SYSTEM_COLLECTIONURI must use HTTPS. Got: {collection_uri}\n")
         return False
 
     # Build API URL
-    # Format: {collection_uri}{project}/_apis/git/repositories/{repo_id}/pullRequests/{pr_id}/threads
+    # Format: {collection_uri}{project}/_apis/git/repositories/
+    #   {repo_id}/pullRequests/{pr_id}/threads
     url = (
         f"{collection_uri.rstrip('/')}/{project}/_apis/git/repositories/"
         f"{repo_id}/pullRequests/{pr_id}/threads?api-version=7.0"
     )
 
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
-    }
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {token}"}
 
     payload = {
         "comments": [
             {
                 "parentCommentId": 0,
                 "content": markdown,
-                "commentType": 1  # 1 = text
+                "commentType": 1,  # 1 = text
             }
         ],
-        "status": 1  # 1 = active
+        "status": 1,  # 1 = active
     }
 
     try:
@@ -83,7 +79,7 @@ def post_azdevops_comment(markdown: str) -> bool:
 
     except requests.exceptions.HTTPError as e:
         sys.stderr.write(f"Warning: Azure DevOps API error: {e}\n")
-        if hasattr(e.response, 'status_code'):
+        if hasattr(e.response, "status_code"):
             sys.stderr.write(f"Status code: {e.response.status_code}\n")
         return False
 

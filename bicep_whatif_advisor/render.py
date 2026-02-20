@@ -1,11 +1,12 @@
 """Output rendering for bicep-whatif-advisor in various formats."""
 
 import json
-import sys
 import shutil
+import sys
+
+from rich import box
 from rich.console import Console
 from rich.table import Table
-from rich import box
 
 
 def print_banner() -> None:
@@ -56,7 +57,7 @@ def render_table(
     verbose: bool = False,
     no_color: bool = False,
     ci_mode: bool = False,
-    low_confidence_data: dict = None
+    low_confidence_data: dict = None,
 ) -> None:
     """Render output as a colored table using Rich.
 
@@ -79,7 +80,9 @@ def render_table(
     # Print risk bucket summary in CI mode
     if ci_mode:
         enabled_buckets = data.get("_enabled_buckets")
-        _print_risk_bucket_summary(console, data.get("risk_assessment", {}), use_color, enabled_buckets)
+        _print_risk_bucket_summary(
+            console, data.get("risk_assessment", {}), use_color, enabled_buckets
+        )
 
     # Print overall summary after risk assessment table
     overall_summary = data.get("overall_summary", "")
@@ -132,7 +135,9 @@ def render_table(
 
     # Print table with high confidence label and count
     resource_count = len(resources)
-    high_conf_label = _colorize(f"High Confidence Resources ({resource_count})", "bold cyan", use_color)
+    high_conf_label = _colorize(
+        f"High Confidence Resources ({resource_count})", "bold cyan", use_color
+    )
     console.print(high_conf_label)
     console.print(table)
     console.print()
@@ -150,7 +155,9 @@ def render_table(
         _print_noise_section(console, low_confidence_data, use_color, ci_mode)
 
 
-def _print_noise_section(console: Console, low_confidence_data: dict, use_color: bool, ci_mode: bool) -> None:
+def _print_noise_section(
+    console: Console, low_confidence_data: dict, use_color: bool, ci_mode: bool
+) -> None:
     """Print low-confidence resources as potential Azure What-If noise."""
     resources = low_confidence_data.get("resources", [])
     if not resources:
@@ -161,12 +168,20 @@ def _print_noise_section(console: Console, low_confidence_data: dict, use_color:
 
     # Print header with count
     resource_count = len(resources)
-    header = _colorize(f"⚠️  Potential Azure What-If Noise ({resource_count} Low Confidence)", "yellow bold", use_color)
+    header = _colorize(
+        f"⚠️  Potential Azure What-If Noise ({resource_count} Low Confidence)",
+        "yellow bold",
+        use_color,
+    )
     console.print(header)
-    console.print(_colorize(
-        "The following changes were flagged as likely What-If noise and excluded from risk analysis:",
-        "dim", use_color
-    ))
+    console.print(
+        _colorize(
+            "The following changes were flagged as likely What-If noise"
+            " and excluded from risk analysis:",
+            "dim",
+            use_color,
+        )
+    )
     console.print()
 
     # Create noise table
@@ -193,7 +208,7 @@ def _print_noise_section(console: Console, low_confidence_data: dict, use_color:
             resource_name,
             resource_type,
             _colorize(action_display, color, use_color),
-            confidence_reason
+            confidence_reason,
         )
 
     # Print table
@@ -201,7 +216,9 @@ def _print_noise_section(console: Console, low_confidence_data: dict, use_color:
     console.print()
 
 
-def _print_risk_bucket_summary(console: Console, risk_assessment: dict, use_color: bool, enabled_buckets: list = None) -> None:
+def _print_risk_bucket_summary(
+    console: Console, risk_assessment: dict, use_color: bool, enabled_buckets: list = None
+) -> None:
     """Print risk bucket summary table in CI mode.
 
     Args:
@@ -242,7 +259,7 @@ def _print_risk_bucket_summary(console: Console, risk_assessment: dict, use_colo
                 bucket.display_name,
                 _colorize(risk_level.capitalize(), risk_color, use_color),
                 _colorize("●", risk_color, use_color),
-                concern_text
+                concern_text,
             )
 
     # Print the bucket table
@@ -314,7 +331,13 @@ def render_json(data: dict, low_confidence_data: dict = None) -> None:
     print(json.dumps(output, indent=2))
 
 
-def render_markdown(data: dict, ci_mode: bool = False, custom_title: str = None, no_block: bool = False, low_confidence_data: dict = None) -> str:
+def render_markdown(
+    data: dict,
+    ci_mode: bool = False,
+    custom_title: str = None,
+    no_block: bool = False,
+    low_confidence_data: dict = None,
+) -> str:
     """Render output as markdown table suitable for PR comments.
 
     Args:
@@ -397,7 +420,8 @@ def render_markdown(data: dict, ci_mode: bool = False, custom_title: str = None,
             risk_level = resource.get("risk_level", "none")
             risk_display = risk_level.capitalize()
             lines.append(
-                f"| {idx} | {resource_name} | {resource_type} | {action_display} | {risk_display} | {summary} |"
+                f"| {idx} | {resource_name} | {resource_type}"
+                f" | {action_display} | {risk_display} | {summary} |"
             )
         else:
             lines.append(
@@ -414,9 +438,14 @@ def render_markdown(data: dict, ci_mode: bool = False, custom_title: str = None,
     if low_confidence_data and low_confidence_data.get("resources"):
         low_conf_count = len(low_confidence_data.get("resources", []))
         lines.append("<details>")
-        lines.append(f"<summary>⚠️ Potential Azure What-If Noise ({low_conf_count} Low Confidence)</summary>")
+        lines.append(
+            f"<summary>⚠️ Potential Azure What-If Noise ({low_conf_count} Low Confidence)</summary>"
+        )
         lines.append("")
-        lines.append("The following changes were flagged as likely What-If noise and **excluded from risk analysis**:")
+        lines.append(
+            "The following changes were flagged as likely What-If noise"
+            " and **excluded from risk analysis**:"
+        )
         lines.append("")
         lines.append("| # | Resource | Type | Action | Confidence Reason |")
         lines.append("|---|----------|------|--------|-------------------|")
@@ -425,7 +454,9 @@ def render_markdown(data: dict, ci_mode: bool = False, custom_title: str = None,
             resource_name = resource.get("resource_name", "Unknown")
             resource_type = resource.get("resource_type", "Unknown")
             action = resource.get("action", "Unknown")
-            confidence_reason = resource.get("confidence_reason", "No reason provided").replace("|", "\\|")
+            confidence_reason = resource.get("confidence_reason", "No reason provided").replace(
+                "|", "\\|"
+            )
 
             lines.append(
                 f"| {idx} | {resource_name} | {resource_type} | {action} | {confidence_reason} |"
@@ -451,6 +482,8 @@ def render_markdown(data: dict, ci_mode: bool = False, custom_title: str = None,
 
     if ci_mode:
         lines.append("---")
-        lines.append("*Generated by [bicep-whatif-advisor](https://github.com/neilpeterson/bicep-whatif-advisor)*")
+        lines.append(
+            "*Generated by [bicep-whatif-advisor](https://github.com/neilpeterson/bicep-whatif-advisor)*"
+        )
 
     return "\n".join(lines)

@@ -1,7 +1,6 @@
 """Tests for bicep_whatif_advisor.ci.platform module."""
 
 import json
-import os
 
 import pytest
 
@@ -15,11 +14,8 @@ from bicep_whatif_advisor.ci.platform import (
 
 @pytest.mark.unit
 class TestPlatformContext:
-
     def test_has_pr_metadata_true(self):
-        ctx = PlatformContext(
-            platform="github", pr_number="42", pr_title="Test PR"
-        )
+        ctx = PlatformContext(platform="github", pr_number="42", pr_title="Test PR")
         assert ctx.has_pr_metadata() is True
 
     def test_has_pr_metadata_false_no_number(self):
@@ -35,9 +31,7 @@ class TestPlatformContext:
         assert ctx.get_diff_ref() == "origin/main"
 
     def test_get_diff_ref_strips_refs_heads(self):
-        ctx = PlatformContext(
-            platform="azuredevops", base_branch="refs/heads/develop"
-        )
+        ctx = PlatformContext(platform="azuredevops", base_branch="refs/heads/develop")
         assert ctx.get_diff_ref() == "origin/develop"
 
     def test_get_diff_ref_fallback(self):
@@ -47,7 +41,6 @@ class TestPlatformContext:
 
 @pytest.mark.unit
 class TestDetectPlatform:
-
     def test_detects_local(self, clean_env):
         ctx = detect_platform()
         assert ctx.platform == "local"
@@ -70,7 +63,6 @@ class TestDetectPlatform:
 
 @pytest.mark.unit
 class TestDetectGitHub:
-
     def test_extracts_repository(self, clean_env, monkeypatch):
         monkeypatch.setenv("GITHUB_ACTIONS", "true")
         monkeypatch.setenv("GITHUB_REPOSITORY", "owner/repo")
@@ -89,13 +81,17 @@ class TestDetectGitHub:
         monkeypatch.setenv("GITHUB_ACTIONS", "true")
         monkeypatch.setenv("GITHUB_EVENT_NAME", "pull_request")
         event_file = tmp_path / "event.json"
-        event_file.write_text(json.dumps({
-            "pull_request": {
-                "number": 42,
-                "title": "Add feature",
-                "body": "This PR adds a feature",
-            }
-        }))
+        event_file.write_text(
+            json.dumps(
+                {
+                    "pull_request": {
+                        "number": 42,
+                        "title": "Add feature",
+                        "body": "This PR adds a feature",
+                    }
+                }
+            )
+        )
         monkeypatch.setenv("GITHUB_EVENT_PATH", str(event_file))
         ctx = _detect_github()
         assert ctx.pr_number == "42"
@@ -122,7 +118,6 @@ class TestDetectGitHub:
 
 @pytest.mark.unit
 class TestDetectAzureDevOps:
-
     def test_extracts_pr_metadata(self, clean_env, azdevops_env):
         ctx = _detect_azuredevops()
         assert ctx.platform == "azuredevops"
@@ -147,6 +142,7 @@ class TestDetectAzureDevOps:
     def test_api_failure_graceful(self, clean_env, azdevops_env, monkeypatch, mocker):
         monkeypatch.setenv("SYSTEM_ACCESSTOKEN", "fake-token")
         import requests
+
         mocker.patch(
             "requests.get",
             side_effect=requests.exceptions.ConnectionError("fail"),

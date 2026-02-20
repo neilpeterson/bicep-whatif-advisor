@@ -1,7 +1,6 @@
 """Tests for bicep_whatif_advisor.input module."""
 
 import io
-import sys
 
 import pytest
 
@@ -59,7 +58,9 @@ class TestReadStdin:
         mock_stdin = mocker.patch("bicep_whatif_advisor.input.sys.stdin")
         mock_stdin.isatty.return_value = False
         mock_stdin.read.return_value = content
-        mock_stderr = mocker.patch("bicep_whatif_advisor.input.sys.stderr", new_callable=io.StringIO)
+        mock_stderr = mocker.patch(
+            "bicep_whatif_advisor.input.sys.stderr", new_callable=io.StringIO
+        )
         read_stdin(max_chars=50)
         assert "truncated" in mock_stderr.getvalue().lower()
 
@@ -69,7 +70,9 @@ class TestReadStdin:
         mock_stdin = mocker.patch("bicep_whatif_advisor.input.sys.stdin")
         mock_stdin.isatty.return_value = False
         mock_stdin.read.return_value = content
-        mock_stderr = mocker.patch("bicep_whatif_advisor.input.sys.stderr", new_callable=io.StringIO)
+        mock_stderr = mocker.patch(
+            "bicep_whatif_advisor.input.sys.stderr", new_callable=io.StringIO
+        )
         result = read_stdin()
         assert result == content
         assert "may not be Azure What-If output" in mock_stderr.getvalue()

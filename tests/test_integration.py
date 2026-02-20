@@ -1,6 +1,5 @@
 """Integration tests — end-to-end pipelines through the CLI."""
 
-import io
 import json
 
 import pytest
@@ -16,8 +15,9 @@ def _runner():
 
 @pytest.mark.integration
 class TestStandardModePipeline:
-
-    def test_create_only_fixture(self, clean_env, monkeypatch, mocker, create_only_fixture, sample_standard_response):
+    def test_create_only_fixture(
+        self, clean_env, monkeypatch, mocker, create_only_fixture, sample_standard_response
+    ):
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
         mocker.patch(
             "bicep_whatif_advisor.cli.get_provider",
@@ -28,7 +28,9 @@ class TestStandardModePipeline:
         parsed = json.loads(result.output)
         assert "high_confidence" in parsed
 
-    def test_mixed_changes_fixture(self, clean_env, monkeypatch, mocker, mixed_changes_fixture, sample_standard_response):
+    def test_mixed_changes_fixture(
+        self, clean_env, monkeypatch, mocker, mixed_changes_fixture, sample_standard_response
+    ):
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
         mocker.patch(
             "bicep_whatif_advisor.cli.get_provider",
@@ -37,7 +39,9 @@ class TestStandardModePipeline:
         result = _runner().invoke(main, ["--format", "json"], input=mixed_changes_fixture)
         assert result.exit_code == 0
 
-    def test_markdown_output_format(self, clean_env, monkeypatch, mocker, create_only_fixture, sample_standard_response):
+    def test_markdown_output_format(
+        self, clean_env, monkeypatch, mocker, create_only_fixture, sample_standard_response
+    ):
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
         mocker.patch(
             "bicep_whatif_advisor.cli.get_provider",
@@ -47,7 +51,9 @@ class TestStandardModePipeline:
         assert result.exit_code == 0
         assert "| #" in result.output
 
-    def test_table_output_format(self, clean_env, monkeypatch, mocker, create_only_fixture, sample_standard_response):
+    def test_table_output_format(
+        self, clean_env, monkeypatch, mocker, create_only_fixture, sample_standard_response
+    ):
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
         mocker.patch(
             "bicep_whatif_advisor.cli.get_provider",
@@ -59,8 +65,9 @@ class TestStandardModePipeline:
 
 @pytest.mark.integration
 class TestCIModePipeline:
-
-    def test_ci_safe_deploy(self, clean_env, monkeypatch, mocker, create_only_fixture, sample_ci_response_safe):
+    def test_ci_safe_deploy(
+        self, clean_env, monkeypatch, mocker, create_only_fixture, sample_ci_response_safe
+    ):
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
         mocker.patch(
             "bicep_whatif_advisor.cli.get_provider",
@@ -74,7 +81,9 @@ class TestCIModePipeline:
         )
         assert result.exit_code == 0
 
-    def test_ci_unsafe_blocks(self, clean_env, monkeypatch, mocker, create_only_fixture, sample_ci_response_unsafe):
+    def test_ci_unsafe_blocks(
+        self, clean_env, monkeypatch, mocker, create_only_fixture, sample_ci_response_unsafe
+    ):
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
         mocker.patch(
             "bicep_whatif_advisor.cli.get_provider",
@@ -88,7 +97,9 @@ class TestCIModePipeline:
         )
         assert result.exit_code == 1
 
-    def test_ci_with_intent(self, clean_env, monkeypatch, mocker, create_only_fixture, sample_ci_response_with_intent):
+    def test_ci_with_intent(
+        self, clean_env, monkeypatch, mocker, create_only_fixture, sample_ci_response_with_intent
+    ):
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
         mocker.patch(
             "bicep_whatif_advisor.cli.get_provider",
@@ -105,8 +116,9 @@ class TestCIModePipeline:
 
 @pytest.mark.integration
 class TestNoiseFilteringPipeline:
-
-    def test_noise_filtering_with_recalculation(self, clean_env, monkeypatch, mocker, create_only_fixture):
+    def test_noise_filtering_with_recalculation(
+        self, clean_env, monkeypatch, mocker, create_only_fixture
+    ):
         """CI mode with noise resources triggers recalculation."""
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
 
@@ -139,8 +151,12 @@ class TestNoiseFilteringPipeline:
                 "drift": {"risk_level": "medium", "concerns": ["stale"], "reasoning": ""},
                 "operations": {"risk_level": "medium", "concerns": ["vnet"], "reasoning": ""},
             },
-            "verdict": {"safe": False, "highest_risk_bucket": "operations",
-                        "overall_risk_level": "medium", "reasoning": "medium risk"},
+            "verdict": {
+                "safe": False,
+                "highest_risk_bucket": "operations",
+                "overall_risk_level": "medium",
+                "reasoning": "medium risk",
+            },
         }
 
         # Second call (recalculation) returns safe assessment
@@ -162,8 +178,12 @@ class TestNoiseFilteringPipeline:
                 "drift": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
                 "operations": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
             },
-            "verdict": {"safe": True, "highest_risk_bucket": "none",
-                        "overall_risk_level": "low", "reasoning": "ok"},
+            "verdict": {
+                "safe": True,
+                "highest_risk_bucket": "none",
+                "overall_risk_level": "low",
+                "reasoning": "ok",
+            },
         }
 
         call_count = {"n": 0}
@@ -182,7 +202,9 @@ class TestNoiseFilteringPipeline:
         mocker.patch("bicep_whatif_advisor.ci.diff.get_diff", return_value="diff")
 
         result = _runner().invoke(
-            main, ["--ci", "--format", "json"], input=create_only_fixture,
+            main,
+            ["--ci", "--format", "json"],
+            input=create_only_fixture,
         )
         assert result.exit_code == 0
         assert call_count["n"] == 2  # Two LLM calls: initial + recalculation
@@ -190,8 +212,9 @@ class TestNoiseFilteringPipeline:
 
 @pytest.mark.integration
 class TestPlatformAutoDetect:
-
-    def test_github_auto_enables_ci(self, clean_env, monkeypatch, mocker, create_only_fixture, sample_ci_response_safe):
+    def test_github_auto_enables_ci(
+        self, clean_env, monkeypatch, mocker, create_only_fixture, sample_ci_response_safe
+    ):
         monkeypatch.setenv("GITHUB_ACTIONS", "true")
         monkeypatch.setenv("GITHUB_REPOSITORY", "owner/repo")
         monkeypatch.setenv("GITHUB_BASE_REF", "main")

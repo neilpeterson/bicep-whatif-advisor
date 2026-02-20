@@ -1,15 +1,13 @@
 """Tests for bicep_whatif_advisor.ci.github module."""
 
-import requests
-
 import pytest
+import requests
 
 from bicep_whatif_advisor.ci.github import post_github_comment
 
 
 @pytest.mark.unit
 class TestPostGitHubComment:
-
     def test_missing_token_returns_false(self, monkeypatch):
         monkeypatch.delenv("GITHUB_TOKEN", raising=False)
         result = post_github_comment("test comment")
@@ -20,9 +18,7 @@ class TestPostGitHubComment:
         mock_resp = mocker.Mock()
         mock_resp.raise_for_status = mocker.Mock()
         mock_post = mocker.patch("requests.post", return_value=mock_resp)
-        result = post_github_comment(
-            "test comment", pr_url="https://github.com/owner/repo/pull/42"
-        )
+        result = post_github_comment("test comment", pr_url="https://github.com/owner/repo/pull/42")
         assert result is True
         url = mock_post.call_args[0][0]
         assert "/repos/owner/repo/issues/42/comments" in url

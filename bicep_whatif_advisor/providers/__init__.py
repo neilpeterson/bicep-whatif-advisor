@@ -1,7 +1,7 @@
 """LLM provider implementations for bicep-whatif-advisor."""
 
-from abc import ABC, abstractmethod
 import os
+from abc import ABC, abstractmethod
 
 
 class Provider(ABC):
@@ -44,15 +44,17 @@ def get_provider(name: str, model: str = None) -> Provider:
 
     if provider_name == "anthropic":
         from .anthropic import AnthropicProvider
+
         return AnthropicProvider(model=model_name)
     elif provider_name == "azure-openai":
         from .azure_openai import AzureOpenAIProvider
+
         return AzureOpenAIProvider(model=model_name)
     elif provider_name == "ollama":
         from .ollama import OllamaProvider
+
         return OllamaProvider(model=model_name)
     else:
         raise ValueError(
-            f"Unknown provider: {provider_name}. "
-            f"Valid options are: anthropic, azure-openai, ollama"
+            f"Unknown provider: {provider_name}. Valid options are: anthropic, azure-openai, ollama"
         )
