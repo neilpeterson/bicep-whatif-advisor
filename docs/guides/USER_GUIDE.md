@@ -185,47 +185,73 @@ az deployment group what-if ... | bicep-whatif-advisor --format markdown
 
 ## Noise Filtering
 
-Azure What-If output often includes "noise" - spurious changes like metadata updates or platform-managed properties that don't represent real infrastructure changes.
+Azure What-If output often includes "noise" — spurious property changes like `etag`, `provisioningState`, and IPv6 flags that don't represent real infrastructure changes. Left unfiltered, these can cause false positives in CI mode.
+
+The tool uses a two-layer approach: pre-LLM property filtering (removes noise before the LLM ever sees it) and post-LLM confidence scoring (the LLM flags remaining uncertain changes).
+
+### Built-in Patterns (Always On)
+
+A curated set of known-noisy Azure property names is bundled with the tool and applied automatically to every run. These are matched against property-change lines in the raw What-If text **before** sending to the LLM:
+
+| Pattern | Catches |
+|---------|---------|
+| `etag` | ETag header changes on any resource |
+| `provisioningState` | ARM state transitions (not real changes) |
+| `resourceGuid` | GUID regeneration on networking resources |
+| `ipv6AddressSpace`, `disableIpv6`, `enableIPv6Addressing` | Spurious IPv6 flags |
+| `logAnalyticsDestinationType` | Diagnostics setting noise |
+| `hidden-link:`, `hidden-title` | Azure-managed hidden tags |
+| `inboundNatRules`, `effectiveRouteTable`, ... | Computed networking fields |
+
+To disable built-ins (e.g., if you care about IPv6 changes in your environment):
+
+```bash
+az deployment group what-if ... | bicep-whatif-advisor --no-builtin-patterns
+```
+
+### Custom Patterns File (Optional, Additive)
+
+Add your own property-path patterns to suppress project-specific noise. The file is additive — your patterns combine with the built-ins.
+
+```bash
+# Create a patterns file (one keyword per line, # for comments)
+cat > noise-patterns.txt <<EOF
+# Custom noise for our environment
+creationTime
+lastModifiedTime
+
+# Use regex: prefix for advanced matching
+regex: properties\.metadata\..*Version
+
+# Use fuzzy: prefix for legacy summary-text matching
+fuzzy: Changes to internal routing table
+EOF
+
+# Use with the tool
+az deployment group what-if ... | bicep-whatif-advisor \
+  --noise-file noise-patterns.txt
+```
+
+**Pattern types:**
+
+| Prefix | Match Strategy |
+|--------|---------------|
+| *(none)* | Case-insensitive substring — keyword appears anywhere in the property-change line |
+| `regex:` | Python `re.search()`, case-insensitive |
+| `fuzzy:` | Legacy fuzzy similarity (SequenceMatcher) — `--noise-threshold` applies |
 
 ### Automatic Confidence Scoring (Always On)
 
-The LLM assigns a confidence level to each resource change:
+After filtering, the LLM assigns a confidence level to each remaining resource change:
 
 - **High** - Real, meaningful changes (resource creation/deletion, security changes)
 - **Medium** - Potentially real but uncertain (retention policies, dynamic references)
-- **Low** - Likely noise (metadata changes, IPv6 flags, computed properties)
+- **Low** - Likely noise the LLM identified on its own (computed properties not caught by patterns)
 
 Low-confidence resources are automatically:
 - ✅ Excluded from risk analysis (in CI mode)
 - ✅ Displayed separately in a "Potential Noise" section
 - ✅ Still visible for verification
-
-### Pattern-Based Filtering (Optional)
-
-Provide custom patterns to override confidence scoring:
-
-```bash
-# Create a patterns file
-cat > noise-patterns.txt <<EOF
-# IPv6-related noise
-Change to IPv6 addressing
-IPv6 flag modification
-
-# Metadata noise
-Update to etag property
-Change to resourceGuid
-EOF
-
-# Use with the tool
-az deployment group what-if ... | bicep-whatif-advisor \
-  --noise-file noise-patterns.txt \
-  --noise-threshold 80
-```
-
-**How it works:**
-- Tool uses fuzzy matching (80% similarity by default)
-- Matched resources override confidence to "noise"
-- CI mode re-analyzes risk assessment with filtered resources
 
 **Example Output:**
 
@@ -355,8 +381,9 @@ az deployment group what-if ... | bicep-whatif-advisor --ci --diff-ref origin/ma
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--noise-file` | Path to file with noise patterns (one per line, # for comments) | - |
-| `--noise-threshold` | Fuzzy match threshold percentage (0-100) | `80` |
+| `--noise-file` | Path to additional noise patterns file (additive with built-ins) | - |
+| `--noise-threshold` | Similarity threshold % for `fuzzy:` prefix patterns only (0-100) | `80` |
+| `--no-builtin-patterns` | Disable the bundled Azure What-If noise patterns | `false` |
 
 ---
 

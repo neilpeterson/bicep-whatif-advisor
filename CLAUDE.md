@@ -28,6 +28,9 @@ bicep-bicep-whatif-advisor/       # Root directory
 │   ├── input.py            # Stdin reading and validation
 │   ├── prompt.py           # Prompt template construction (standard + CI mode)
 │   ├── render.py           # Output formatting (table, json, markdown)
+│   ├── noise_filter.py     # Pre-LLM property-line noise filtering
+│   ├── data/
+│   │   └── builtin_noise_patterns.txt  # Bundled known-noisy Azure property keywords
 │   ├── providers/          # LLM provider implementations
 │   │   ├── __init__.py     # Provider base class and registry
 │   │   ├── anthropic.py    # Anthropic Claude provider
@@ -335,6 +338,11 @@ cat whatif-output.txt | bicep-whatif-advisor \
 - `--skip-intent`: Skip PR intent alignment risk assessment (CI mode only)
 - `--skip-operations`: Skip risky operations risk assessment (CI mode only)
 
+**Noise filtering flags (all modes):**
+- `--noise-file`: Path to additional patterns file (additive with built-ins)
+- `--noise-threshold`: Similarity % for `fuzzy:` prefix patterns only (default: 80)
+- `--no-builtin-patterns`: Disable bundled Azure What-If noise patterns
+
 **Note:** At least one risk bucket must remain enabled when using skip flags.
 
 **Skip flag examples:**
@@ -357,6 +365,7 @@ Required test fixtures in `tests/fixtures/`:
 - `deletes.txt` — Only deletion operations
 - `no_changes.txt` — All NoChange resources
 - `large_output.txt` — 50+ resources for truncation testing
+- `noisy_changes.txt` — Real changes mixed with known-noisy properties (etag, provisioningState, IPv6)
 
 Mock LLM providers in tests to avoid API calls during unit testing.
 
@@ -375,10 +384,11 @@ Mock LLM providers in tests to avoid API calls during unit testing.
    - Add integration tests with real LLM providers
    - Mock-based unit tests for all modules
 
-3. **Enhanced Noise Filtering**
+3. **Enhanced Noise Filtering** (pre-LLM property filtering ✅ implemented)
    - Configurable confidence thresholds (currently hardcoded)
-   - Custom noise pattern matching improvements
-   - Machine learning-based noise detection
+   - Block-level suppression: omit entire Modify blocks when all properties are filtered
+   - Resource-type-scoped patterns (`[Microsoft.Network/virtualNetworks]` sections)
+   - Pattern suggestion tooling based on low-confidence LLM output
 
 4. **Performance Optimizations**
    - Parallel LLM requests for large What-If outputs

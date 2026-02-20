@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bicep-whatif-advisor"
-version = "1.9.0"
+version = "1.10.0"
 description = "AI-powered Azure Bicep What-If deployment advisor with automated safety reviews"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -59,6 +59,9 @@ Issues = "https://github.com/neilpeterson/bicep-whatif-advisor/issues"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["bicep_whatif_advisor*"]
+
+[tool.setuptools.package-data]
+bicep_whatif_advisor = ["data/*.txt"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

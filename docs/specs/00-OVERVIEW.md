@@ -33,7 +33,7 @@ Instead of parsing JSON or using Azure SDKs, the tool uses LLM reasoning to:
 
 **Flow:**
 ```
-What-If Output → Validation → LLM Analysis → Confidence Filtering → Formatted Display
+What-If Output → Validation → Pre-LLM Noise Filtering → LLM Analysis → Confidence Filtering → Formatted Display
 ```
 
 **Exit Codes:**
@@ -93,6 +93,16 @@ What-If Output + Git Diff + PR Context
            │ Validated text
            ▼
 ┌─────────────────────┐
+│  Pre-LLM Noise      │──── noise_filter.py
+│  Filter             │──── data/builtin_noise_patterns.txt
+│  - Built-in patterns│
+│  - User patterns    │
+│  - Strip noisy lines│
+└──────────┬──────────┘
+           │
+           │ Cleaned text
+           ▼
+┌─────────────────────┐
 │  Prompt Builder     │──── prompt.py
 │  - System prompt    │
 │  - User prompt      │
@@ -119,8 +129,7 @@ What-If Output + Git Diff + PR Context
            │ Structured data
            ▼
 ┌─────────────────────┐
-│ Confidence Filter   │──── noise_filter.py
-│  - Pattern match    │──── cli.py:filter_by_confidence()
+│ Confidence Filter   │──── cli.py:filter_by_confidence()
 │  - Split high/low   │
 └──────────┬──────────┘
            │
@@ -194,10 +203,12 @@ bicep_whatif_advisor/
 │                            # - Table (Rich library)
 │                            # - JSON (two-tier)
 │                            # - Markdown (PR comments)
-├── noise_filter.py          # Confidence filtering (120 lines)
-│                            # - Pattern matching
-│                            # - Similarity scoring
-│                            # - Noise pattern loading
+├── noise_filter.py          # Pre-LLM noise filtering
+│                            # - filter_whatif_text() strips noisy property lines
+│                            # - Keyword / regex / fuzzy pattern types
+│                            # - load_builtin_patterns() + load_user_patterns()
+├── data/
+│   └── builtin_noise_patterns.txt  # Bundled known-noisy Azure property keywords
 ├── providers/               # LLM provider implementations
 │   ├── __init__.py          # Abstract base class + factory
 │   ├── anthropic.py         # Claude via Anthropic API
@@ -223,7 +234,7 @@ bicep_whatif_advisor/
 - **render.py**: Formats output for different audiences (terminal, scripts, PRs)
 
 ### CI/CD Features
-- **noise_filter.py**: Reduces false positives from Azure What-If noise
+- **noise_filter.py**: Pre-LLM property-line filtering removes deterministic noise (etag, provisioningState, IPv6 flags) before LLM analysis; LLM confidence scoring handles remaining ambiguous noise
 - **ci/platform.py**: Auto-detects GitHub Actions / Azure DevOps context
 - **ci/diff.py**: Collects git changes for drift detection
 - **ci/risk_buckets.py**: Evaluates three independent risk dimensions
@@ -367,9 +378,17 @@ bicep-whatif-advisor --format markdown # For PR comments
 ### Noise Filtering
 
 ```bash
-bicep-whatif-advisor \
-  --noise-file patterns.txt \      # Load custom noise patterns
-  --noise-threshold 0.80           # 80% similarity threshold (default)
+# Built-in patterns auto-loaded on every run (no flags required)
+bicep-whatif-advisor
+
+# Add custom project-specific patterns (additive with built-ins)
+bicep-whatif-advisor --noise-file patterns.txt
+
+# Disable built-ins (use only custom patterns)
+bicep-whatif-advisor --no-builtin-patterns --noise-file patterns.txt
+
+# Adjust fuzzy: prefix pattern threshold (default 80)
+bicep-whatif-advisor --noise-file patterns.txt --noise-threshold 90
 ```
 
 ## Integration Points
