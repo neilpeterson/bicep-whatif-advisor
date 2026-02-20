@@ -115,7 +115,14 @@ fuzzy: Changes to internal routing configuration
 |--------|----------|----------|
 | *(none)* | `keyword in line.lower()` | Simple property name keywords — most common |
 | `regex:` | `re.search(pattern, line, IGNORECASE)` | Complex property paths, wildcards |
-| `fuzzy:` | `SequenceMatcher.ratio() >= threshold` | Legacy support; not recommended for new patterns |
+| `fuzzy:` | `SequenceMatcher.ratio() >= threshold` | Patterns that resemble raw What-If line text |
+
+> **`fuzzy:` caution:** The fuzzy algorithm runs against the raw What-If property-change
+> line (e.g., `"      ~ properties.etag: \"old\" => \"new\""`) — not against an LLM
+> summary. Patterns written as LLM summary phrases (e.g., `"Update to etag property"`)
+> will produce low similarity scores against raw property lines and are unlikely to
+> match. Write `fuzzy:` patterns to resemble the actual What-If line text, or use a
+> plain keyword instead.
 
 **Why keyword containment is the default:**
 - `"etag"` matches `"      ~ properties.etag: \"old\" => \"new\""` ✓
