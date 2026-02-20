@@ -6,7 +6,7 @@ import pytest
 from click.testing import CliRunner
 
 from bicep_whatif_advisor.cli import main
-from tests.conftest import MockProvider
+from conftest import MockProvider
 
 
 def _runner():

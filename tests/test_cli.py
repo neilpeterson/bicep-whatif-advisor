@@ -254,7 +254,7 @@ class TestCLIMain:
         runner = self._make_runner()
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
 
-        from tests.conftest import MockProvider
+        from conftest import MockProvider
 
         provider = MockProvider(response="This is not valid JSON at all")
         mocker.patch("bicep_whatif_advisor.cli.get_provider", return_value=provider)
@@ -307,6 +307,6 @@ class TestCLIMain:
 
 def _mock_provider(response: dict):
     """Create a MockProvider that returns the given response dict."""
-    from tests.conftest import MockProvider
+    from conftest import MockProvider
 
     return MockProvider(response=response)
