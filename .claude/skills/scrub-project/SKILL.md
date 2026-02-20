@@ -39,7 +39,7 @@ Performs comprehensive project cleanup: removes unnecessary code, simplifies whe
    - Look for duplicate or redundant files
    - Verify test fixtures in tests/fixtures/ are current
    - Verify tests/sample-bicep-deployment/ examples are working
-   - Check for temporary files (.pyc, __pycache__, .pytest_cache, etc.)
+   - Delete local cache directories: `.pytest_cache/`, `.ruff_cache/`, `__pycache__/` (recursively)
    - Check for empty __init__.py files that could be removed (Python 3.3+)
 
 ### 3. **Configuration & Build Files**
@@ -176,6 +176,7 @@ Performs comprehensive project cleanup: removes unnecessary code, simplifies whe
 - `pytest --cov=bicep_whatif_advisor` - Check test coverage
 - `pip install -e .[all,dev]` - Verify dependencies install
 - `git status` - Check for untracked files
+- `find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null; rm -rf .pytest_cache .ruff_cache` - Delete local cache directories
 - Task tool with Explore agent - For comprehensive code exploration
 - Grep tool - Search for patterns (TODO, FIXME, unused imports, etc.)
 - Read tool - Review documentation files
@@ -185,7 +186,7 @@ Performs comprehensive project cleanup: removes unnecessary code, simplifies whe
 
 - ✅ All tests still pass (`pytest`)
 - ✅ All documentation is current and accurate
-- ✅ No unnecessary files or __pycache__ directories remain
+- ✅ Local cache directories deleted (`.pytest_cache/`, `.ruff_cache/`, `__pycache__/`)
 - ✅ Bicep sample example works
 - ✅ Test fixtures are all used and relevant
 - ✅ Dependencies in pyproject.toml are minimal

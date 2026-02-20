@@ -4,7 +4,7 @@
 
 This document outlines the testing approach for `bicep-whatif-advisor`, covering test fixtures, mocking strategies, and recommended test coverage for each module.
 
-**Current State:** Test fixtures exist, Python test suite to be implemented.
+**Current State:** ✅ Fully implemented — 223 tests (214 unit, 9 integration), ~82% coverage, CI workflow on Python 3.9/3.11/3.13.
 
 ## Test Fixtures
 
@@ -16,7 +16,8 @@ tests/fixtures/
 ├── deletes.txt           # Only deletion operations
 ├── large_output.txt      # 50+ resources for truncation testing
 ├── mixed_changes.txt     # Creates, modifies, and deletes
-└── no_changes.txt        # All NoChange/Ignore resources
+├── no_changes.txt        # All NoChange/Ignore resources
+└── noisy_changes.txt     # Real changes mixed with known-noisy properties
 ```
 
 ### Usage
@@ -305,21 +306,24 @@ def test_git_diff(mock_run):
     assert 'main.bicep' in diff
 ```
 
-## Test Coverage Goals
+## Test Coverage (Actual)
 
-| Module | Target Coverage | Priority |
-|--------|-----------------|----------|
-| `input.py` | 100% | High |
-| `prompt.py` | 90% | High |
-| `providers/*.py` | 80% | Medium (mocking required) |
-| `render.py` | 70% | Medium (visual output) |
-| `noise_filter.py` | 100% | High |
-| `ci/platform.py` | 90% | High |
-| `ci/risk_buckets.py` | 100% | High |
-| `ci/diff.py` | 90% | High |
-| `ci/github.py` | 50% | Low (requires real API) |
-| `ci/azdevops.py` | 50% | Low (requires real API) |
-| `cli.py` | 70% | Medium (orchestration) |
+| Module | Coverage | Tests |
+|--------|----------|-------|
+| `input.py` | 100% | 11 |
+| `prompt.py` | 100% | 14 |
+| `ci/buckets.py` | 100% | 14 |
+| `ci/risk_buckets.py` | 100% | 14 |
+| `ci/verdict.py` | 100% | — |
+| `ci/platform.py` | 93% | 14 |
+| `ci/github.py` | 93% | 10 |
+| `ci/azdevops.py` | 91% | 10 |
+| `ci/diff.py` | 90% | 9 |
+| `noise_filter.py` | 84% | 25 |
+| `render.py` | 77% | 14 |
+| `cli.py` | 76% | 24 |
+| `providers/*.py` | 60-95% | 17 |
+| **Overall** | **~82%** | **223** |
 
 ## Running Tests
 
@@ -373,28 +377,30 @@ pytest -v
 
 ```
 tests/
-├── fixtures/                    # Test data
+├── conftest.py                  # Shared fixtures, MockProvider, sample responses
+├── fixtures/                    # Test data (What-If output samples)
 │   ├── create_only.txt
 │   ├── deletes.txt
 │   ├── large_output.txt
 │   ├── mixed_changes.txt
-│   └── no_changes.txt
+│   ├── no_changes.txt
+│   └── noisy_changes.txt
 ├── sample-bicep-deployment/     # Example Bicep templates
 │   ├── main.bicep
 │   └── pre-production.bicepparam
-├── test_input.py                # Input validation tests
-├── test_providers.py            # Provider system tests
-├── test_prompt.py               # Prompt engineering tests
-├── test_render.py               # Output rendering tests
-├── test_noise_filter.py         # Noise filtering tests
-├── test_risk_buckets.py         # Risk assessment tests
-├── test_platform.py             # Platform detection tests
-├── test_diff.py                 # Git diff tests
-├── test_github.py               # GitHub integration tests
-├── test_azdevops.py             # Azure DevOps integration tests
-├── test_cli.py                  # CLI orchestration tests
-├── test_integration.py          # End-to-end integration tests
-└── conftest.py                  # Pytest configuration and fixtures
+├── test_input.py                # Input validation tests (11)
+├── test_noise_filter.py         # Noise filtering tests (25)
+├── test_buckets.py              # Risk bucket registry tests (14)
+├── test_risk_buckets.py         # Risk evaluation tests (14)
+├── test_prompt.py               # Prompt construction tests (14)
+├── test_render.py               # Output rendering tests (14)
+├── test_platform.py             # Platform detection tests (14)
+├── test_diff.py                 # Git diff tests (9)
+├── test_providers.py            # Provider system tests (17)
+├── test_github.py               # GitHub PR comment tests (10)
+├── test_azdevops.py             # Azure DevOps PR comment tests (10)
+├── test_cli.py                  # CLI entry point tests (24)
+└── test_integration.py          # End-to-end pipeline tests (9)
 ```
 
 ## Test Fixtures (conftest.py)
@@ -483,10 +489,10 @@ def test_slow_operation():
 1. **Mutation testing:** Verify test quality with `mutmut`
 2. **Property-based testing:** Use `hypothesis` for edge cases
 3. **Performance benchmarks:** Track latency regressions
-4. **Visual regression testing:** Snapshot testing for rendered output
+4. **Snapshot testing:** Capture rendered output for regression detection
 5. **Contract testing:** Verify LLM response schemas
 
-## Next Steps
+## Related Specs
 
 For implementation details of each module:
 - [01-CLI-INTERFACE.md](01-CLI-INTERFACE.md) - CLI orchestration logic
