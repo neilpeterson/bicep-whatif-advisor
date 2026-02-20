@@ -154,7 +154,10 @@ class TestLoadBicepFiles:
 @pytest.mark.unit
 class TestCLIMain:
     def _make_runner(self):
-        return CliRunner(mix_stderr=False)
+        try:
+            return CliRunner(mix_stderr=False)
+        except TypeError:
+            return CliRunner()
 
     def test_version_flag(self):
         runner = self._make_runner()

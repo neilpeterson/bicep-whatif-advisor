@@ -10,7 +10,10 @@ from bicep_whatif_advisor.cli import main
 
 
 def _runner():
-    return CliRunner(mix_stderr=False)
+    try:
+        return CliRunner(mix_stderr=False)
+    except TypeError:
+        return CliRunner()
 
 
 @pytest.mark.integration
