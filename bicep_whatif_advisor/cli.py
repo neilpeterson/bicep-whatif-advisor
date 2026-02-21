@@ -240,6 +240,11 @@ def filter_by_confidence(data: dict) -> tuple[dict, dict]:
 @click.option(
     "--no-builtin-patterns", is_flag=True, help="Disable the built-in Azure What-If noise patterns"
 )
+@click.option(
+    "--include-whatif",
+    is_flag=True,
+    help="Include raw What-If output in PR comment as collapsible section",
+)
 @click.version_option(version=__version__)
 def main(
     provider: str,
@@ -266,6 +271,7 @@ def main(
     noise_file: str,
     noise_threshold: int,
     no_builtin_patterns: bool,
+    include_whatif: bool,
 ):
     """Analyze Azure What-If deployment output using LLMs.
 
@@ -573,6 +579,7 @@ def main(
         elif format == "json":
             render_json(high_confidence_data, low_confidence_data=low_confidence_data)
         elif format == "markdown":
+            raw_whatif = whatif_content if include_whatif else None
             markdown = render_markdown(
                 high_confidence_data,
                 ci_mode=ci,
@@ -580,6 +587,7 @@ def main(
                 no_block=no_block,
                 low_confidence_data=low_confidence_data,
                 platform=platform_ctx.platform,
+                whatif_content=raw_whatif,
             )
             print(markdown)
 
@@ -597,6 +605,7 @@ def main(
 
             # Post comment if requested
             if post_comment:
+                raw_whatif = whatif_content if include_whatif else None
                 markdown = render_markdown(
                     high_confidence_data,
                     ci_mode=True,
@@ -604,6 +613,7 @@ def main(
                     no_block=no_block,
                     low_confidence_data=low_confidence_data,
                     platform=platform_ctx.platform,
+                    whatif_content=raw_whatif,
                 )
                 _post_pr_comment(markdown, pr_url)
 

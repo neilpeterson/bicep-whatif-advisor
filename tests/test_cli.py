@@ -288,6 +288,23 @@ class TestCLIMain:
         result = runner.invoke(main, ["--verbose", "--format", "json"], input=whatif_input)
         assert result.exit_code == 0
 
+    def test_include_whatif_flag_threads_content(
+        self, clean_env, monkeypatch, mocker, sample_standard_response
+    ):
+        """--include-whatif passes raw What-If content to render_markdown."""
+        runner = self._make_runner()
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+        mocker.patch(
+            "bicep_whatif_advisor.cli.get_provider",
+            return_value=_mock_provider(sample_standard_response),
+        )
+        whatif_input = "Resource changes: 1\n+ Microsoft.Storage/test"
+        result = runner.invoke(
+            main, ["--format", "markdown", "--include-whatif"], input=whatif_input
+        )
+        assert result.exit_code == 0
+        assert "Raw What-If Output" in result.output
+
     def test_provider_flag(self, clean_env, monkeypatch, mocker, sample_standard_response):
         runner = self._make_runner()
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")

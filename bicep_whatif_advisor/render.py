@@ -338,6 +338,7 @@ def render_markdown(
     no_block: bool = False,
     low_confidence_data: dict = None,
     platform: str = None,
+    whatif_content: str = None,
 ) -> str:
     """Render output as markdown table suitable for PR comments.
 
@@ -467,6 +468,18 @@ def render_markdown(
                 f"| {idx} | {resource_name} | {resource_type} | {action} | {confidence_reason} |"
             )
 
+        lines.append("")
+        lines.append("</details>")
+        lines.append("")
+
+    # Raw What-If output (opt-in collapsible section)
+    if whatif_content:
+        lines.append("<details>")
+        lines.append("<summary>\U0001f4c4 Raw What-If Output</summary>")
+        lines.append("")
+        lines.append("```")
+        lines.append(whatif_content)
+        lines.append("```")
         lines.append("")
         lines.append("</details>")
         lines.append("")
