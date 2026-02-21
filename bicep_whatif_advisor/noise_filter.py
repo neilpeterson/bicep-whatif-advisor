@@ -30,7 +30,7 @@ import re
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 # Minimum leading-space indent for a property change line.
 # Resource-level lines use 2 spaces; property-level lines use 6+.
@@ -53,9 +53,7 @@ _SYMBOL_TO_OPERATION = {
 _VALID_OPERATIONS = frozenset({"Modify", "Create", "Delete", "Deploy", "NoChange", "Ignore"})
 
 # Regex for a resource header line: 2-space indent + change symbol + space + ARM type with /
-_RESOURCE_HEADER_RE = re.compile(
-    r"^  ([~+\-=*x!])\s+(\S+/\S+)"
-)
+_RESOURCE_HEADER_RE = re.compile(r"^  ([~+\-=*x!])\s+(\S+/\S+)")
 
 
 @dataclass
@@ -75,7 +73,8 @@ class _ResourceBlock:
     operation: str  # Operation name: "Modify", "Create", "Delete", etc.
     resource_type: str  # ARM resource type string from the header
     lines: List[str]  # All lines in this block (header + attributes + properties)
-    property_change_indices: List[int] = field(default_factory=list)  # Indices of property-change lines within self.lines
+    # Indices of property-change lines within self.lines
+    property_change_indices: List[int] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -86,11 +85,12 @@ class _ResourceBlock:
 def _parse_pattern_line(line: str) -> ParsedPattern:
     """Parse a single patterns-file line, detecting its prefix type."""
     if line.startswith("regex:"):
-        return ParsedPattern(raw=line, pattern_type="regex", value=line[len("regex:"):].strip())
+        return ParsedPattern(raw=line, pattern_type="regex", value=line[len("regex:") :].strip())
     if line.startswith("fuzzy:"):
-        return ParsedPattern(raw=line, pattern_type="fuzzy", value=line[len("fuzzy:"):].strip())
+        return ParsedPattern(raw=line, pattern_type="fuzzy", value=line[len("fuzzy:") :].strip())
     if line.startswith("resource:"):
-        return ParsedPattern(raw=line, pattern_type="resource", value=line[len("resource:"):].strip())
+        value = line[len("resource:") :].strip()
+        return ParsedPattern(raw=line, pattern_type="resource", value=value)
     return ParsedPattern(raw=line, pattern_type="keyword", value=line)
 
 
@@ -305,10 +305,8 @@ def _matches_resource_pattern(block: _ResourceBlock, pattern: ParsedPattern) -> 
         type_part = type_part.strip()
         op_part = op_part.strip()
 
-        # Validate operation — if invalid, treat as type-only (the colon may
-        # be part of the type string itself, though unlikely)
-        op_normalized = op_part.capitalize()
-        # Handle multi-word like "NoChange"
+        # Validate operation — if invalid, treat as type-only (the colon
+        # may be part of the type string itself, though unlikely)
         op_lookup = {v.lower(): v for v in _VALID_OPERATIONS}
         matched_op = op_lookup.get(op_part.lower())
 
@@ -403,9 +401,8 @@ def filter_whatif_text(
             if filtered_indices:
                 # Check for auto-suppression: if ALL property-change lines in a
                 # Modify block were filtered, suppress the entire block
-                if (
-                    block.operation == "Modify"
-                    and len(filtered_indices) == len(block.property_change_indices)
+                if block.operation == "Modify" and len(filtered_indices) == len(
+                    block.property_change_indices
                 ):
                     total_removed += len(block.lines)
                     continue  # Suppress entire block

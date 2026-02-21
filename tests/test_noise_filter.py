@@ -4,13 +4,13 @@ import pytest
 
 from bicep_whatif_advisor.noise_filter import (
     ParsedPattern,
-    _ResourceBlock,
     _is_property_change_line,
     _is_resource_header,
     _matches_pattern,
     _matches_resource_pattern,
     _parse_pattern_line,
     _parse_resource_blocks,
+    _ResourceBlock,
     calculate_similarity,
     filter_whatif_text,
     load_builtin_patterns,
@@ -105,10 +105,15 @@ class TestIsPropertyChangeLine:
 @pytest.mark.unit
 class TestIsResourceHeader:
     def test_modify_header(self):
-        assert _is_resource_header("  ~ Microsoft.Network/virtualNetworks/myvnet [2022-07-01]") is True
+        assert (
+            _is_resource_header("  ~ Microsoft.Network/virtualNetworks/myvnet [2022-07-01]") is True
+        )
 
     def test_create_header(self):
-        assert _is_resource_header("  + Microsoft.Storage/storageAccounts/newstorage [2023-01-01]") is True
+        assert (
+            _is_resource_header("  + Microsoft.Storage/storageAccounts/newstorage [2023-01-01]")
+            is True
+        )
 
     def test_delete_header(self):
         assert _is_resource_header("  - Microsoft.Sql/servers/mydb [2023-01-01]") is True
@@ -192,34 +197,58 @@ class TestMatchesResourcePattern:
 
     def test_type_substring_match(self):
         block = self._make_block("Microsoft.Network/privateDnsZones/virtualNetworkLinks/link1")
-        p = ParsedPattern(raw="resource: privateDnsZones/virtualNetworkLinks", pattern_type="resource", value="privateDnsZones/virtualNetworkLinks")
+        p = ParsedPattern(
+            raw="resource: privateDnsZones/virtualNetworkLinks",
+            pattern_type="resource",
+            value="privateDnsZones/virtualNetworkLinks",
+        )
         assert _matches_resource_pattern(block, p) is True
 
     def test_type_substring_no_match(self):
         block = self._make_block("Microsoft.Storage/storageAccounts/mystorage")
-        p = ParsedPattern(raw="resource: privateDnsZones", pattern_type="resource", value="privateDnsZones")
+        p = ParsedPattern(
+            raw="resource: privateDnsZones", pattern_type="resource", value="privateDnsZones"
+        )
         assert _matches_resource_pattern(block, p) is False
 
     def test_case_insensitive_type_match(self):
         block = self._make_block("Microsoft.Network/privateDnsZones/virtualNetworkLinks/link1")
-        p = ParsedPattern(raw="resource: PRIVATEDNSZONES", pattern_type="resource", value="PRIVATEDNSZONES")
+        p = ParsedPattern(
+            raw="resource: PRIVATEDNSZONES", pattern_type="resource", value="PRIVATEDNSZONES"
+        )
         assert _matches_resource_pattern(block, p) is True
 
     def test_type_with_operation_match(self):
-        block = self._make_block("Microsoft.Network/privateDnsZones/virtualNetworkLinks/link1", "Modify")
-        p = ParsedPattern(raw="resource: privateDnsZones:Modify", pattern_type="resource", value="privateDnsZones:Modify")
+        block = self._make_block(
+            "Microsoft.Network/privateDnsZones/virtualNetworkLinks/link1", "Modify"
+        )
+        p = ParsedPattern(
+            raw="resource: privateDnsZones:Modify",
+            pattern_type="resource",
+            value="privateDnsZones:Modify",
+        )
         assert _matches_resource_pattern(block, p) is True
 
     def test_type_with_wrong_operation_no_match(self):
-        block = self._make_block("Microsoft.Network/privateDnsZones/virtualNetworkLinks/link1", "Create")
-        p = ParsedPattern(raw="resource: privateDnsZones:Modify", pattern_type="resource", value="privateDnsZones:Modify")
+        block = self._make_block(
+            "Microsoft.Network/privateDnsZones/virtualNetworkLinks/link1", "Create"
+        )
+        p = ParsedPattern(
+            raw="resource: privateDnsZones:Modify",
+            pattern_type="resource",
+            value="privateDnsZones:Modify",
+        )
         assert _matches_resource_pattern(block, p) is False
 
     def test_type_only_matches_any_operation(self):
         """Without an operation suffix, pattern matches any operation."""
         for op in ["Modify", "Create", "Delete"]:
             block = self._make_block("Microsoft.Insights/diagnosticSettings/diag1", op)
-            p = ParsedPattern(raw="resource: diagnosticSettings", pattern_type="resource", value="diagnosticSettings")
+            p = ParsedPattern(
+                raw="resource: diagnosticSettings",
+                pattern_type="resource",
+                value="diagnosticSettings",
+            )
             assert _matches_resource_pattern(block, p) is True
 
     def test_operation_case_insensitive(self):
@@ -230,12 +259,16 @@ class TestMatchesResourcePattern:
     def test_invalid_operation_falls_back_to_type_match(self):
         """Invalid operation name treated as full type string match."""
         block = self._make_block("Microsoft.Network/test:notanop/resource1", "Modify")
-        p = ParsedPattern(raw="resource: test:notanop", pattern_type="resource", value="test:notanop")
+        p = ParsedPattern(
+            raw="resource: test:notanop", pattern_type="resource", value="test:notanop"
+        )
         assert _matches_resource_pattern(block, p) is True
 
     def test_delete_operation_match(self):
         block = self._make_block("Microsoft.Sql/servers/mydb", "Delete")
-        p = ParsedPattern(raw="resource: Sql/servers:Delete", pattern_type="resource", value="Sql/servers:Delete")
+        p = ParsedPattern(
+            raw="resource: Sql/servers:Delete", pattern_type="resource", value="Sql/servers:Delete"
+        )
         assert _matches_resource_pattern(block, p) is True
 
 
@@ -403,7 +436,9 @@ class TestBlockLevelSuppression:
         )
         patterns = [
             ParsedPattern(raw="etag", pattern_type="keyword", value="etag"),
-            ParsedPattern(raw="provisioningState", pattern_type="keyword", value="provisioningState"),
+            ParsedPattern(
+                raw="provisioningState", pattern_type="keyword", value="provisioningState"
+            ),
         ]
         result, count = filter_whatif_text(text, patterns)
         # Entire block (6 lines) should be removed
@@ -509,7 +544,7 @@ class TestBlockLevelSuppression:
             "\n"
             "  ~ Microsoft.Insights/components/myappinsights [2020-02-02]\n"
             '      ~ properties.etag: "aaa" => "bbb"\n'
-            '      ~ properties.RetentionInDays: 30 => 90\n'
+            "      ~ properties.RetentionInDays: 30 => 90\n"
         )
         patterns = [
             ParsedPattern(raw="etag", pattern_type="keyword", value="etag"),
@@ -534,10 +569,14 @@ class TestResourcePatternFiltering:
         text = (
             "  ~ Microsoft.Network/privateDnsZones/virtualNetworkLinks/link1 [2022-07-01]\n"
             '      id:   "/subscriptions/123"\n'
-            '      ~ properties.registrationEnabled: true => false\n'
+            "      ~ properties.registrationEnabled: true => false\n"
         )
         patterns = [
-            ParsedPattern(raw="resource: privateDnsZones/virtualNetworkLinks", pattern_type="resource", value="privateDnsZones/virtualNetworkLinks"),
+            ParsedPattern(
+                raw="resource: privateDnsZones/virtualNetworkLinks",
+                pattern_type="resource",
+                value="privateDnsZones/virtualNetworkLinks",
+            ),
         ]
         result, count = filter_whatif_text(text, patterns)
         assert count == 3
@@ -550,7 +589,11 @@ class TestResourcePatternFiltering:
             '      id:   "/subscriptions/123"\n'
         )
         patterns = [
-            ParsedPattern(raw="resource: privateDnsZones:Modify", pattern_type="resource", value="privateDnsZones:Modify"),
+            ParsedPattern(
+                raw="resource: privateDnsZones:Modify",
+                pattern_type="resource",
+                value="privateDnsZones:Modify",
+            ),
         ]
         result, count = filter_whatif_text(text, patterns)
         assert count == 0
@@ -560,14 +603,18 @@ class TestResourcePatternFiltering:
         """Resource and property patterns work together."""
         text = (
             "  ~ Microsoft.Network/privateDnsZones/virtualNetworkLinks/link1 [2022-07-01]\n"
-            '      ~ properties.registrationEnabled: true => false\n'
+            "      ~ properties.registrationEnabled: true => false\n"
             "\n"
             "  ~ Microsoft.Network/virtualNetworks/myvnet [2022-07-01]\n"
             '      ~ properties.etag: "old" => "new"\n'
             '      ~ properties.addressSpace: "10.0.0.0/16" => "10.0.0.0/8"\n'
         )
         patterns = [
-            ParsedPattern(raw="resource: privateDnsZones/virtualNetworkLinks", pattern_type="resource", value="privateDnsZones/virtualNetworkLinks"),
+            ParsedPattern(
+                raw="resource: privateDnsZones/virtualNetworkLinks",
+                pattern_type="resource",
+                value="privateDnsZones/virtualNetworkLinks",
+            ),
             ParsedPattern(raw="etag", pattern_type="keyword", value="etag"),
         ]
         result, count = filter_whatif_text(text, patterns)
@@ -588,7 +635,11 @@ class TestResourcePatternFiltering:
             '      ~ properties.addressSpace: "10.0.0.0/16" => "10.0.0.0/8"\n'
         )
         patterns = [
-            ParsedPattern(raw="resource: diagnosticSettings", pattern_type="resource", value="diagnosticSettings"),
+            ParsedPattern(
+                raw="resource: diagnosticSettings",
+                pattern_type="resource",
+                value="diagnosticSettings",
+            ),
         ]
         result, count = filter_whatif_text(text, patterns)
         assert "diagnosticSettings" not in result
