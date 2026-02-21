@@ -337,6 +337,7 @@ def render_markdown(
     custom_title: str = None,
     no_block: bool = False,
     low_confidence_data: dict = None,
+    platform: str = None,
 ) -> str:
     """Render output as markdown table suitable for PR comments.
 
@@ -346,6 +347,7 @@ def render_markdown(
         custom_title: Custom title for the comment (default: "What-If Deployment Review")
         no_block: Append "(non-blocking)" to title if True
         low_confidence_data: Optional dict with low-confidence resources (potential noise)
+        platform: CI/CD platform ("github", "azuredevops", or None for default)
 
     Returns:
         Markdown-formatted string
@@ -431,8 +433,11 @@ def render_markdown(
     lines.append("")
     lines.append("</details>")
     lines.append("")
-    lines.append("<br>")  # Add explicit spacing for Azure DevOps compatibility
-    lines.append("")
+    # Azure DevOps needs an explicit <br> for spacing between collapsible sections;
+    # GitHub already adds sufficient spacing from the blank line alone.
+    if platform != "github":
+        lines.append("<br>")
+        lines.append("")
 
     # Add collapsible noise section for low-confidence resources
     if low_confidence_data and low_confidence_data.get("resources"):

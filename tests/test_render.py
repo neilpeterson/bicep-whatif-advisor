@@ -182,6 +182,57 @@ class TestRenderMarkdown:
         assert "Infrastructure Drift" in md
         assert "Risky Operations" in md
 
+    def test_github_no_br_between_details(self):
+        """GitHub platform should not include <br> between collapsible sections."""
+        data = {"resources": [], "overall_summary": ""}
+        low = {
+            "resources": [
+                {
+                    "resource_name": "noisy",
+                    "resource_type": "T",
+                    "action": "Modify",
+                    "confidence_reason": "noise",
+                }
+            ]
+        }
+        md = render_markdown(data, low_confidence_data=low, platform="github")
+        # Should have both details sections but no <br> between them
+        assert md.count("<details>") == 2
+        assert "<br>" not in md
+
+    def test_azuredevops_br_between_details(self):
+        """Azure DevOps platform should include <br> between collapsible sections."""
+        data = {"resources": [], "overall_summary": ""}
+        low = {
+            "resources": [
+                {
+                    "resource_name": "noisy",
+                    "resource_type": "T",
+                    "action": "Modify",
+                    "confidence_reason": "noise",
+                }
+            ]
+        }
+        md = render_markdown(data, low_confidence_data=low, platform="azuredevops")
+        assert md.count("<details>") == 2
+        assert "<br>" in md
+
+    def test_default_platform_br_between_details(self):
+        """Default (no platform) should include <br> for backward compatibility."""
+        data = {"resources": [], "overall_summary": ""}
+        low = {
+            "resources": [
+                {
+                    "resource_name": "noisy",
+                    "resource_type": "T",
+                    "action": "Modify",
+                    "confidence_reason": "noise",
+                }
+            ]
+        }
+        md = render_markdown(data, low_confidence_data=low)
+        assert "<br>" in md
+
     def test_footer_in_ci_mode(self):
         data = {"resources": [], "overall_summary": "", "verdict": {}}
         md = render_markdown(data, ci_mode=True)

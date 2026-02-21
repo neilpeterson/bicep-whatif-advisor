@@ -579,6 +579,7 @@ def main(
                 custom_title=comment_title,
                 no_block=no_block,
                 low_confidence_data=low_confidence_data,
+                platform=platform_ctx.platform,
             )
             print(markdown)
 
@@ -602,6 +603,7 @@ def main(
                     custom_title=comment_title,
                     no_block=no_block,
                     low_confidence_data=low_confidence_data,
+                    platform=platform_ctx.platform,
                 )
                 _post_pr_comment(markdown, pr_url)
 
