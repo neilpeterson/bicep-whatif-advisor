@@ -233,6 +233,28 @@ class TestRenderMarkdown:
         md = render_markdown(data, low_confidence_data=low)
         assert "<br>" in md
 
+    def test_include_whatif_collapsible_section(self):
+        """When whatif_content is provided, a collapsible section with the raw output appears."""
+        data = {"resources": [], "overall_summary": ""}
+        raw = "Resource changes: 1 to create.\n+ Microsoft.Storage/storageAccounts/mystorage"
+        md = render_markdown(data, whatif_content=raw)
+        assert "<details>" in md
+        assert "Raw What-If Output" in md
+        assert raw in md
+
+    def test_include_whatif_none_no_section(self):
+        """When whatif_content is None, no raw What-If section appears."""
+        data = {"resources": [], "overall_summary": ""}
+        md = render_markdown(data, whatif_content=None)
+        assert "Raw What-If Output" not in md
+
+    def test_include_whatif_code_fence(self):
+        """Raw What-If content should be wrapped in a code fence."""
+        data = {"resources": [], "overall_summary": ""}
+        raw = "Resource changes: 1\n+ Microsoft.Storage/test"
+        md = render_markdown(data, whatif_content=raw)
+        assert "```\n" + raw + "\n```" in md
+
     def test_footer_in_ci_mode(self):
         data = {"resources": [], "overall_summary": "", "verdict": {}}
         md = render_markdown(data, ci_mode=True)

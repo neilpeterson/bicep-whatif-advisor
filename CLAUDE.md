@@ -262,7 +262,7 @@ Three-bucket risk assessment:
 
 Documentation is organized into two directories:
 
-**`/docs/specs/`** - Technical specifications (numbered 00-11 for reading order)
+**`/docs/specs/`** - Technical specifications (numbered 00-12 for reading order)
 - `00-OVERVIEW.md` - Project architecture, data flow, design principles
 - `01-CLI-INTERFACE.md` - CLI flags, orchestration, and smart defaults
 - `02-INPUT-VALIDATION.md` - Stdin processing and validation
@@ -275,6 +275,7 @@ Documentation is organized into two directories:
 - `09-PR-INTEGRATION.md` - GitHub & Azure DevOps PR comment posting
 - `10-GIT-DIFF.md` - Git diff collection for drift detection
 - `11-TESTING-STRATEGY.md` - Test architecture and fixtures
+- `12-BACKLOG.md` - Feature backlog and future enhancements
 
 **`/docs/guides/`** - User-facing guides (clear progression for new users)
 - `QUICKSTART.md` - 5-minute getting started guide
@@ -365,6 +366,9 @@ cat whatif-output.txt | bicep-whatif-advisor \
 - `--noise-threshold`: Similarity % for `fuzzy:` prefix patterns only (default: 80)
 - `--no-builtin-patterns`: Disable bundled Azure What-If noise patterns
 
+**Output control flags:**
+- `--include-whatif`: Include raw What-If output in markdown/PR comment as collapsible section
+
 **Note:** At least one risk bucket must remain enabled when using skip flags.
 
 **Skip flag examples:**
@@ -381,7 +385,7 @@ cat whatif-output.txt | bicep-whatif-advisor --ci --skip-drift --skip-intent
 
 ## Testing
 
-**Test suite:** 223 tests (214 unit + 9 integration), ~82% coverage, runs in ~1.5s.
+**Test suite:** 230 tests (221 unit + 9 integration), ~82% coverage, runs in ~1.5s.
 
 **Run tests:**
 ```bash
@@ -414,7 +418,7 @@ All tests use `MockProvider` from `conftest.py` — no real API calls during tes
    - Currently supported via manual `--ci` flag
 
 2. **Test Coverage** ✅ **COMPLETED**
-   - 223 tests (214 unit + 9 integration), ~82% coverage
+   - 230 tests (221 unit + 9 integration), ~82% coverage
    - CI workflow on Python 3.9/3.11/3.13
 
 3. **Enhanced Noise Filtering** (pre-LLM property filtering ✅ implemented)

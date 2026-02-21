@@ -165,6 +165,18 @@ pip install bicep-whatif-advisor[ollama]
 bicep-whatif-advisor --provider ollama --model llama3.1
 ```
 
+### Including Raw What-If Output
+
+Include the original Azure What-If text in your PR comment as a collapsible section for detailed reviewer reference:
+
+```bash
+# Adds a "Raw What-If Output" collapsible section to markdown/PR comments
+bicep-whatif-advisor --ci --post-comment --include-whatif
+
+# Also works with standalone markdown output
+bicep-whatif-advisor --format markdown --include-whatif
+```
+
 ### Multi-Environment Pipelines
 ```bash
 # Distinguish environments in PR comments

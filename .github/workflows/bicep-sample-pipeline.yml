@@ -71,6 +71,7 @@ jobs:
               --comment-title "What-If Summary" \
               --bicep-dir tests/sample-bicep-deployment/ \
               --skip-operations \
+              --include-whatif \
               --noise-file tests/sample-bicep-deployment/.whatif-noise
 
   validate:

@@ -385,6 +385,12 @@ az deployment group what-if ... | bicep-whatif-advisor --ci --diff-ref origin/ma
 | `--noise-threshold` | Similarity threshold % for `fuzzy:` prefix patterns only (0-100) | `80` |
 | `--no-builtin-patterns` | Disable the bundled Azure What-If noise patterns | `false` |
 
+### Output Control Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--include-whatif` | Include raw What-If output in markdown/PR comment as collapsible section | `false` |
+
 ---
 
 ## Environment Variables

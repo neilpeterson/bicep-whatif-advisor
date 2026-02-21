@@ -575,6 +575,19 @@ jobs:
 - **Production**
 - **Deployment Analysis Production (non-blocking)** - when using `--no-block`
 
+### Raw What-If Output in PR Comments (`--include-whatif`)
+
+By default, PR comments only contain the AI-generated summary. Use `--include-whatif` to include the original Azure What-If output as a collapsible section so reviewers can see the full details without leaving the PR:
+
+```bash
+az deployment group what-if ... | bicep-whatif-advisor \
+  --ci \
+  --post-comment \
+  --include-whatif
+```
+
+The raw output appears in a collapsible "Raw What-If Output" section wrapped in a code fence. This works with both `--post-comment` and `--format markdown`.
+
 ### Non-Blocking Mode (`--no-block`)
 
 By default, CI mode blocks deployment if risk thresholds are exceeded (exit code 1). Use `--no-block` to report findings without failing the pipeline:

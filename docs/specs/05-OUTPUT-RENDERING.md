@@ -29,7 +29,9 @@ def render_markdown(
     ci_mode: bool = False,
     custom_title: str = None,
     no_block: bool = False,
-    low_confidence_data: dict = None
+    low_confidence_data: dict = None,
+    platform: str = None,
+    whatif_content: str = None
 ) -> str
 ```
 
@@ -432,6 +434,8 @@ Generates markdown suitable for GitHub/Azure DevOps PR comments.
 | `custom_title` | `str` | `None` | Custom title (default: "What-If Deployment Review") |
 | `no_block` | `bool` | `False` | Append "(non-blocking)" to title |
 | `low_confidence_data` | `dict` | `None` | Low-confidence resources |
+| `platform` | `str` | `None` | CI/CD platform (`"github"`, `"azuredevops"`, or `None`) |
+| `whatif_content` | `str` | `None` | Raw What-If output to include as collapsible section |
 
 **Returns:** Markdown string (printed to stdout or passed to PR comment APIs).
 
@@ -524,7 +528,29 @@ If low-confidence resources exist:
 
 **Design:** Also collapsible to avoid cluttering PR comment.
 
-**4. Dynamic Risk Column (lines 395-408)**
+**4. Raw What-If Output (`--include-whatif` flag)**
+
+When `whatif_content` is provided (via `--include-whatif` CLI flag), the raw Azure What-If output is included as a collapsible section wrapped in a code fence:
+
+```markdown
+<details>
+<summary>📄 Raw What-If Output</summary>
+
+```
+Resource changes: 2 to create.
++ Microsoft.Storage/storageAccounts/mystorage
+...
+```
+
+</details>
+```
+
+**Design:**
+- Opt-in only — no output when `whatif_content` is `None`
+- Code fence prevents markdown injection from raw What-If text
+- Positioned after noise section, before CI verdict
+
+**5. Dynamic Risk Column (lines 395-408)**
 
 ```python
 if ci_mode:
@@ -548,7 +574,8 @@ if format == "table":
 elif format == "json":
     render_json(high_confidence_data, low_confidence_data=low_confidence_data)
 elif format == "markdown":
-    markdown = render_markdown(high_confidence_data, ci_mode=ci, custom_title=comment_title, no_block=no_block, low_confidence_data=low_confidence_data)
+    raw_whatif = whatif_content if include_whatif else None
+    markdown = render_markdown(high_confidence_data, ci_mode=ci, custom_title=comment_title, no_block=no_block, low_confidence_data=low_confidence_data, platform=platform_ctx.platform, whatif_content=raw_whatif)
     print(markdown)
 ```
 
