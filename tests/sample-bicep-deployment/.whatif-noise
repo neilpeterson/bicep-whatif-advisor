@@ -30,91 +30,100 @@
 # Subnet Reference Changes
 # ============================================================================
 # Azure often changes subnet references from hardcoded IDs to dynamic ARM functions
-Changing subnet reference from hardcoded ID to dynamic reference
-Changing subnet reference from hardcoded to dynamic
-Updating subnet ID reference to use ARM function
-Converting hardcoded subnet ID to dynamic reference
+fuzzy: Changing subnet reference from hardcoded ID to dynamic reference
+fuzzy: Changing subnet reference from hardcoded to dynamic
+fuzzy: Updating subnet ID reference to use ARM function
+fuzzy: Converting hardcoded subnet ID to dynamic reference
 
 # ============================================================================
 # IPv6 Configuration Changes
 # ============================================================================
 # IPv6 flags frequently toggle without code changes
-Removing IPv6 flag
-Changing disableIpv6 property
-Disabling IPv6 addressing
-Changing enableIPv6Addressing property
-Toggling IPv6 configuration
-IPv6 flag changing from enabled to disabled
-IPv6 flag changing from disabled to enabled
+fuzzy: Removing IPv6 flag
+fuzzy: Changing disableIpv6 property
+fuzzy: Disabling IPv6 addressing
+fuzzy: Changing enableIPv6Addressing property
+fuzzy: Toggling IPv6 configuration
+fuzzy: IPv6 flag changing from enabled to disabled
+fuzzy: IPv6 flag changing from disabled to enabled
 
 # ============================================================================
 # Log Analytics Destination Type
 # ============================================================================
 # This property changes between deployment runs without code modifications
-Changing logAnalyticsDestinationType property
-Updating Log Analytics destination type
-Modifying logAnalyticsDestinationType setting
-Log Analytics destination changing from Dedicated to AzureDiagnostics
+fuzzy: Changing logAnalyticsDestinationType property
+fuzzy: Updating Log Analytics destination type
+fuzzy: Modifying logAnalyticsDestinationType setting
+fuzzy: Log Analytics destination changing from Dedicated to AzureDiagnostics
 
 # ============================================================================
 # Tags Only Changes
 # ============================================================================
 # Tag-only modifications are often not significant for deployment safety
-Updating tags only
-Changing only resource tags
-Modifying tags without other changes
-Only tag values are changing
-Tags are being updated
+fuzzy: Updating tags only
+fuzzy: Changing only resource tags
+fuzzy: Modifying tags without other changes
+fuzzy: Only tag values are changing
+fuzzy: Tags are being updated
 
 # ============================================================================
 # Diagnostic Settings
 # ============================================================================
 # Diagnostic settings often appear as noise
-Modifying diagnostic settings
-Updating Application Insights diagnostics
-Changing diagnostic configuration
-Adding diagnostic settings
+fuzzy: Modifying diagnostic settings
+fuzzy: Updating Application Insights diagnostics
+fuzzy: Changing diagnostic configuration
+fuzzy: Adding diagnostic settings
 
 # ============================================================================
 # Metadata Properties
 # ============================================================================
 # System-managed metadata that doesn't represent real changes
-Changing only etag property
-Updating provisioningState metadata
-Changing resource ID reference
-Updating metadata properties only
-Only etag is changing
-System metadata property update
+fuzzy: Changing only etag property
+fuzzy: Updating provisioningState metadata
+fuzzy: Changing resource ID reference
+fuzzy: Updating metadata properties only
+fuzzy: Only etag is changing
+fuzzy: System metadata property update
 
 # ============================================================================
 # Monitoring & Application Insights
 # ============================================================================
 # These are often deployed as dependencies but not the main change
-Adding Application Insights logging
-Adding Application Insights monitoring
-Creating Application Insights resource
-Deploying monitoring components
+fuzzy: Adding Application Insights logging
+fuzzy: Adding Application Insights monitoring
+fuzzy: Creating Application Insights resource
+fuzzy: Deploying monitoring components
 
 # ============================================================================
 # Computed/Read-Only Properties
 # ============================================================================
 # Properties that Azure manages automatically
-Changing resourceGuid property
-Updating system-generated identifier
-Modifying read-only property
-System-managed property changing
+fuzzy: Changing resourceGuid property
+fuzzy: Updating system-generated identifier
+fuzzy: Modifying read-only property
+fuzzy: System-managed property changing
 
 # ============================================================================
 # Custom Patterns
 # ============================================================================
 # Add your organization-specific noise patterns below
 # Example: Common recurring changes in your environment
-Removing blob delete retention policy configuration
-Swaps two security rules
-Changes subnet reference from hardcoded ID to dynamic reference expression and removes IPv6 flag
-Removing logAnalyticsDestinationType property and retention policy settings from Key Vault diagnostic settings
-Removing retention policy settings and capacity metrics from storage blob diagnostic settings
-Removing retention policy settings and capacity metrics from storage account diagnostic settings
-Removing deleteRetentionPolicy properties
+fuzzy: Removing blob delete retention policy configuration
+fuzzy: Swaps two security rules
+fuzzy: Changes subnet reference from hardcoded ID to dynamic reference expression and removes IPv6 flag
+fuzzy: Removing logAnalyticsDestinationType property and retention policy settings from Key Vault diagnostic settings
+fuzzy: Removing retention policy settings and capacity metrics from storage blob diagnostic settings
+fuzzy: Removing retention policy settings and capacity metrics from storage account diagnostic settings
+fuzzy: Removing deleteRetentionPolicy properties
+fuzzy: Removes retention policy settings from Key Vault diagnostics
+fuzzy: Removes retention policy and capacity metrics from diagnostics
 
-
+# Patterns
+retention
+reference
+deleteRetentionPolicy
+Modifying diagnostic
+retention policy
+resolutionPolicy
+virtualNetworkLinks
