@@ -127,7 +127,3 @@ Modifying diagnostic
 retention policy
 resolutionPolicy
 virtualNetworkLinks
-
-resource: privateDnsZones/virtualNetworkLinks:Modify
-resource: Microsoft.Insights/diagnosticSettings:Modify
-resource: Microsoft.Insights/diagnosticSettings:Modify
