@@ -4,7 +4,7 @@
 
 This document outlines the testing approach for `bicep-whatif-advisor`, covering test fixtures, mocking strategies, and recommended test coverage for each module.
 
-**Current State:** ✅ Fully implemented — 223 tests (214 unit, 9 integration), ~82% coverage, CI workflow on Python 3.9/3.11/3.13.
+**Current State:** ✅ Fully implemented — 230 tests (221 unit, 9 integration), ~82% coverage, CI workflow on Python 3.9/3.11/3.13.
 
 ## Test Fixtures
 
@@ -311,19 +311,19 @@ def test_git_diff(mock_run):
 | Module | Coverage | Tests |
 |--------|----------|-------|
 | `input.py` | 100% | 11 |
-| `prompt.py` | 100% | 14 |
+| `prompt.py` | 100% | 21 |
 | `ci/buckets.py` | 100% | 14 |
-| `ci/risk_buckets.py` | 100% | 14 |
+| `ci/risk_buckets.py` | 100% | 22 |
 | `ci/verdict.py` | 100% | — |
-| `ci/platform.py` | 93% | 14 |
+| `ci/platform.py` | 93% | 18 |
 | `ci/github.py` | 93% | 10 |
 | `ci/azdevops.py` | 91% | 10 |
 | `ci/diff.py` | 90% | 9 |
-| `noise_filter.py` | 84% | 25 |
-| `render.py` | 77% | 14 |
-| `cli.py` | 76% | 24 |
+| `noise_filter.py` | 84% | 34 |
+| `render.py` | 77% | 25 |
+| `cli.py` | 76% | 30 |
 | `providers/*.py` | 60-95% | 17 |
-| **Overall** | **~82%** | **223** |
+| **Overall** | **~82%** | **230** |
 
 ## Running Tests
 
@@ -389,17 +389,17 @@ tests/
 │   ├── main.bicep
 │   └── pre-production.bicepparam
 ├── test_input.py                # Input validation tests (11)
-├── test_noise_filter.py         # Noise filtering tests (25)
+├── test_noise_filter.py         # Noise filtering tests (34)
 ├── test_buckets.py              # Risk bucket registry tests (14)
-├── test_risk_buckets.py         # Risk evaluation tests (14)
-├── test_prompt.py               # Prompt construction tests (14)
-├── test_render.py               # Output rendering tests (14)
-├── test_platform.py             # Platform detection tests (14)
+├── test_risk_buckets.py         # Risk evaluation tests (22)
+├── test_prompt.py               # Prompt construction tests (21)
+├── test_render.py               # Output rendering tests (25)
+├── test_platform.py             # Platform detection tests (18)
 ├── test_diff.py                 # Git diff tests (9)
 ├── test_providers.py            # Provider system tests (17)
 ├── test_github.py               # GitHub PR comment tests (10)
 ├── test_azdevops.py             # Azure DevOps PR comment tests (10)
-├── test_cli.py                  # CLI entry point tests (24)
+├── test_cli.py                  # CLI entry point tests (30)
 └── test_integration.py          # End-to-end pipeline tests (9)
 ```
 

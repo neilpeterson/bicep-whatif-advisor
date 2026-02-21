@@ -45,20 +45,6 @@ def mixed_changes_fixture():
     return (FIXTURES_DIR / "mixed_changes.txt").read_text()
 
 
-@pytest.fixture(scope="session")
-def deletes_fixture():
-    return (FIXTURES_DIR / "deletes.txt").read_text()
-
-
-@pytest.fixture(scope="session")
-def no_changes_fixture():
-    return (FIXTURES_DIR / "no_changes.txt").read_text()
-
-
-@pytest.fixture(scope="session")
-def large_output_fixture():
-    return (FIXTURES_DIR / "large_output.txt").read_text()
-
 
 @pytest.fixture(scope="session")
 def noisy_changes_fixture():
