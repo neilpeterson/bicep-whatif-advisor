@@ -188,6 +188,7 @@ bicep-whatif-advisor --ci \
 | `--noise-file` | String | `None` | Path to custom noise patterns file (additive with built-ins) |
 | `--noise-threshold` | Integer | `80` | Similarity threshold % for `fuzzy:` prefix patterns only (0-100) |
 | `--no-builtin-patterns` | Flag | `False` | Disable the bundled built-in noise patterns |
+| `--include-whatif` | Flag | `False` | Include raw What-If output in markdown/PR comment as collapsible section |
 
 **Implementation:**
 ```python
@@ -195,6 +196,7 @@ bicep-whatif-advisor --ci \
 @click.option("--noise-file", type=str, default=None, help="Path to additional noise patterns file (additive with built-in patterns)")
 @click.option("--noise-threshold", type=int, default=80, help="Similarity threshold percentage for 'fuzzy:' prefix patterns only (default: 80)")
 @click.option("--no-builtin-patterns", is_flag=True, help="Disable the built-in Azure What-If noise patterns")
+@click.option("--include-whatif", is_flag=True, help="Include raw What-If output in PR comment as collapsible section")
 ```
 
 **Usage:**
@@ -207,6 +209,9 @@ bicep-whatif-advisor --noise-file ./patterns.txt
 
 # Use only custom patterns, disable built-ins
 bicep-whatif-advisor --no-builtin-patterns --noise-file ./patterns.txt --noise-threshold 90
+
+# Include raw What-If output in PR comment for reviewer reference
+bicep-whatif-advisor --ci --post-comment --include-whatif
 ```
 
 ## Orchestration Flow

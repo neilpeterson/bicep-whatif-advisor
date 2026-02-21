@@ -365,6 +365,9 @@ cat whatif-output.txt | bicep-whatif-advisor \
 - `--noise-threshold`: Similarity % for `fuzzy:` prefix patterns only (default: 80)
 - `--no-builtin-patterns`: Disable bundled Azure What-If noise patterns
 
+**Output control flags:**
+- `--include-whatif`: Include raw What-If output in markdown/PR comment as collapsible section
+
 **Note:** At least one risk bucket must remain enabled when using skip flags.
 
 **Skip flag examples:**
