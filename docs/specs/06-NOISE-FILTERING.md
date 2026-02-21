@@ -1,11 +1,11 @@
-# 06 - Noise Filtering (Pre-LLM Property Filtering)
+# 06 - Noise Filtering (Pre-LLM Property & Block Filtering)
 
 ## Purpose
 
 The noise filtering system reduces false positives from Azure What-If output by
-removing known-noisy property-change lines from the raw What-If text **before**
-the content is sent to the LLM. This is more reliable than post-LLM summary
-matching because:
+removing known-noisy property-change lines and entire resource blocks from the
+raw What-If text **before** the content is sent to the LLM. This is more
+reliable than post-LLM summary matching because:
 
 1. **Property names are deterministic** — `etag` always says "etag", unlike
    LLM summaries which vary in phrasing.
@@ -27,9 +27,12 @@ Azure What-If output contains significant noise:
 - Diagnostics noise (`logAnalyticsDestinationType`)
 - Hidden Azure-managed tags (`hidden-link:`, `hidden-title`)
 - Load balancer and NIC computed fields (`inboundNatRules`, `effectiveRouteTable`)
+- Entire resource types that are always noisy (e.g., `privateDnsZones/virtualNetworkLinks`)
 
 **Impact:** These properties appear as `~` (Modify) changes in What-If output,
 causing the LLM to report spurious modifications and potentially failing CI gates.
+When all properties are filtered but the resource header remains, the LLM sees a
+Modify marker with no properties and may hallucinate a summary.
 
 ## Architecture
 
@@ -39,12 +42,12 @@ Raw What-If text (stdin)
 noise_filter.py: filter_whatif_text()
     ├── Load built-in patterns (bicep_whatif_advisor/data/builtin_noise_patterns.txt)
     ├── Load user patterns (--noise-file, additive)
-    ├── For each line in What-If text:
-    │   ├── Is this a property-change line? (4+ space indent + change symbol)
-    │   │   ├── YES → check against all patterns
-    │   │   │         match → suppress line
-    │   │   │         no match → keep line
-    │   │   └── NO  → keep line (resource headers, info lines, etc.)
+    ├── Parse text into structured resource blocks
+    ├── Phase 1: Resource-level filtering
+    │   └── resource: patterns → remove entire matching blocks
+    ├── Phase 2: Property-level filtering + block suppression
+    │   ├── keyword/regex/fuzzy patterns → remove matching property lines
+    │   └── If ALL property lines in Modify block filtered → suppress entire block
     └── Return filtered text + count of removed lines
     ↓
 Cleaned What-If text → LLM (via build_user_prompt)
@@ -56,13 +59,29 @@ filter_by_confidence() splits high/low confidence resources
 Separate rendering (main table + "Potential Noise" section)
 ```
 
+## Block-Aware Parsing
+
+The filter parses raw What-If text into structured components:
+
+- **Preamble** — everything before the first resource header (legend, scope info)
+- **Resource blocks** — each block contains a header line, attribute lines, and property-change lines
+- **Epilogue** — summary lines after the last resource block (e.g., "Resource changes: ...")
+
+Resource headers are identified by a regex that requires:
+- 2-space indent
+- A change symbol (`~`, `+`, `-`, `=`, `*`, `x`)
+- An ARM resource type containing `/` (e.g., `Microsoft.Network/virtualNetworks`)
+
+The `/` requirement distinguishes real resource headers from legend lines like
+`  ~ Modify` or `  - Delete` which have the same indent + symbol pattern.
+
 ## Property-Change Line Detection
 
-A line is eligible for noise filtering if:
+A line is eligible for property-level noise filtering if:
 - It has **4 or more leading spaces** (property-level indentation)
 - Its first non-whitespace character is `~`, `+`, or `-` (change symbol)
 
-This precisely targets property-change lines within Modify blocks and excludes:
+This precisely targets property-change lines within blocks and excludes:
 - Resource-level header lines (`  ~ Microsoft.Network/...`) — only 2-space indent
 - Resource attribute lines (`      id:   "..."`, `      name: "..."`) — indented but no change symbol
 
@@ -74,20 +93,6 @@ This precisely targets property-change lines within Modify blocks and excludes:
       ~ properties.etag: "old" => "new"                    ← property change (6 spaces + ~, CHECK)
       ~ properties.addressSpace.addressPrefixes[0]: ...     ← property change (6 spaces + ~, CHECK)
       + properties.ipv6AddressSpace: null => ""             ← property change (6 spaces + +, CHECK)
-```
-
-Implementation in `noise_filter.py`:
-
-```python
-_PROPERTY_INDENT_MIN = 4
-_CHANGE_SYMBOLS = frozenset({"+", "-", "~"})
-
-def _is_property_change_line(line: str) -> bool:
-    stripped = line.lstrip(" ")
-    indent = len(line) - len(stripped)
-    if indent < _PROPERTY_INDENT_MIN or not stripped:
-        return False
-    return stripped[0] in _CHANGE_SYMBOLS
 ```
 
 ## Pattern File Format
@@ -107,15 +112,39 @@ regex: properties\.metadata\..*Version
 
 # fuzzy: prefix — legacy SequenceMatcher (--noise-threshold applies)
 fuzzy: Changes to internal routing configuration
+
+# resource: prefix — remove entire resource block by ARM type
+resource: diagnosticSettings
+resource: privateDnsZones/virtualNetworkLinks:Modify
 ```
 
 ### Pattern Types
 
-| Prefix | Strategy | Use Case |
-|--------|----------|----------|
-| *(none)* | `keyword in line.lower()` | Simple property name keywords — most common |
-| `regex:` | `re.search(pattern, line, IGNORECASE)` | Complex property paths, wildcards |
-| `fuzzy:` | `SequenceMatcher.ratio() >= threshold` | Patterns that resemble raw What-If line text |
+| Prefix | Strategy | Scope | Use Case |
+|--------|----------|-------|----------|
+| *(none)* | `keyword in line.lower()` | Property lines | Simple property name keywords — most common |
+| `regex:` | `re.search(pattern, line, IGNORECASE)` | Property lines | Complex property paths, wildcards |
+| `fuzzy:` | `SequenceMatcher.ratio() >= threshold` | Property lines | Patterns that resemble raw What-If line text |
+| `resource:` | Type substring + optional operation | Entire block | Remove all changes for a resource type |
+
+### Resource Pattern Syntax
+
+```
+resource: <type_substring>              # Matches any operation
+resource: <type_substring>:<Operation>  # Matches specific operation only
+```
+
+- **Type** is a case-insensitive substring match against the ARM resource type in the header
+- **Operation** (optional, after `:`) must be one of: `Modify`, `Create`, `Delete`, `Deploy`, `NoChange`, `Ignore`
+- Removes the entire resource block (header + attribute lines + all property lines)
+
+**Examples:**
+
+```
+resource: diagnosticSettings                          # Any operation on diagnosticSettings
+resource: privateDnsZones/virtualNetworkLinks:Modify  # Only Modify operations on DNS links
+resource: Microsoft.Insights/components               # Full type path works too
+```
 
 > **`fuzzy:` caution:** The fuzzy algorithm runs against the raw What-If property-change
 > line (e.g., `"      ~ properties.etag: \"old\" => \"new\""`) — not against an LLM
@@ -130,6 +159,42 @@ fuzzy: Changes to internal routing configuration
 - Short, specific property names like `etag`, `resourceGuid`, `provisioningState` are
   unlikely to appear in real infrastructure property names
 - No need to know the LLM's phrasing — matching the raw What-If is deterministic
+
+## Block-Level Suppression
+
+When all property-change lines in a **Modify** block are removed by property-level
+patterns (keyword, regex, or fuzzy), the entire block is automatically suppressed.
+This prevents the LLM from seeing a Modify header with no property details, which
+would cause it to hallucinate a change summary.
+
+**Rules:**
+- Only **Modify** blocks are candidates for auto-suppression
+- **Create** and **Delete** blocks are never auto-suppressed — they carry semantic
+  meaning even without property details (a deletion is always significant)
+- A Modify block with **no property-change lines at all** is not suppressed (it may
+  contain meaningful attribute changes)
+- The suppressed block's lines (header + attributes + properties) are all counted
+  in the `total_removed` count
+
+**Example:**
+
+Input:
+```
+  ~ Microsoft.Network/virtualNetworks/myvnet [2022-07-01]
+      id:   "/subscriptions/..."
+      name: "myvnet"
+
+      ~ properties.etag: "W/\"abc\"" => "W/\"def\""
+      ~ properties.provisioningState: "Succeeded" => "Updating"
+```
+
+With patterns `etag` and `provisioningState`, both property lines are filtered.
+Since this is a Modify block and ALL property-change lines were removed, the
+entire block (header + attributes + blank line + properties = 6 lines) is
+suppressed.
+
+If only `etag` was in patterns, only that property line is removed and the block
+is kept with the surviving `provisioningState` property.
 
 ## Built-in Pattern Set
 
@@ -171,7 +236,7 @@ if noise_patterns:
     )
     if num_filtered > 0:
         sys.stderr.write(
-            f"🔕 Pre-filtered {num_filtered} known-noisy property "
+            f"🔕 Pre-filtered {num_filtered} known-noisy "
             f"line(s) from What-If output\n"
         )
 ```
@@ -243,17 +308,22 @@ simply skipped, and LLM confidence scoring handles noise instead.
       ~ properties.addressSpace.addressPrefixes[0]: "10.0.0.0/16" => "10.0.0.0/8"
 ```
 
-### After filter_whatif_text() (4 patterns matched → 3 lines removed)
+### After filter_whatif_text() (4 patterns matched → 3 property lines removed)
 
+If only 3 of 4 property lines match patterns:
 ```
   ~ Microsoft.Network/virtualNetworks/myvnet [2022-07-01]
       ...
       ~ properties.addressSpace.addressPrefixes[0]: "10.0.0.0/16" => "10.0.0.0/8"
 ```
 
-**LLM now sees only the real change** — address prefix expansion. It can
-accurately report this as a high-confidence modification without being distracted
-by etag/provisioningState/IPv6 noise.
+**LLM now sees only the real change** — address prefix expansion.
+
+### Block suppression example
+
+If all 4 property lines match patterns, the entire Modify block is suppressed
+(header + attributes + all properties removed). The LLM never sees this
+resource at all.
 
 ## Testing
 
@@ -279,16 +349,17 @@ cat tests/fixtures/noisy_changes.txt | bicep-whatif-advisor --no-builtin-pattern
 cat tests/fixtures/noisy_changes.txt | bicep-whatif-advisor \
   --no-builtin-patterns \
   --noise-file my-patterns.txt
+
+# Test resource-level filtering
+echo "resource: privateDnsZones/virtualNetworkLinks:Modify" > /tmp/patterns.txt
+cat whatif-output.txt | bicep-whatif-advisor --noise-file /tmp/patterns.txt
 ```
 
 ## Future Improvements
 
-1. **Block-level suppression** — if all property changes in a Modify block are
-   filtered, suppress the entire resource block rather than sending an empty
-   Modify to the LLM
-2. **Resource-type-scoped patterns** — `[Microsoft.Network/virtualNetworks]`
-   section headers to apply patterns only to specific resource types
-3. **Pattern suggestions** — analyze `--verbose` output to recommend new patterns
+1. **Resource-type-scoped property patterns** — `[Microsoft.Network/virtualNetworks]`
+   section headers to apply property patterns only to specific resource types
+2. **Pattern suggestions** — analyze `--verbose` output to recommend new patterns
    based on resources the LLM marks as low-confidence
 
 ## Next Steps

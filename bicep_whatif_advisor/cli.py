@@ -393,8 +393,7 @@ def main(
             )
             if num_filtered > 0:
                 sys.stderr.write(
-                    f"🔕 Pre-filtered {num_filtered} known-noisy property "
-                    f"line(s) from What-If output\n"
+                    f"🔕 Pre-filtered {num_filtered} known-noisy line(s) from What-If output\n"
                 )
 
         # Get provider

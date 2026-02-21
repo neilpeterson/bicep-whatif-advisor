@@ -3,13 +3,19 @@
 # These patterns suppress known Azure What-If false positives from the raw
 # What-If text BEFORE it is sent to the LLM for analysis.
 #
-# Matching strategy (plain text default):
+# Pattern types:
 #   Plain text           — case-insensitive substring: keyword anywhere in line
 #   regex: <pattern>     — Python re.search(), case-insensitive
 #   fuzzy: <pattern>     — legacy fuzzy similarity (SequenceMatcher)
+#   resource: <type>     — remove entire resource block by ARM type substring
+#   resource: <type>:Op  — remove block only when operation matches (Modify, Create, etc.)
 #
-# Plain-text patterns only apply to property-change lines (indented 4+ spaces
-# with a ~ / + / - change symbol). Resource-level lines are never filtered.
+# Plain-text, regex, and fuzzy patterns only apply to property-change lines
+# (indented 4+ spaces with a ~ / + / - change symbol). When ALL property-change
+# lines in a Modify block are filtered, the entire block is auto-suppressed.
+#
+# Resource patterns remove the full resource block (header + attributes +
+# properties). Type matching is case-insensitive substring.
 #
 # To disable these built-ins: --no-builtin-patterns
 # To add your own patterns:   --noise-file ./my-patterns.txt
