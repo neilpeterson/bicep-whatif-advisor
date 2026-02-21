@@ -45,7 +45,6 @@ def mixed_changes_fixture():
     return (FIXTURES_DIR / "mixed_changes.txt").read_text()
 
 
-
 @pytest.fixture(scope="session")
 def noisy_changes_fixture():
     return (FIXTURES_DIR / "noisy_changes.txt").read_text()
