@@ -1,4 +1,6 @@
-"""Pre-LLM noise filtering for Azure What-If output.
+"""Pre-LLM noise filtering and post-LLM resource reclassification.
+
+**Property-level filtering (pre-LLM):**
 
 Filters known noisy property lines from raw What-If text before the content is
 sent to the LLM for analysis. This is more reliable than post-LLM summary
@@ -9,21 +11,24 @@ matching because:
      anticipate the LLM's exact phrasing.
   3. The LLM never sees the noise, so it cannot misreport it as a real change.
 
+**Resource-level reclassification (post-LLM):**
+
+Resource patterns (resource:) are applied *after* the LLM has analyzed the
+What-If text. Matching resources are demoted to ``confidence_level = "low"``
+so they appear in the low-confidence "Potential Azure What-If Noise" section
+rather than being silently removed. This ensures all resources remain visible
+in the output.
+
 Pattern file format (one pattern per line, # for comments):
 
   Plain text (default)  — case-insensitive substring anywhere in the line
   regex: <pattern>      — Python re.search(), case-insensitive
   fuzzy: <pattern>      — legacy fuzzy similarity (SequenceMatcher)
-  resource: <type>[:op] — remove entire resource block by type (and optionally operation)
+  resource: <type>[:op] — demote matching resources to low confidence (post-LLM)
 
 Property-level patterns (keyword/regex/fuzzy) only match property-change lines
 (indented 4+ spaces with a ~ / + / - change symbol). Resource-level header lines
 and attribute lines are never touched by property patterns.
-
-Resource-level patterns (resource:) match entire resource blocks by ARM type
-substring and optional operation. When all property-change lines in a Modify
-block are removed by property patterns, the entire block is also automatically
-suppressed.
 """
 
 import re
@@ -367,34 +372,28 @@ def filter_whatif_text(
     patterns: list,
     fuzzy_threshold: float = 0.80,
 ) -> tuple:
-    """Filter noisy property lines and resource blocks from raw What-If text.
+    """Filter noisy property lines from raw What-If text.
 
-    Uses a two-phase block-aware approach:
-    1. Parse What-If text into structured resource blocks
-    2. Filter: resource-level patterns first (remove entire blocks), then
-       property-level patterns with automatic Modify block suppression
-
-    When all property-change lines in a Modify block are removed by property
-    patterns, the entire block is automatically suppressed. Create/Delete blocks
-    are never auto-suppressed (they carry semantic meaning without property details).
+    Uses a block-aware approach: parses What-If text into structured resource
+    blocks and removes matching property-change lines. Resource-level patterns
+    (``resource:``) are ignored here — they are handled post-LLM by
+    :func:`reclassify_resource_noise`.
 
     Args:
         whatif_content: Raw What-If output text
-        patterns: List of ParsedPattern objects to match against
+        patterns: List of ParsedPattern objects to match against (resource
+            patterns are silently skipped)
         fuzzy_threshold: Similarity threshold for fuzzy patterns (0.0-1.0)
 
     Returns:
         Tuple of (filtered_text, num_lines_removed)
     """
-    if not patterns:
-        return whatif_content, 0
-
-    # Separate resource-level vs property-level patterns
-    resource_patterns = [p for p in patterns if p.pattern_type == "resource"]
+    # Only use property-level patterns; resource patterns are handled post-LLM
     property_patterns = [p for p in patterns if p.pattern_type != "resource"]
 
-    # If no resource patterns and no need for block suppression, we can still
-    # benefit from block parsing for auto-suppression of fully-filtered Modify blocks.
+    if not property_patterns:
+        return whatif_content, 0
+
     lines = whatif_content.splitlines(keepends=True)
     preamble, blocks, epilogue = _parse_resource_blocks(lines)
 
@@ -411,19 +410,11 @@ def filter_whatif_text(
             filtered_lines.append(line)
         return "".join(filtered_lines), removed
 
-    # Phase 1: Resource-level filtering
-    # Phase 2: Property-level filtering + auto block suppression
+    # Property-level filtering only (no block suppression)
     result_lines = list(preamble)
     total_removed = 0
 
     for block in blocks:
-        # Check resource-level patterns
-        if resource_patterns and any(
-            _matches_resource_pattern(block, p) for p in resource_patterns
-        ):
-            total_removed += len(block.lines)
-            continue  # Suppress entire block
-
         # Apply property-level patterns within this block
         if property_patterns and block.property_change_indices:
             filtered_indices = set()  # Indices of lines to remove
@@ -433,15 +424,7 @@ def filter_whatif_text(
                     filtered_indices.add(idx)
 
             if filtered_indices:
-                # Check for auto-suppression: if ALL property-change lines in a
-                # Modify block were filtered, suppress the entire block
-                if block.operation == "Modify" and len(filtered_indices) == len(
-                    block.property_change_indices
-                ):
-                    total_removed += len(block.lines)
-                    continue  # Suppress entire block
-
-                # Otherwise keep the block but remove matched property lines
+                # Keep the block but remove matched property lines
                 for i, line in enumerate(block.lines):
                     if i in filtered_indices:
                         total_removed += 1
@@ -454,6 +437,103 @@ def filter_whatif_text(
 
     result_lines.extend(epilogue)
     return "".join(result_lines), total_removed
+
+
+# ---------------------------------------------------------------------------
+# Post-LLM resource reclassification
+# ---------------------------------------------------------------------------
+
+
+def extract_resource_patterns(patterns: list) -> tuple:
+    """Split patterns into resource-level and property-level lists.
+
+    Args:
+        patterns: List of ParsedPattern objects
+
+    Returns:
+        Tuple of (resource_patterns, property_patterns)
+    """
+    resource_patterns = [p for p in patterns if p.pattern_type == "resource"]
+    property_patterns = [p for p in patterns if p.pattern_type != "resource"]
+    return resource_patterns, property_patterns
+
+
+def _matches_resource_pattern_post_llm(
+    resource_type: str, action: str, pattern: ParsedPattern
+) -> bool:
+    """Check if an LLM-output resource matches a resource: pattern.
+
+    Similar to :func:`_matches_resource_pattern` but operates on LLM response
+    fields (resource_type string and action string) rather than parsed
+    What-If blocks.
+
+    Args:
+        resource_type: The resource_type field from LLM output
+        action: The action field from LLM output (Create, Modify, Delete, etc.)
+        pattern: A ParsedPattern with pattern_type == "resource"
+
+    Returns:
+        True if the resource matches
+    """
+    value = pattern.value
+
+    def _type_matches(needle: str) -> bool:
+        return needle.lower() in resource_type.lower()
+
+    if ":" in value:
+        type_part, op_part = value.rsplit(":", 1)
+        type_part = type_part.strip()
+        op_part = op_part.strip()
+
+        op_lookup = {v.lower(): v for v in _VALID_OPERATIONS}
+        matched_op = op_lookup.get(op_part.lower())
+
+        if matched_op:
+            if not _type_matches(type_part):
+                return False
+            return action.lower() == matched_op.lower()
+        else:
+            return _type_matches(value)
+    else:
+        return _type_matches(value)
+
+
+def reclassify_resource_noise(resources: list, resource_patterns: list) -> int:
+    """Demote matching resources to low confidence after LLM analysis.
+
+    Iterates over LLM-produced resource dicts and sets
+    ``confidence_level = "low"`` on any that match a resource: pattern.
+    Resources already at low confidence are left unchanged.
+
+    Args:
+        resources: List of resource dicts from LLM response
+        resource_patterns: List of ParsedPattern objects with pattern_type == "resource"
+
+    Returns:
+        Number of resources reclassified
+    """
+    if not resource_patterns or not resources:
+        return 0
+
+    count = 0
+    for resource in resources:
+        resource_type = resource.get("resource_type", "")
+        action = resource.get("action", "")
+        current_confidence = resource.get("confidence_level", "medium").lower()
+
+        # Skip if already low confidence
+        if current_confidence in ("low", "noise"):
+            continue
+
+        if any(
+            _matches_resource_pattern_post_llm(resource_type, action, p)
+            for p in resource_patterns
+        ):
+            resource["confidence_level"] = "low"
+            resource["confidence_reason"] = "Matched resource noise pattern"
+            count += 1
+
+    return count
 
 
 # ---------------------------------------------------------------------------

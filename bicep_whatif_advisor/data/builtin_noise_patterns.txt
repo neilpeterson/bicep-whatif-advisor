@@ -1,21 +1,25 @@
 # Azure What-If Built-in Noise Patterns
 # ─────────────────────────────────────────────────────────────────────────────
-# These patterns suppress known Azure What-If false positives from the raw
-# What-If text BEFORE it is sent to the LLM for analysis.
+# These patterns handle known Azure What-If false positives in two phases:
+#
+# 1. Property patterns (pre-LLM): Strip noisy property lines from raw What-If
+#    text BEFORE it is sent to the LLM for analysis.
+# 2. Resource patterns (post-LLM): Demote matching resources to low confidence
+#    AFTER LLM analysis, so they appear in the "Potential Azure What-If Noise"
+#    section rather than being removed entirely.
 #
 # Pattern types:
-#   Plain text           — case-insensitive substring: keyword anywhere in line
-#   regex: <pattern>     — Python re.search(), case-insensitive
-#   fuzzy: <pattern>     — legacy fuzzy similarity (SequenceMatcher)
-#   resource: <type>     — remove entire resource block by ARM type substring
-#   resource: <type>:Op  — remove block only when operation matches (Modify, Create, etc.)
+#   Plain text           — case-insensitive substring: keyword anywhere in line (pre-LLM)
+#   regex: <pattern>     — Python re.search(), case-insensitive (pre-LLM)
+#   fuzzy: <pattern>     — legacy fuzzy similarity (SequenceMatcher) (pre-LLM)
+#   resource: <type>     — demote to low confidence by ARM type substring (post-LLM)
+#   resource: <type>:Op  — demote only when operation matches (Modify, Create, etc.)
 #
 # Plain-text, regex, and fuzzy patterns only apply to property-change lines
-# (indented 4+ spaces with a ~ / + / - change symbol). When ALL property-change
-# lines in a Modify block are filtered, the entire block is auto-suppressed.
+# (indented 4+ spaces with a ~ / + / - change symbol).
 #
-# Resource patterns remove the full resource block (header + attributes +
-# properties). Type matching is case-insensitive substring.
+# Resource patterns match the resource_type field from the LLM response.
+# Type matching is case-insensitive substring.
 #
 # To disable these built-ins: --no-builtin-patterns
 # To add your own patterns:   --noise-file ./my-patterns.txt
