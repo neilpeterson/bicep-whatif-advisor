@@ -376,7 +376,8 @@ class TestCLIMain:
             input=whatif_input,
         )
         assert result.exit_code == 0
-        parsed = json.loads(result.output)
+        # Use extract_json to handle stderr messages that may leak into output
+        parsed = extract_json(result.output)
 
         # link1 should be demoted to low confidence (not removed)
         low_resources = parsed.get("low_confidence", {}).get("resources", [])
