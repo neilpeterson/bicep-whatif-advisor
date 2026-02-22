@@ -284,6 +284,30 @@ def _parse_resource_blocks(
 # ---------------------------------------------------------------------------
 
 
+def _extract_arm_type(full_path: str) -> str:
+    """Extract the ARM resource type from a full What-If resource path.
+
+    Azure What-If output includes resource *names* interleaved between type
+    segments::
+
+        Microsoft.Storage/storageAccounts/myacct/blobServices/default
+
+    The ARM resource type omits the name segments::
+
+        Microsoft.Storage/storageAccounts/blobServices
+
+    Convention: first segment is the provider namespace, then remaining
+    segments alternate type / name / type / name / ...
+    """
+    parts = full_path.split("/")
+    if len(parts) < 2:
+        return full_path
+    namespace = parts[0]  # e.g., Microsoft.Storage
+    remaining = parts[1:]  # e.g., [storageAccounts, myacct, blobServices, default]
+    type_segments = [remaining[i] for i in range(0, len(remaining), 2)]
+    return namespace + "/" + "/".join(type_segments)
+
+
 def _matches_resource_pattern(block: _ResourceBlock, pattern: ParsedPattern) -> bool:
     """Check if a resource block matches a resource: pattern.
 
@@ -299,6 +323,16 @@ def _matches_resource_pattern(block: _ResourceBlock, pattern: ParsedPattern) -> 
     Returns:
         True if the block matches
     """
+    arm_type = _extract_arm_type(block.resource_type)
+
+    def _type_matches(needle: str) -> bool:
+        """Check needle as case-insensitive substring of full path or ARM type."""
+        needle_lower = needle.lower()
+        return (
+            needle_lower in block.resource_type.lower()
+            or needle_lower in arm_type.lower()
+        )
+
     value = pattern.value
     if ":" in value:
         type_part, op_part = value.rsplit(":", 1)
@@ -312,15 +346,15 @@ def _matches_resource_pattern(block: _ResourceBlock, pattern: ParsedPattern) -> 
 
         if matched_op:
             # Type substring + operation match
-            if type_part.lower() not in block.resource_type.lower():
+            if not _type_matches(type_part):
                 return False
             return block.operation == matched_op
         else:
             # Invalid operation name — fall back to full value as type match
-            return value.lower() in block.resource_type.lower()
+            return _type_matches(value)
     else:
         # Type-only match (any operation)
-        return value.lower() in block.resource_type.lower()
+        return _type_matches(value)
 
 
 # ---------------------------------------------------------------------------
