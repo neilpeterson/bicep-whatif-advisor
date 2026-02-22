@@ -134,6 +134,7 @@ def _build_ci_system_prompt(
         risk_buckets_schema.append(f'''    "{bucket_id}": {{
       "risk_level": "low|medium|high",
       "concerns": ["array of specific concerns"],
+      "concern_summary": "1-2 sentence summary of all concerns for display in a table cell, or 'None' if no concerns",
       "reasoning": "explanation of risk assessment"
     }}''')
 
