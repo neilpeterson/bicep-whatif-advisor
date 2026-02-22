@@ -13,10 +13,12 @@ from bicep_whatif_advisor.noise_filter import (
     _parse_resource_blocks,
     _ResourceBlock,
     calculate_similarity,
+    extract_resource_patterns,
     filter_whatif_text,
     load_builtin_patterns,
     load_user_patterns,
     match_noise_pattern,
+    reclassify_resource_noise,
 )
 
 # ---------------------------------------------------------------------------
@@ -196,9 +198,7 @@ class TestExtractArmType:
 
     def test_nested_child_resource(self):
         assert (
-            _extract_arm_type(
-                "Microsoft.Storage/storageAccounts/myacct/blobServices/default"
-            )
+            _extract_arm_type("Microsoft.Storage/storageAccounts/myacct/blobServices/default")
             == "Microsoft.Storage/storageAccounts/blobServices"
         )
 
@@ -315,9 +315,7 @@ class TestMatchesResourcePattern:
 
     def test_nested_child_type_via_arm_extraction(self):
         """Pattern with ARM type matches even when resource names are interleaved."""
-        block = self._make_block(
-            "Microsoft.Storage/storageAccounts/myacct/blobServices/default"
-        )
+        block = self._make_block("Microsoft.Storage/storageAccounts/myacct/blobServices/default")
         p = ParsedPattern(
             raw="resource: Microsoft.Storage/storageAccounts/blobServices",
             pattern_type="resource",
@@ -515,8 +513,8 @@ class TestFilterWhatifText:
 
 @pytest.mark.unit
 class TestBlockLevelSuppression:
-    def test_modify_block_all_filtered_suppressed(self):
-        """When ALL property lines in a Modify block are filtered, suppress the entire block."""
+    def test_modify_block_all_filtered_keeps_header(self):
+        """When ALL property lines in a Modify block are filtered, keep block header."""
         text = (
             "  ~ Microsoft.Network/virtualNetworks/myvnet [2022-07-01]\n"
             '      id:   "/subscriptions/123"\n'
@@ -532,10 +530,12 @@ class TestBlockLevelSuppression:
             ),
         ]
         result, count = filter_whatif_text(text, patterns)
-        # Entire block (6 lines) should be removed
-        assert count == 6
-        assert "virtualNetworks" not in result
-        assert "myvnet" not in result
+        # Only the 2 property lines should be removed, block header preserved
+        assert count == 2
+        assert "virtualNetworks" in result
+        assert "myvnet" in result
+        assert "etag" not in result
+        assert "provisioningState" not in result
 
     def test_modify_block_some_survive_kept(self):
         """When only some property lines in a Modify block are filtered, keep the block."""
@@ -627,8 +627,8 @@ class TestBlockLevelSuppression:
         result, count = filter_whatif_text(text, patterns)
         assert "Resource changes:" in result
 
-    def test_multiple_blocks_independent_suppression(self):
-        """Each block is evaluated independently for suppression."""
+    def test_multiple_blocks_independent_filtering(self):
+        """Each block is filtered independently; headers always preserved."""
         text = (
             "  ~ Microsoft.Network/virtualNetworks/myvnet [2022-07-01]\n"
             '      ~ properties.etag: "old" => "new"\n'
@@ -641,11 +641,12 @@ class TestBlockLevelSuppression:
             ParsedPattern(raw="etag", pattern_type="keyword", value="etag"),
         ]
         result, count = filter_whatif_text(text, patterns)
-        # First block: all properties filtered -> suppressed (3 lines including blank)
-        assert "virtualNetworks" not in result
-        # Second block: only etag filtered, RetentionInDays survives
+        # Both etag property lines removed, but headers preserved
+        assert count == 2
+        assert "virtualNetworks" in result  # Header preserved
         assert "Insights/components" in result
         assert "RetentionInDays" in result
+        assert "etag" not in result
 
 
 # ---------------------------------------------------------------------------
@@ -655,8 +656,10 @@ class TestBlockLevelSuppression:
 
 @pytest.mark.unit
 class TestResourcePatternFiltering:
-    def test_entire_block_removed_by_type(self):
-        """Resource pattern removes the entire block."""
+    """Resource patterns are ignored by filter_whatif_text (handled post-LLM)."""
+
+    def test_resource_pattern_ignored_by_filter(self):
+        """filter_whatif_text should ignore resource: patterns entirely."""
         text = (
             "  ~ Microsoft.Network/privateDnsZones/virtualNetworkLinks/link1 [2022-07-01]\n"
             '      id:   "/subscriptions/123"\n'
@@ -670,28 +673,30 @@ class TestResourcePatternFiltering:
             ),
         ]
         result, count = filter_whatif_text(text, patterns)
-        assert count == 3
-        assert result.strip() == ""
+        # Resource pattern ignored — block fully preserved
+        assert count == 0
+        assert "privateDnsZones" in result
+        assert "registrationEnabled" in result
 
-    def test_wrong_operation_block_preserved(self):
-        """Block with non-matching operation should be preserved."""
+    def test_resource_only_patterns_no_filtering(self):
+        """When only resource patterns exist, nothing should be filtered."""
         text = (
-            "  + Microsoft.Network/privateDnsZones/virtualNetworkLinks/link1 [2022-07-01]\n"
-            '      id:   "/subscriptions/123"\n'
+            "  ~ Microsoft.Insights/diagnosticSettings/diag1 [2021-05-01]\n"
+            '      ~ properties.logAnalyticsDestinationType: "Dedicated" => ""\n'
         )
         patterns = [
             ParsedPattern(
-                raw="resource: privateDnsZones:Modify",
+                raw="resource: diagnosticSettings",
                 pattern_type="resource",
-                value="privateDnsZones:Modify",
+                value="diagnosticSettings",
             ),
         ]
         result, count = filter_whatif_text(text, patterns)
         assert count == 0
-        assert "privateDnsZones" in result
+        assert "diagnosticSettings" in result
 
-    def test_combined_resource_and_property_patterns(self):
-        """Resource and property patterns work together."""
+    def test_mixed_resource_and_property_patterns(self):
+        """Resource patterns are skipped; only property patterns apply."""
         text = (
             "  ~ Microsoft.Network/privateDnsZones/virtualNetworkLinks/link1 [2022-07-01]\n"
             "      ~ properties.registrationEnabled: true => false\n"
@@ -709,40 +714,165 @@ class TestResourcePatternFiltering:
             ParsedPattern(raw="etag", pattern_type="keyword", value="etag"),
         ]
         result, count = filter_whatif_text(text, patterns)
-        # First block: entirely removed by resource pattern (3 lines including blank)
-        assert "privateDnsZones" not in result
-        # Second block: etag property filtered, addressSpace survives
-        assert "virtualNetworks" in result
+        # Resource pattern ignored — first block preserved
+        assert "privateDnsZones" in result
+        assert "registrationEnabled" in result
+        # Property pattern applied — etag line removed
+        assert count == 1
         assert "addressSpace" in result
         assert "etag" not in result
 
-    def test_nested_child_resource_filtered_by_arm_type(self):
-        """Resource pattern using ARM type filters nested child resource blocks."""
-        text = (
-            "  ~ Microsoft.Storage/storageAccounts/prodstore/blobServices/default [2023-01-01]\n"
-            '      id:   "/subscriptions/123"\n'
-            "      ~ properties.deleteRetentionPolicy.enabled: true => false\n"
-        )
+
+# ---------------------------------------------------------------------------
+# extract_resource_patterns
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestExtractResourcePatterns:
+    def test_separates_resource_and_property(self):
         patterns = [
+            ParsedPattern(raw="etag", pattern_type="keyword", value="etag"),
             ParsedPattern(
-                raw="resource: Microsoft.Storage/storageAccounts/blobServices:Modify",
+                raw="resource: diagnosticSettings",
                 pattern_type="resource",
-                value="Microsoft.Storage/storageAccounts/blobServices:Modify",
+                value="diagnosticSettings",
+            ),
+            ParsedPattern(raw="regex: ipv6", pattern_type="regex", value="ipv6"),
+        ]
+        resource_pats, property_pats = extract_resource_patterns(patterns)
+        assert len(resource_pats) == 1
+        assert resource_pats[0].value == "diagnosticSettings"
+        assert len(property_pats) == 2
+
+    def test_empty_list(self):
+        resource_pats, property_pats = extract_resource_patterns([])
+        assert resource_pats == []
+        assert property_pats == []
+
+    def test_all_resource_patterns(self):
+        patterns = [
+            ParsedPattern(raw="resource: dns", pattern_type="resource", value="dns"),
+            ParsedPattern(
+                raw="resource: diag:Modify", pattern_type="resource", value="diag:Modify"
             ),
         ]
-        result, count = filter_whatif_text(text, patterns)
-        assert count == 3
-        assert result.strip() == ""
+        resource_pats, property_pats = extract_resource_patterns(patterns)
+        assert len(resource_pats) == 2
+        assert len(property_pats) == 0
 
-    def test_resource_pattern_with_no_property_patterns(self):
-        """Resource pattern works even when no property patterns exist."""
-        text = (
-            "  ~ Microsoft.Insights/diagnosticSettings/diag1 [2021-05-01]\n"
-            '      ~ properties.logAnalyticsDestinationType: "Dedicated" => ""\n'
-            "\n"
-            "  ~ Microsoft.Network/virtualNetworks/myvnet [2022-07-01]\n"
-            '      ~ properties.addressSpace: "10.0.0.0/16" => "10.0.0.0/8"\n'
-        )
+    def test_no_resource_patterns(self):
+        patterns = [
+            ParsedPattern(raw="etag", pattern_type="keyword", value="etag"),
+            ParsedPattern(raw="fuzzy: test", pattern_type="fuzzy", value="test"),
+        ]
+        resource_pats, property_pats = extract_resource_patterns(patterns)
+        assert len(resource_pats) == 0
+        assert len(property_pats) == 2
+
+
+# ---------------------------------------------------------------------------
+# Post-LLM resource reclassification
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestReclassifyResourceNoise:
+    def test_demotes_matching_resource(self):
+        resources = [
+            {
+                "resource_name": "link1",
+                "resource_type": "Network/privateDnsZones/virtualNetworkLinks",
+                "action": "Modify",
+                "confidence_level": "medium",
+            },
+        ]
+        patterns = [
+            ParsedPattern(
+                raw="resource: privateDnsZones/virtualNetworkLinks",
+                pattern_type="resource",
+                value="privateDnsZones/virtualNetworkLinks",
+            ),
+        ]
+        count = reclassify_resource_noise(resources, patterns)
+        assert count == 1
+        assert resources[0]["confidence_level"] == "low"
+        assert resources[0]["confidence_reason"] == "Matched resource noise pattern"
+
+    def test_skips_already_low_confidence(self):
+        resources = [
+            {
+                "resource_name": "link1",
+                "resource_type": "Network/privateDnsZones/virtualNetworkLinks",
+                "action": "Modify",
+                "confidence_level": "low",
+            },
+        ]
+        patterns = [
+            ParsedPattern(
+                raw="resource: privateDnsZones",
+                pattern_type="resource",
+                value="privateDnsZones",
+            ),
+        ]
+        count = reclassify_resource_noise(resources, patterns)
+        assert count == 0
+        assert resources[0]["confidence_level"] == "low"
+
+    def test_skips_noise_confidence(self):
+        resources = [
+            {
+                "resource_name": "link1",
+                "resource_type": "Network/privateDnsZones",
+                "action": "Modify",
+                "confidence_level": "noise",
+            },
+        ]
+        patterns = [
+            ParsedPattern(
+                raw="resource: privateDnsZones",
+                pattern_type="resource",
+                value="privateDnsZones",
+            ),
+        ]
+        count = reclassify_resource_noise(resources, patterns)
+        assert count == 0
+
+    def test_operation_mismatch_not_demoted(self):
+        resources = [
+            {
+                "resource_name": "link1",
+                "resource_type": "Network/privateDnsZones",
+                "action": "Create",
+                "confidence_level": "high",
+            },
+        ]
+        patterns = [
+            ParsedPattern(
+                raw="resource: privateDnsZones:Modify",
+                pattern_type="resource",
+                value="privateDnsZones:Modify",
+            ),
+        ]
+        count = reclassify_resource_noise(resources, patterns)
+        assert count == 0
+        assert resources[0]["confidence_level"] == "high"
+
+    def test_type_only_matches_any_action(self):
+        resources = [
+            {
+                "resource_name": "diag1",
+                "resource_type": "Insights/diagnosticSettings",
+                "action": "Create",
+                "confidence_level": "high",
+            },
+            {
+                "resource_name": "diag2",
+                "resource_type": "Insights/diagnosticSettings",
+                "action": "Modify",
+                "confidence_level": "medium",
+            },
+        ]
         patterns = [
             ParsedPattern(
                 raw="resource: diagnosticSettings",
@@ -750,10 +880,89 @@ class TestResourcePatternFiltering:
                 value="diagnosticSettings",
             ),
         ]
-        result, count = filter_whatif_text(text, patterns)
-        assert "diagnosticSettings" not in result
-        assert "virtualNetworks" in result
-        assert "addressSpace" in result
+        count = reclassify_resource_noise(resources, patterns)
+        assert count == 2
+        assert all(r["confidence_level"] == "low" for r in resources)
+
+    def test_case_insensitive_type_match(self):
+        resources = [
+            {
+                "resource_name": "link1",
+                "resource_type": "Network/PrivateDnsZones/VirtualNetworkLinks",
+                "action": "Modify",
+                "confidence_level": "high",
+            },
+        ]
+        patterns = [
+            ParsedPattern(
+                raw="resource: privatednszones",
+                pattern_type="resource",
+                value="privatednszones",
+            ),
+        ]
+        count = reclassify_resource_noise(resources, patterns)
+        assert count == 1
+        assert resources[0]["confidence_level"] == "low"
+
+    def test_empty_resources(self):
+        patterns = [
+            ParsedPattern(raw="resource: test", pattern_type="resource", value="test"),
+        ]
+        count = reclassify_resource_noise([], patterns)
+        assert count == 0
+
+    def test_empty_patterns(self):
+        resources = [
+            {
+                "resource_name": "r1",
+                "resource_type": "Network/test",
+                "action": "Modify",
+                "confidence_level": "high",
+            },
+        ]
+        count = reclassify_resource_noise(resources, [])
+        assert count == 0
+        assert resources[0]["confidence_level"] == "high"
+
+    def test_non_matching_resource_preserved(self):
+        resources = [
+            {
+                "resource_name": "myvnet",
+                "resource_type": "Network/virtualNetworks",
+                "action": "Modify",
+                "confidence_level": "high",
+            },
+        ]
+        patterns = [
+            ParsedPattern(
+                raw="resource: diagnosticSettings",
+                pattern_type="resource",
+                value="diagnosticSettings",
+            ),
+        ]
+        count = reclassify_resource_noise(resources, patterns)
+        assert count == 0
+        assert resources[0]["confidence_level"] == "high"
+
+    def test_defaults_missing_confidence_to_medium(self):
+        """Resources without confidence_level default to medium (eligible for demotion)."""
+        resources = [
+            {
+                "resource_name": "diag1",
+                "resource_type": "Insights/diagnosticSettings",
+                "action": "Modify",
+            },
+        ]
+        patterns = [
+            ParsedPattern(
+                raw="resource: diagnosticSettings",
+                pattern_type="resource",
+                value="diagnosticSettings",
+            ),
+        ]
+        count = reclassify_resource_noise(resources, patterns)
+        assert count == 1
+        assert resources[0]["confidence_level"] == "low"
 
 
 # ---------------------------------------------------------------------------

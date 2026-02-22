@@ -10,7 +10,13 @@ import click
 from . import __version__
 from .ci.platform import detect_platform
 from .input import InputError, read_stdin
-from .noise_filter import filter_whatif_text, load_builtin_patterns, load_user_patterns
+from .noise_filter import (
+    extract_resource_patterns,
+    filter_whatif_text,
+    load_builtin_patterns,
+    load_user_patterns,
+    reclassify_resource_noise,
+)
 from .prompt import build_system_prompt, build_user_prompt
 from .providers import get_provider
 from .render import print_banner, render_json, render_markdown, render_table
@@ -372,7 +378,7 @@ def main(
                 )
                 sys.exit(2)
 
-        # Apply pre-LLM noise filtering to raw What-If text
+        # Load noise patterns and separate resource vs property patterns
         noise_patterns = []
         if not no_builtin_patterns:
             noise_patterns.extend(load_builtin_patterns())
@@ -386,10 +392,16 @@ def main(
                 sys.stderr.write(f"Error reading noise file: {e}\n")
                 sys.exit(2)
 
-        if noise_patterns:
+        # Separate resource patterns (applied post-LLM) from property patterns (pre-LLM)
+        resource_noise_patterns, property_noise_patterns = extract_resource_patterns(noise_patterns)
+
+        # Preserve original What-If content for --include-whatif (before noise filtering)
+        original_whatif_content = whatif_content
+
+        if property_noise_patterns:
             fuzzy_threshold = noise_threshold / 100.0
             whatif_content, num_filtered = filter_whatif_text(
-                whatif_content, noise_patterns, fuzzy_threshold
+                whatif_content, property_noise_patterns, fuzzy_threshold
             )
             if num_filtered > 0:
                 sys.stderr.write(
@@ -445,6 +457,16 @@ def main(
                 resource["confidence_level"] = "medium"  # Default to include in analysis
             if "confidence_reason" not in resource:
                 resource["confidence_reason"] = "No confidence assessment provided"
+
+        # Post-LLM resource noise reclassification: demote matching resources to low confidence
+        if resource_noise_patterns:
+            num_reclassified = reclassify_resource_noise(
+                data.get("resources", []), resource_noise_patterns
+            )
+            if num_reclassified > 0:
+                sys.stderr.write(
+                    f"🔕 Reclassified {num_reclassified} resource(s) as low-confidence noise\n"
+                )
 
         # Filter by confidence (always-on behavior)
         high_confidence_data, low_confidence_data = filter_by_confidence(data)
@@ -578,7 +600,7 @@ def main(
         elif format == "json":
             render_json(high_confidence_data, low_confidence_data=low_confidence_data)
         elif format == "markdown":
-            raw_whatif = whatif_content if include_whatif else None
+            raw_whatif = original_whatif_content if include_whatif else None
             markdown = render_markdown(
                 high_confidence_data,
                 ci_mode=ci,
@@ -604,7 +626,7 @@ def main(
 
             # Post comment if requested
             if post_comment:
-                raw_whatif = whatif_content if include_whatif else None
+                raw_whatif = original_whatif_content if include_whatif else None
                 markdown = render_markdown(
                     high_confidence_data,
                     ci_mode=True,

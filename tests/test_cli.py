@@ -305,6 +305,91 @@ class TestCLIMain:
         assert result.exit_code == 0
         assert "Raw What-If Output" in result.output
 
+    def test_include_whatif_shows_original_not_filtered(
+        self, clean_env, monkeypatch, mocker, sample_standard_response, tmp_path
+    ):
+        """--include-whatif shows original What-If content, not noise-filtered content."""
+        runner = self._make_runner()
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+        mocker.patch(
+            "bicep_whatif_advisor.cli.get_provider",
+            return_value=_mock_provider(sample_standard_response),
+        )
+        # Create a noise file that filters the etag property
+        noise_file = tmp_path / "noise.txt"
+        noise_file.write_text("etag\n")
+        whatif_input = (
+            "  ~ Microsoft.Network/virtualNetworks/myvnet [2022-07-01]\n"
+            '      ~ properties.etag: "old" => "new"\n'
+            '      ~ properties.addressSpace: "10.0.0.0/16" => "10.0.0.0/8"\n'
+        )
+        result = runner.invoke(
+            main,
+            ["--format", "markdown", "--include-whatif", "--noise-file", str(noise_file)],
+            input=whatif_input,
+        )
+        assert result.exit_code == 0
+        # Raw What-If section should contain the ORIGINAL content including etag
+        assert "etag" in result.output
+        assert "Raw What-If Output" in result.output
+
+    def test_resource_pattern_demotes_not_removes(self, clean_env, monkeypatch, mocker, tmp_path):
+        """Resource noise patterns should demote resources to low confidence, not remove them."""
+        runner = self._make_runner()
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+
+        # LLM returns a resource matching the resource pattern
+        response = {
+            "resources": [
+                {
+                    "resource_name": "link1",
+                    "resource_type": "Network/privateDnsZones/virtualNetworkLinks",
+                    "action": "Modify",
+                    "summary": "DNS zone link update",
+                    "confidence_level": "high",
+                    "confidence_reason": "Config change",
+                },
+                {
+                    "resource_name": "myvnet",
+                    "resource_type": "Network/virtualNetworks",
+                    "action": "Modify",
+                    "summary": "Address space change",
+                    "confidence_level": "high",
+                    "confidence_reason": "Real config change",
+                },
+            ],
+            "overall_summary": "2 modifications.",
+        }
+        mocker.patch(
+            "bicep_whatif_advisor.cli.get_provider",
+            return_value=_mock_provider(response),
+        )
+
+        # Create a noise file with a resource pattern
+        noise_file = tmp_path / "noise.txt"
+        noise_file.write_text("resource: privateDnsZones/virtualNetworkLinks\n")
+
+        whatif_input = "Resource changes: 2\n~ Microsoft.Network/test\n~ Microsoft.Network/test2"
+        result = runner.invoke(
+            main,
+            ["--format", "json", "--noise-file", str(noise_file), "--no-builtin-patterns"],
+            input=whatif_input,
+        )
+        assert result.exit_code == 0
+        # Use extract_json to handle stderr messages that may leak into output
+        parsed = extract_json(result.output)
+
+        # link1 should be demoted to low confidence (not removed)
+        low_resources = parsed.get("low_confidence", {}).get("resources", [])
+        high_resources = parsed.get("high_confidence", {}).get("resources", [])
+
+        assert len(high_resources) == 1
+        assert high_resources[0]["resource_name"] == "myvnet"
+
+        assert len(low_resources) == 1
+        assert low_resources[0]["resource_name"] == "link1"
+        assert low_resources[0]["confidence_level"] == "low"
+
     def test_provider_flag(self, clean_env, monkeypatch, mocker, sample_standard_response):
         runner = self._make_runner()
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
