@@ -252,8 +252,7 @@ def _print_risk_bucket_summary(
         if bucket_data:
             risk_level = bucket_data.get("risk_level", "low")
             _, risk_color = RISK_STYLES.get(risk_level, ("?", "white"))
-            concerns = bucket_data.get("concerns", [])
-            concern_text = concerns[0] if concerns else "None"
+            concern_text = bucket_data.get("concern_summary") or "None"
 
             bucket_table.add_row(
                 bucket.display_name,
@@ -382,8 +381,7 @@ def render_markdown(
 
                 if bucket_data:
                     risk_level = bucket_data.get("risk_level", "low").capitalize()
-                    concerns = bucket_data.get("concerns", [])
-                    concern_text = concerns[0] if concerns else "None"
+                    concern_text = bucket_data.get("concern_summary") or "None"
                     lines.append(f"| {bucket.display_name} | {risk_level} | {concern_text} |")
 
             lines.append("")
