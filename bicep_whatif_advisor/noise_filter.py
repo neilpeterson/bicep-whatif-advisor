@@ -475,7 +475,12 @@ def _matches_resource_pattern_post_llm(
     value = pattern.value
 
     def _type_matches(needle: str) -> bool:
-        return needle.lower() in resource_type.lower()
+        # Bidirectional substring: handles both shorter patterns matching longer
+        # LLM types and longer patterns (e.g., with Microsoft. prefix) matching
+        # shorter LLM types that omit the namespace prefix.
+        needle_lower = needle.lower()
+        type_lower = resource_type.lower()
+        return needle_lower in type_lower or type_lower in needle_lower
 
     if ":" in value:
         type_part, op_part = value.rsplit(":", 1)

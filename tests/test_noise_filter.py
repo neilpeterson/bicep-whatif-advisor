@@ -904,6 +904,48 @@ class TestReclassifyResourceNoise:
         assert count == 1
         assert resources[0]["confidence_level"] == "low"
 
+    def test_full_pattern_matches_llm_short_type(self):
+        """Pattern with Microsoft. prefix matches LLM type that omits the prefix."""
+        resources = [
+            {
+                "resource_name": "myendpoint",
+                "resource_type": "Network/privateEndpoints",
+                "action": "Modify",
+                "confidence_level": "high",
+            },
+        ]
+        patterns = [
+            ParsedPattern(
+                raw="resource: Microsoft.Network/privateEndpoints:Modify",
+                pattern_type="resource",
+                value="Microsoft.Network/privateEndpoints:Modify",
+            ),
+        ]
+        count = reclassify_resource_noise(resources, patterns)
+        assert count == 1
+        assert resources[0]["confidence_level"] == "low"
+
+    def test_full_pattern_matches_llm_nested_short_type(self):
+        """Pattern with full ARM type matches LLM nested type without prefix."""
+        resources = [
+            {
+                "resource_name": "default",
+                "resource_type": "Storage/storageAccounts/blobServices",
+                "action": "Modify",
+                "confidence_level": "high",
+            },
+        ]
+        patterns = [
+            ParsedPattern(
+                raw="resource: Microsoft.Storage/storageAccounts/blobServices:Modify",
+                pattern_type="resource",
+                value="Microsoft.Storage/storageAccounts/blobServices:Modify",
+            ),
+        ]
+        count = reclassify_resource_noise(resources, patterns)
+        assert count == 1
+        assert resources[0]["confidence_level"] == "low"
+
     def test_empty_resources(self):
         patterns = [
             ParsedPattern(raw="resource: test", pattern_type="resource", value="test"),
