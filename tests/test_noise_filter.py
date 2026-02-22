@@ -9,7 +9,6 @@ from bicep_whatif_advisor.noise_filter import (
     _is_resource_header,
     _matches_pattern,
     _matches_resource_pattern,
-    _matches_resource_pattern_post_llm,
     _parse_pattern_line,
     _parse_resource_blocks,
     _ResourceBlock,
@@ -199,9 +198,7 @@ class TestExtractArmType:
 
     def test_nested_child_resource(self):
         assert (
-            _extract_arm_type(
-                "Microsoft.Storage/storageAccounts/myacct/blobServices/default"
-            )
+            _extract_arm_type("Microsoft.Storage/storageAccounts/myacct/blobServices/default")
             == "Microsoft.Storage/storageAccounts/blobServices"
         )
 
@@ -318,9 +315,7 @@ class TestMatchesResourcePattern:
 
     def test_nested_child_type_via_arm_extraction(self):
         """Pattern with ARM type matches even when resource names are interleaved."""
-        block = self._make_block(
-            "Microsoft.Storage/storageAccounts/myacct/blobServices/default"
-        )
+        block = self._make_block("Microsoft.Storage/storageAccounts/myacct/blobServices/default")
         p = ParsedPattern(
             raw="resource: Microsoft.Storage/storageAccounts/blobServices",
             pattern_type="resource",
@@ -757,9 +752,7 @@ class TestExtractResourcePatterns:
 
     def test_all_resource_patterns(self):
         patterns = [
-            ParsedPattern(
-                raw="resource: dns", pattern_type="resource", value="dns"
-            ),
+            ParsedPattern(raw="resource: dns", pattern_type="resource", value="dns"),
             ParsedPattern(
                 raw="resource: diag:Modify", pattern_type="resource", value="diag:Modify"
             ),
@@ -913,9 +906,7 @@ class TestReclassifyResourceNoise:
 
     def test_empty_resources(self):
         patterns = [
-            ParsedPattern(
-                raw="resource: test", pattern_type="resource", value="test"
-            ),
+            ParsedPattern(raw="resource: test", pattern_type="resource", value="test"),
         ]
         count = reclassify_resource_noise([], patterns)
         assert count == 0

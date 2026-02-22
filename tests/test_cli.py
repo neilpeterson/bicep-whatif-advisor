@@ -333,9 +333,7 @@ class TestCLIMain:
         assert "etag" in result.output
         assert "Raw What-If Output" in result.output
 
-    def test_resource_pattern_demotes_not_removes(
-        self, clean_env, monkeypatch, mocker, tmp_path
-    ):
+    def test_resource_pattern_demotes_not_removes(self, clean_env, monkeypatch, mocker, tmp_path):
         """Resource noise patterns should demote resources to low confidence, not remove them."""
         runner = self._make_runner()
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")

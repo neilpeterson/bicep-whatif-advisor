@@ -333,10 +333,7 @@ def _matches_resource_pattern(block: _ResourceBlock, pattern: ParsedPattern) -> 
     def _type_matches(needle: str) -> bool:
         """Check needle as case-insensitive substring of full path or ARM type."""
         needle_lower = needle.lower()
-        return (
-            needle_lower in block.resource_type.lower()
-            or needle_lower in arm_type.lower()
-        )
+        return needle_lower in block.resource_type.lower() or needle_lower in arm_type.lower()
 
     value = pattern.value
     if ":" in value:
@@ -526,8 +523,7 @@ def reclassify_resource_noise(resources: list, resource_patterns: list) -> int:
             continue
 
         if any(
-            _matches_resource_pattern_post_llm(resource_type, action, p)
-            for p in resource_patterns
+            _matches_resource_pattern_post_llm(resource_type, action, p) for p in resource_patterns
         ):
             resource["confidence_level"] = "low"
             resource["confidence_reason"] = "Matched resource noise pattern"

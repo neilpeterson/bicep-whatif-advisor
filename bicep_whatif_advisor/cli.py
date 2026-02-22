@@ -393,9 +393,7 @@ def main(
                 sys.exit(2)
 
         # Separate resource patterns (applied post-LLM) from property patterns (pre-LLM)
-        resource_noise_patterns, property_noise_patterns = extract_resource_patterns(
-            noise_patterns
-        )
+        resource_noise_patterns, property_noise_patterns = extract_resource_patterns(noise_patterns)
 
         # Preserve original What-If content for --include-whatif (before noise filtering)
         original_whatif_content = whatif_content
