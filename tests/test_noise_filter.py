@@ -4,6 +4,7 @@ import pytest
 
 from bicep_whatif_advisor.noise_filter import (
     ParsedPattern,
+    _extract_arm_type,
     _is_property_change_line,
     _is_resource_header,
     _matches_pattern,
@@ -181,6 +182,47 @@ class TestMatchesPattern:
 
 
 # ---------------------------------------------------------------------------
+# ARM type extraction
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestExtractArmType:
+    def test_simple_resource(self):
+        assert (
+            _extract_arm_type("Microsoft.Network/virtualNetworks/myvnet")
+            == "Microsoft.Network/virtualNetworks"
+        )
+
+    def test_nested_child_resource(self):
+        assert (
+            _extract_arm_type(
+                "Microsoft.Storage/storageAccounts/myacct/blobServices/default"
+            )
+            == "Microsoft.Storage/storageAccounts/blobServices"
+        )
+
+    def test_deeply_nested_resource(self):
+        assert (
+            _extract_arm_type(
+                "Microsoft.Network/privateDnsZones/privatelink.blob.core.windows.net"
+                "/virtualNetworkLinks/mylink"
+            )
+            == "Microsoft.Network/privateDnsZones/virtualNetworkLinks"
+        )
+
+    def test_namespace_only(self):
+        assert _extract_arm_type("Microsoft.Storage") == "Microsoft.Storage"
+
+    def test_type_without_name(self):
+        """Single type segment with no name following."""
+        assert (
+            _extract_arm_type("Microsoft.Insights/diagnosticSettings")
+            == "Microsoft.Insights/diagnosticSettings"
+        )
+
+
+# ---------------------------------------------------------------------------
 # Resource pattern matching
 # ---------------------------------------------------------------------------
 
@@ -268,6 +310,55 @@ class TestMatchesResourcePattern:
         block = self._make_block("Microsoft.Sql/servers/mydb", "Delete")
         p = ParsedPattern(
             raw="resource: Sql/servers:Delete", pattern_type="resource", value="Sql/servers:Delete"
+        )
+        assert _matches_resource_pattern(block, p) is True
+
+    def test_nested_child_type_via_arm_extraction(self):
+        """Pattern with ARM type matches even when resource names are interleaved."""
+        block = self._make_block(
+            "Microsoft.Storage/storageAccounts/myacct/blobServices/default"
+        )
+        p = ParsedPattern(
+            raw="resource: Microsoft.Storage/storageAccounts/blobServices",
+            pattern_type="resource",
+            value="Microsoft.Storage/storageAccounts/blobServices",
+        )
+        assert _matches_resource_pattern(block, p) is True
+
+    def test_nested_child_type_with_operation(self):
+        """Pattern with ARM type + operation matches nested child resource."""
+        block = self._make_block(
+            "Microsoft.Storage/storageAccounts/myacct/blobServices/default", "Modify"
+        )
+        p = ParsedPattern(
+            raw="resource: Microsoft.Storage/storageAccounts/blobServices:Modify",
+            pattern_type="resource",
+            value="Microsoft.Storage/storageAccounts/blobServices:Modify",
+        )
+        assert _matches_resource_pattern(block, p) is True
+
+    def test_nested_child_wrong_operation_no_match(self):
+        """ARM type matches but operation doesn't — should not match."""
+        block = self._make_block(
+            "Microsoft.Storage/storageAccounts/myacct/blobServices/default", "Create"
+        )
+        p = ParsedPattern(
+            raw="resource: Microsoft.Storage/storageAccounts/blobServices:Modify",
+            pattern_type="resource",
+            value="Microsoft.Storage/storageAccounts/blobServices:Modify",
+        )
+        assert _matches_resource_pattern(block, p) is False
+
+    def test_dns_zone_nested_via_arm_extraction(self):
+        """DNS zone link with realistic resource names between type segments."""
+        block = self._make_block(
+            "Microsoft.Network/privateDnsZones/privatelink.blob.core.windows.net"
+            "/virtualNetworkLinks/myVnetLink"
+        )
+        p = ParsedPattern(
+            raw="resource: privateDnsZones/virtualNetworkLinks",
+            pattern_type="resource",
+            value="privateDnsZones/virtualNetworkLinks",
         )
         assert _matches_resource_pattern(block, p) is True
 
@@ -624,6 +715,24 @@ class TestResourcePatternFiltering:
         assert "virtualNetworks" in result
         assert "addressSpace" in result
         assert "etag" not in result
+
+    def test_nested_child_resource_filtered_by_arm_type(self):
+        """Resource pattern using ARM type filters nested child resource blocks."""
+        text = (
+            "  ~ Microsoft.Storage/storageAccounts/prodstore/blobServices/default [2023-01-01]\n"
+            '      id:   "/subscriptions/123"\n'
+            "      ~ properties.deleteRetentionPolicy.enabled: true => false\n"
+        )
+        patterns = [
+            ParsedPattern(
+                raw="resource: Microsoft.Storage/storageAccounts/blobServices:Modify",
+                pattern_type="resource",
+                value="Microsoft.Storage/storageAccounts/blobServices:Modify",
+            ),
+        ]
+        result, count = filter_whatif_text(text, patterns)
+        assert count == 3
+        assert result.strip() == ""
 
     def test_resource_pattern_with_no_property_patterns(self):
         """Resource pattern works even when no property patterns exist."""
