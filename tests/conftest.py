@@ -167,7 +167,7 @@ def sample_ci_response_unsafe():
             "operations": {
                 "risk_level": "high",
                 "concerns": ["Deletion of production database"],
-                "concern_summary": "Deletion of production database is a stateful resource deletion",
+                "concern_summary": "Production database deletion is high risk",
                 "reasoning": "Stateful resource deletion is high risk",
             },
         },
