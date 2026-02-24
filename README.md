@@ -18,7 +18,7 @@ When integrated into your CI/CD pipeline, `bicep-whatif-advisor` automatically d
 2. **Extract PR metadata** - Pulls title, description, and PR number from the CI environment
 3. **Collect code diff** - Gathers changes from your PR to understand what's in the codebase
 4. **Analyze with LLM** - Sends What-If output, PR metadata, and code diff to the LLM for intelligent analysis
-5. **Evaluate three risk categories independently:**
+5. **Evaluate three risk categories independently (all optional):**
    - **Infrastructure Drift** - Detects changes not in your code (out-of-band modifications)
    - **PR Intent Alignment** - Ensures changes match PR description
    - **Risky Operations** - Flags dangerous operations (deletions, security changes, downgrades)
@@ -26,35 +26,30 @@ When integrated into your CI/CD pipeline, `bicep-whatif-advisor` automatically d
 7. **Post detailed PR comment** - Automatically comments with formatted analysis (zero config)
 8. **Gate deployment** - Exits with code 0 (safe) or 1 (unsafe) based on configurable thresholds per risk bucket
 
-**Example Output:**
-```
-╭──────┬────────────────┬─────────────────┬────────┬──────┬────────────────────────────────────────╮
-│ #    │ Resource       │ Type            │ Action │ Risk │ Summary                                │
-├──────┼────────────────┼─────────────────┼────────┼──────┼────────────────────────────────────────┤
-│ 1    │ appinsights    │ APIM Diagnostic │ Create │ Low  │ Adds Application Insights logging      │
-├──────┼────────────────┼─────────────────┼────────┼──────┼────────────────────────────────────────┤
-│ 2    │ sqlDatabase    │ SQL Database    │ Modify │ Med  │ Changes SKU from Standard to Basic     │
-├──────┼────────────────┼─────────────────┼────────┼──────┼────────────────────────────────────────┤
-│ 3    │ roleAssignment │ Role Assignment │ Delete │ High │ Removes Contributor access from        │
-│      │                │                 │        │      │ managed identity                       │
-╰──────┴────────────────┴─────────────────┴────────┴──────┴────────────────────────────────────────╯
+**Example PR Comment:**
 
-Risk Assessment:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Infrastructure Drift: LOW
-   All changes match code diff
-
-PR Intent Alignment: MEDIUM
-   PR mentions adding logging, but also includes database SKU change not described
-
-Risky Operations: HIGH
-   Deletes RBAC role assignment (Contributor)
-   Downgrades database SKU (may cause data loss)
-
-Verdict: UNSAFE - Deployment blocked
-Reason: Risky operations exceed threshold (high). Address role deletion and SKU downgrade.
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
+> ## production What-If Summary (non-blocking)
+>
+> | Risk Assessment | Risk Level | Key Concerns |
+> |---|---|---|
+> | Infrastructure Drift | High | Existing Paris Key Vault being modified when not present in code diff |
+> | PR Intent Alignment | High | PR intends to add Berlin branch but What-If shows Paris branch changes |
+>
+> **Summary:** The What-If output shows modifications to existing Paris branch resources rather than creating new Berlin branch resources. Most changes appear to be template refactoring (hardcoded to dynamic references) and What-If noise (retention policies, metadata). The only significant change is disabling public network access on an existing Key Vault.
+>
+> <details><summary>📁 View changed resources (1 High Confidence)</summary>...</details>
+>
+> <details><summary>⚠️ Potential Azure What-If Noise (10 Low Confidence)</summary>...</details>
+>
+> <details><summary>📂 Raw What-If Output</summary>...</details>
+>
+> ### Verdict: ❌ UNSAFE
+>
+> **Reasoning:** This deployment is unsafe due to a complete mismatch between PR intent (adding Berlin branch) and What-If output (modifying existing Paris Key Vault). The changes indicate both infrastructure drift and unintended modifications to existing resources not mentioned in the PR description.
+>
+> ---
+>
+> *Generated by [bicep-whatif-advisor](https://github.com/neilpeterson/bicep-whatif-advisor)*
 
 ## Quick Start
 
