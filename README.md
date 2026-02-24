@@ -5,7 +5,7 @@
 [![Python versions](https://img.shields.io/pypi/pyversions/bicep-whatif-advisor)](https://pypi.org/project/bicep-whatif-advisor/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-`bicep-whatif-advisor` is an AI-powered deployment safety gate for Azure Bicep and ARM templates. It automatically integrates into your CI/CD pipeline (GitHub Actions or Azure DevOps) to analyze Azure What-If output using LLMs (Anthropic Claude, Azure OpenAI, or Ollama), providing intelligent risk assessment before deployments reach production. The tool detects infrastructure drift by comparing What-If results against your code changes, validates that deployment changes align with PR intent, and flags inherently risky operations like deletions, security changes, and SKU downgrades. With zero-configuration platform auto-detection and automatic PR comments, it blocks unsafe deployments through configurable three-bucket risk thresholds—giving teams confidence that infrastructure changes match their intentions.
+AI-powered deployment safety gate for Azure Bicep and ARM templates. Pipe Azure What-If output through an LLM (Anthropic Claude, Azure OpenAI, or Ollama) to detect infrastructure drift, validate PR intent alignment, and flag risky operations. Integrates into GitHub Actions and Azure DevOps with zero-config platform detection, automatic PR comments, and configurable risk thresholds.
 
 > **Note:** The tool also includes a CLI for local What-If analysis and human-readable deployment summaries.
 
