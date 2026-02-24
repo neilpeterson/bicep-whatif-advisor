@@ -469,6 +469,11 @@ def render_markdown(
         lines.append("")
         lines.append("</details>")
         lines.append("")
+        # Azure DevOps needs an explicit <br> for spacing between
+        # collapsible sections; GitHub handles it with blank lines.
+        if platform != "github":
+            lines.append("<br>")
+            lines.append("")
 
     # Raw What-If output (opt-in collapsible section)
     if whatif_content:
