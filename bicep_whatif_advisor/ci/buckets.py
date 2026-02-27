@@ -8,7 +8,7 @@ from typing import Dict, List, Optional
 class RiskBucket:
     """Definition of a risk assessment bucket."""
 
-    id: str  # Internal identifier: "drift", "intent", "operations"
+    id: str  # Internal identifier: "drift", "intent", or custom agent IDs
     display_name: str  # User-facing name: "Infrastructure Drift"
     description: str  # Brief description for help text
     prompt_instructions: str  # LLM prompt instructions for this bucket
@@ -64,38 +64,12 @@ Risk levels for intent:
 """,
         optional=True,  # Only evaluated if PR metadata provided
     ),
-    "operations": RiskBucket(
-        id="operations",
-        display_name="Risky Operations",
-        description=(
-            "Evaluates inherent risk of Azure operations (deletions, security changes, etc.)"
-        ),
-        prompt_instructions="""
-**Risky Operations Risk:**
-Evaluate the inherent risk of the operations being performed,
-regardless of drift or intent.
-
-Risk levels for operations:
-- high: Deletion of stateful resources (databases, storage accounts,
-  key vaults), deletion of identity/RBAC resources, network security
-  changes that open broad access, encryption setting modifications,
-  SKU downgrades that could cause data loss
-- medium: Modifications to existing resources that change behavior
-  (policy changes, scaling configuration), new public endpoints,
-  firewall rule changes, significant configuration updates
-- low: Adding new resources, modifying tags, adding
-  diagnostic/monitoring resources, modifying display
-  names/descriptions
-""",
-        optional=False,
-    ),
 }
 
 
 def get_enabled_buckets(
     skip_drift: bool = False,
     skip_intent: bool = False,
-    skip_operations: bool = False,
     has_pr_metadata: bool = False,
     custom_agent_ids: List[str] = None,
     skip_agents: List[str] = None,
@@ -105,13 +79,12 @@ def get_enabled_buckets(
     Args:
         skip_drift: True to disable drift bucket
         skip_intent: True to disable intent bucket
-        skip_operations: True to disable operations bucket
         has_pr_metadata: True if PR title/description available (controls intent bucket)
         custom_agent_ids: List of registered custom agent IDs to include
-        skip_agents: List of custom agent IDs to skip
+        skip_agents: List of custom agent IDs to skip (e.g., ["compliance"])
 
     Returns:
-        List of bucket IDs that should be evaluated (e.g., ["drift", "operations"])
+        List of bucket IDs that should be evaluated (e.g., ["drift", "compliance"])
     """
     enabled = []
 
@@ -122,12 +95,9 @@ def get_enabled_buckets(
     if not skip_intent and has_pr_metadata:
         enabled.append("intent")
 
-    if not skip_operations:
-        enabled.append("operations")
-
-    # Append custom agents (respecting skip list)
+    # Append custom/bundled agents (respecting skip list)
+    skip_set = set(skip_agents or [])
     if custom_agent_ids:
-        skip_set = set(skip_agents or [])
         for agent_id in custom_agent_ids:
             if agent_id not in skip_set:
                 enabled.append(agent_id)

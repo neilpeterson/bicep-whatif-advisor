@@ -74,9 +74,9 @@ class TestRenderMarkdown:
         data = {
             "resources": [],
             "overall_summary": "",
+            "_enabled_buckets": ["drift"],
             "risk_assessment": {
                 "drift": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
-                "operations": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
             },
             "verdict": {"safe": True, "reasoning": "All safe"},
         }
@@ -173,15 +173,16 @@ class TestRenderMarkdown:
         data = {
             "resources": [],
             "overall_summary": "",
+            "_enabled_buckets": ["drift", "intent"],
             "risk_assessment": {
                 "drift": {"risk_level": "low", "concerns": ["drift concern"], "reasoning": ""},
-                "operations": {"risk_level": "medium", "concerns": ["op concern"], "reasoning": ""},
+                "intent": {"risk_level": "medium", "concerns": ["intent concern"], "reasoning": ""},
             },
             "verdict": {"safe": True, "reasoning": "ok"},
         }
         md = render_markdown(data, ci_mode=True)
         assert "Infrastructure Drift" in md
-        assert "Risky Operations" in md
+        assert "PR Intent Alignment" in md
 
     def test_github_no_br_between_details(self):
         """GitHub platform should not include <br> between collapsible sections."""
@@ -347,10 +348,9 @@ def _register_custom_buckets():
 class TestAgentDetailSections:
     def test_custom_agent_summary_collapsible(self):
         data = {
-            "_enabled_buckets": ["drift", "operations", "cost"],
+            "_enabled_buckets": ["drift", "cost"],
             "risk_assessment": {
                 "drift": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
-                "operations": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
                 "cost": {
                     "risk_level": "low",
                     "concerns": [],
@@ -366,10 +366,9 @@ class TestAgentDetailSections:
 
     def test_custom_agent_table_collapsible(self):
         data = {
-            "_enabled_buckets": ["drift", "operations", "naming"],
+            "_enabled_buckets": ["drift", "naming"],
             "risk_assessment": {
                 "drift": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
-                "operations": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
                 "naming": {
                     "risk_level": "medium",
                     "concerns": ["bad names"],
@@ -430,11 +429,11 @@ class TestAgentDetailSections:
             del RISK_BUCKETS["security"]
 
     def test_builtin_buckets_no_collapsible(self):
+        """Built-in buckets (drift, intent) don't get collapsible sections."""
         data = {
-            "_enabled_buckets": ["drift", "operations"],
+            "_enabled_buckets": ["drift"],
             "risk_assessment": {
                 "drift": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
-                "operations": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
             },
         }
         lines = _render_agent_detail_sections(data)

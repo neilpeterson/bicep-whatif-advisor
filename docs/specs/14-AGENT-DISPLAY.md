@@ -4,7 +4,7 @@
 
 Custom agents are implemented and working — they appear as rows in the risk assessment table in PR comments. However, their results are disconnected: the summary/reasoning don't reference specific resources, and there's no way to expand an agent's findings for details.
 
-This spec adds a `display` field to agent frontmatter that controls how each agent's detailed findings render in a collapsible `<details>` section in the PR comment. Built-in buckets (drift, intent, operations) remain first-class — table rows only, no collapsibles.
+This spec adds a `display` field to agent frontmatter that controls how each agent's detailed findings render in a collapsible `<details>` section in the PR comment. Built-in buckets (drift, intent) remain first-class — table rows only, no collapsibles.
 
 ## Design
 

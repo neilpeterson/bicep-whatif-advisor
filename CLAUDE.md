@@ -38,6 +38,7 @@ bicep-whatif-advisor/             # Root directory
 │   │   └── ollama.py       # Ollama provider
 │   └── ci/                 # CI/CD deployment gate features
 │       ├── __init__.py
+│       ├── agents.py       # Custom agent loader (markdown → RiskBucket)
 │       ├── buckets.py      # Risk bucket registry and definitions
 │       ├── platform.py     # CI/CD platform auto-detection
 │       ├── risk_buckets.py # Risk evaluation and threshold logic
@@ -48,9 +49,12 @@ bicep-whatif-advisor/             # Root directory
 ├── tests/
 │   ├── conftest.py         # Shared fixtures, MockProvider, sample responses
 │   ├── fixtures/           # Sample What-If outputs
+│   ├── agents/             # Sample custom agent markdown files
 │   ├── sample-bicep-deployment/  # Example Bicep template for testing
 │   ├── test_input.py       # Input validation tests
 │   ├── test_noise_filter.py # Noise filtering tests
+│   ├── test_agents.py      # Custom agent parsing/loading tests
+│   ├── test_agents_integration.py  # Agent CLI integration tests
 │   ├── test_buckets.py     # Risk bucket registry tests
 │   ├── test_risk_buckets.py # Risk evaluation tests
 │   ├── test_prompt.py      # Prompt construction tests
@@ -67,7 +71,7 @@ bicep-whatif-advisor/             # Root directory
 │   ├── publish-pypi.yml    # PyPI publishing on release
 │   └── bicep-sample-pipeline.yml  # Sample Bicep deployment pipeline
 ├── docs/                   # Documentation
-│   ├── specs/              # Technical specifications (00-12)
+│   ├── specs/              # Technical specifications (00-14)
 │   │   ├── 00-OVERVIEW.md
 │   │   ├── 01-CLI-INTERFACE.md
 │   │   ├── 02-INPUT-VALIDATION.md
@@ -80,7 +84,9 @@ bicep-whatif-advisor/             # Root directory
 │   │   ├── 09-PR-INTEGRATION.md
 │   │   ├── 10-GIT-DIFF.md
 │   │   ├── 11-TESTING-STRATEGY.md
-│   │   └── 12-BACKLOG.md
+│   │   ├── 12-BACKLOG.md
+│   │   ├── 13-CUSTOM-AGENTS.md
+│   │   └── 14-AGENT-DISPLAY.md
 │   └── guides/             # User guides
 │       ├── QUICKSTART.md
 │       ├── USER_GUIDE.md
@@ -136,8 +142,7 @@ cat tests/fixtures/create_only.txt | bicep-whatif-advisor
 cat tests/fixtures/create_only.txt | bicep-whatif-advisor \
   --ci \
   --drift-threshold high \
-  --intent-threshold high \
-  --operations-threshold high
+  --intent-threshold high
 
 # Or run directly via Python module:
 cat tests/fixtures/create_only.txt | python -m bicep_whatif_advisor.cli
@@ -154,15 +159,15 @@ ruff format .                       # Format code
 ### Two Operating Modes
 
 1. **Interactive Mode (default):** Reads What-If output from stdin, sends to LLM, displays formatted table/JSON/markdown
-2. **CI Mode (`--ci` flag):** Also accepts git diff, evaluates deployment safety across three risk buckets, sets pass/fail exit codes, optionally posts PR comments
+2. **CI Mode (`--ci` flag):** Also accepts git diff, evaluates deployment safety across risk buckets, sets pass/fail exit codes, optionally posts PR comments
 
 ### Risk Bucket System (CI Mode)
 
-CI mode evaluates three independent risk categories:
+CI mode evaluates independent risk categories:
 
-1. **Infrastructure Drift**: Compares What-If output to code diff to detect changes not in the PR (out-of-band modifications)
-2. **PR Intent Alignment**: Compares What-If output to PR title/description to catch unintended changes (optional - skipped if no PR metadata)
-3. **Risky Operations**: Evaluates inherent risk of Azure operations (deletions, security changes, etc.)
+1. **Infrastructure Drift** (built-in): Compares What-If output to code diff to detect changes not in the PR (out-of-band modifications)
+2. **PR Intent Alignment** (built-in): Compares What-If output to PR title/description to catch unintended changes (optional - skipped if no PR metadata)
+3. **Custom Agents** (user-created via `--agents-dir`): Additional risk dimensions defined as markdown files with YAML frontmatter
 
 Each bucket has an independent configurable threshold (low, medium, high). Deployment fails if ANY bucket exceeds its threshold.
 
@@ -207,7 +212,7 @@ All providers use temperature 0 for deterministic output.
 
 Per-resource fields include `risk_level` (low|medium|high) and `risk_reason`.
 
-Three-bucket risk assessment:
+Multi-bucket risk assessment:
 
 ```json
 {
@@ -223,21 +228,18 @@ Three-bucket risk assessment:
       "risk_level": "low|medium|high",
       "concerns": ["..."],
       "reasoning": "..."
-    },
-    "operations": {
-      "risk_level": "low|medium|high",
-      "concerns": ["..."],
-      "reasoning": "..."
     }
   },
   "verdict": {
     "safe": true|false,
-    "highest_risk_bucket": "drift|intent|operations|none",
+    "highest_risk_bucket": "drift|intent|none",
     "overall_risk_level": "low|medium|high",
     "reasoning": "..."
   }
 }
 ```
+
+Custom agents added via `--agents-dir` will also appear as keys in `risk_assessment`.
 
 **Note:** The `intent` bucket is only included if PR title/description are provided via `--pr-title` or `--pr-description` flags.
 
@@ -253,16 +255,11 @@ Three-bucket risk assessment:
 - **Medium:** Modifications not aligned with PR intent, unexpected resource types
 - **Low:** New resources not mentioned but aligned with intent, minor scope differences
 
-**Risky Operations Bucket:**
-- **High:** Deletion of stateful resources (databases, storage, key vaults), RBAC deletions, broad network security changes, encryption changes, SKU downgrades
-- **Medium:** Behavioral changes to existing resources, new public endpoints, firewall changes, policy modifications
-- **Low:** New resources, tags, monitoring resources, cosmetic changes
-
 ## Documentation Structure
 
 Documentation is organized into two directories:
 
-**`/docs/specs/`** - Technical specifications (numbered 00-12 for reading order)
+**`/docs/specs/`** - Technical specifications (numbered 00-14 for reading order)
 - `00-OVERVIEW.md` - Project architecture, data flow, design principles
 - `01-CLI-INTERFACE.md` - CLI flags, orchestration, and smart defaults
 - `02-INPUT-VALIDATION.md` - Stdin processing and validation
@@ -271,11 +268,13 @@ Documentation is organized into two directories:
 - `05-OUTPUT-RENDERING.md` - Table/JSON/Markdown formatting
 - `06-NOISE-FILTERING.md` - Confidence scoring and pattern matching
 - `07-PLATFORM-DETECTION.md` - GitHub Actions & Azure DevOps auto-detection
-- `08-RISK-ASSESSMENT.md` - Three-bucket risk model and threshold logic
+- `08-RISK-ASSESSMENT.md` - Multi-bucket risk model and threshold logic
 - `09-PR-INTEGRATION.md` - GitHub & Azure DevOps PR comment posting
 - `10-GIT-DIFF.md` - Git diff collection for drift detection
 - `11-TESTING-STRATEGY.md` - Test architecture and fixtures
 - `12-BACKLOG.md` - Feature backlog and future enhancements
+- `13-CUSTOM-AGENTS.md` - Custom risk assessment agents
+- `14-AGENT-DISPLAY.md` - Per-agent collapsible detail sections
 
 **`/docs/guides/`** - User-facing guides (clear progression for new users)
 - `QUICKSTART.md` - 5-minute getting started guide
@@ -322,8 +321,8 @@ This directory contains sample Bicep templates and parameter files for testing t
 - **markdown:** Table format for PR comments
 
 ### Dependencies
-- Core: `click`, `rich`
-- Optional extras: `anthropic`, `openai`, `requests`
+- Core: `click`, `rich`, `requests`, `pyyaml`
+- Optional extras: `anthropic`, `openai`
 
 ## CI/CD Integration
 
@@ -331,12 +330,12 @@ When implementing CI mode (`--ci` flag):
 
 1. Accept both What-If output and git diff as input
 2. Include source code context in prompt
-3. Return structured safety verdict with three-bucket risk assessment
+3. Return structured safety verdict with multi-bucket risk assessment
 4. Post formatted markdown comments to GitHub/Azure DevOps PRs
-5. Exit with code 0 (safe) or 1 (unsafe) based on three independent thresholds:
+5. Exit with code 0 (safe) or 1 (unsafe) based on independent thresholds:
    - `--drift-threshold` (default: high)
    - `--intent-threshold` (default: high)
-   - `--operations-threshold` (default: high)
+   - `--agent-threshold <agent_id>=<level>` (for custom agents)
 
 **Environment variables for PR comments:**
 - GitHub: `GITHUB_TOKEN`, `GITHUB_REPOSITORY`, `GITHUB_PR_NUMBER`
@@ -349,7 +348,6 @@ cat whatif-output.txt | bicep-whatif-advisor \
   --diff-ref origin/main \
   --drift-threshold high \
   --intent-threshold high \
-  --operations-threshold high \
   --pr-title "Add monitoring resources" \
   --pr-description "This PR adds Application Insights diagnostics" \
   --post-comment
@@ -359,7 +357,7 @@ cat whatif-output.txt | bicep-whatif-advisor \
 - `--no-block`: Report findings without failing pipeline (exit code 0 even if unsafe)
 - `--skip-drift`: Skip infrastructure drift risk assessment (CI mode only)
 - `--skip-intent`: Skip PR intent alignment risk assessment (CI mode only)
-- `--skip-operations`: Skip risky operations risk assessment (CI mode only)
+- `--skip-agent <id>`: Skip a custom agent by ID (repeatable, CI mode only)
 
 **Noise filtering flags (all modes):**
 - `--noise-file`: Path to additional patterns file (additive with built-ins)
@@ -379,13 +377,13 @@ cat whatif-output.txt | bicep-whatif-advisor --ci --skip-drift
 # Skip intent assessment (useful for automated maintenance PRs)
 cat whatif-output.txt | bicep-whatif-advisor --ci --skip-intent
 
-# Only evaluate operations (skip drift and intent)
-cat whatif-output.txt | bicep-whatif-advisor --ci --skip-drift --skip-intent
+# Skip a custom agent
+cat whatif-output.txt | bicep-whatif-advisor --ci --skip-agent compliance
 ```
 
 ## Testing
 
-**Test suite:** 230 tests (221 unit + 9 integration), ~82% coverage, runs in ~1.5s.
+**Test suite:** 367 tests across 15 test files, ~82% coverage, runs in ~1.5s.
 
 **Run tests:**
 ```bash
@@ -418,7 +416,7 @@ All tests use `MockProvider` from `conftest.py` — no real API calls during tes
    - Currently supported via manual `--ci` flag
 
 2. **Test Coverage** ✅ **COMPLETED**
-   - 230 tests (221 unit + 9 integration), ~82% coverage
+   - 367 tests across 15 test files, ~82% coverage
    - CI workflow on Python 3.9/3.11/3.13
 
 3. **Enhanced Noise Filtering** (pre-LLM property filtering ✅ implemented)

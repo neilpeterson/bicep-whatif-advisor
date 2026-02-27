@@ -24,7 +24,6 @@ def evaluate_risk_buckets(
     enabled_buckets: List[str],
     drift_threshold: str = "high",
     intent_threshold: str = "high",
-    operations_threshold: str = "high",
     custom_thresholds: Dict[str, str] = None,
 ) -> Tuple[bool, List[str], Dict[str, Any]]:
     """Evaluate enabled risk buckets and determine if deployment is safe.
@@ -36,11 +35,10 @@ def evaluate_risk_buckets(
     Args:
         data: Parsed LLM response with risk_assessment
               (should contain only high-confidence resources)
-        enabled_buckets: List of bucket IDs to evaluate (e.g., ["drift", "operations"])
+        enabled_buckets: List of bucket IDs to evaluate (e.g., ["drift", "intent"])
         drift_threshold: Risk threshold for drift bucket (only used if enabled)
         intent_threshold: Risk threshold for intent bucket (only used if enabled)
-        operations_threshold: Risk threshold for operations bucket (only used if enabled)
-        custom_thresholds: Dict mapping custom agent_id to threshold string.
+        custom_thresholds: Dict mapping agent_id to threshold string.
                           Falls back to bucket's default_threshold if not specified.
 
     Returns:
@@ -63,7 +61,6 @@ def evaluate_risk_buckets(
     thresholds = {
         "drift": drift_threshold,
         "intent": intent_threshold,
-        "operations": operations_threshold,
     }
 
     # Merge custom thresholds

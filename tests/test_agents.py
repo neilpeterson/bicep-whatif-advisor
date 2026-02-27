@@ -15,17 +15,6 @@ from bicep_whatif_advisor.ci.buckets import (
     get_bucket,
 )
 
-
-@pytest.fixture(autouse=True)
-def clean_risk_buckets():
-    """Restore RISK_BUCKETS to original state after each test."""
-    original_keys = set(RISK_BUCKETS.keys())
-    yield
-    current_keys = set(RISK_BUCKETS.keys())
-    for key in current_keys - original_keys:
-        del RISK_BUCKETS[key]
-
-
 # -------------------------------------------------------------------
 # _parse_frontmatter
 # -------------------------------------------------------------------
@@ -352,7 +341,6 @@ class TestGetCustomAgentIds:
         assert "test_get_ids" in ids
         assert "drift" not in ids
         assert "intent" not in ids
-        assert "operations" not in ids
 
     def test_empty_when_no_custom(self):
         ids = get_custom_agent_ids()

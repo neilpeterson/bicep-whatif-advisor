@@ -7,8 +7,8 @@ custom agents. Teams define new risk dimensions (compliance, cost review,
 naming conventions, etc.) as markdown files that plug into the existing
 pipeline — no code changes required.
 
-Custom agents are **additive** to the three built-in buckets (drift,
-intent, operations). They use the same evaluation pipeline: each agent
+Custom agents are **additive** to the two built-in buckets (drift,
+intent). They use the same evaluation pipeline: each agent
 produces a `risk_level` (low/medium/high) with independent threshold
 control.
 
@@ -42,7 +42,7 @@ Risk levels for compliance:
 
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
-| `id` | Yes | — | Unique identifier (alphanumeric, hyphens, underscores). Must not collide with built-in IDs (`drift`, `intent`, `operations`). |
+| `id` | Yes | — | Unique identifier (alphanumeric, hyphens, underscores). Must not collide with built-in IDs (`drift`, `intent`). |
 | `display_name` | Yes | — | User-facing name shown in tables and PR comments. |
 | `default_threshold` | No | `high` | Default threshold if no `--agent-threshold` override. Must be `low`, `medium`, or `high`. |
 | `optional` | No | `false` | If `true`, agent can be conditionally skipped. |

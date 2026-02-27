@@ -165,10 +165,10 @@ def test_all_buckets_pass():
     data = {
         "risk_assessment": {
             "drift": {"risk_level": "low"},
-            "operations": {"risk_level": "low"}
+            "intent": {"risk_level": "low"}
         }
     }
-    is_safe, failed, _ = evaluate_risk_buckets(data, "high", "high", "high")
+    is_safe, failed, _ = evaluate_risk_buckets(data, ["drift", "intent"], "high", "high")
     assert is_safe == True
     assert len(failed) == 0
 
@@ -176,10 +176,10 @@ def test_one_bucket_fails():
     data = {
         "risk_assessment": {
             "drift": {"risk_level": "high"},
-            "operations": {"risk_level": "low"}
+            "intent": {"risk_level": "low"}
         }
     }
-    is_safe, failed, _ = evaluate_risk_buckets(data, "high", "high", "high")
+    is_safe, failed, _ = evaluate_risk_buckets(data, ["drift", "intent"], "high", "high")
     assert is_safe == False
     assert "drift" in failed
 ```
@@ -213,7 +213,7 @@ def test_ci_mode_workflow():
         "resources": [{...}],
         "risk_assessment": {
             "drift": {"risk_level": "low", "concerns": [], "reasoning": "..."},
-            "operations": {"risk_level": "low", "concerns": [], "reasoning": "..."}
+            "intent": {"risk_level": "low", "concerns": [], "reasoning": "..."}
         },
         "verdict": {"safe": true, "overall_risk_level": "low", "reasoning": "..."}
     }'''

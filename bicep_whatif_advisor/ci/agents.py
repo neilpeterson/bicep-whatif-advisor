@@ -13,7 +13,7 @@ import yaml
 from .buckets import RISK_BUCKETS, RiskBucket
 
 # Built-in bucket IDs that custom agents must not collide with
-BUILTIN_BUCKET_IDS = frozenset({"drift", "intent", "operations"})
+BUILTIN_BUCKET_IDS = frozenset({"drift", "intent"})
 
 # Valid characters for agent IDs: alphanumeric, hyphens, underscores
 _VALID_ID_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
@@ -78,14 +78,14 @@ def parse_agent_file(file_path: Path) -> Optional[RiskBucket]:
     content = file_path.read_text(encoding="utf-8")
     metadata, body = _parse_frontmatter(content)
 
-    # Check enabled flag (defaults to True)
-    if not metadata.get("enabled", True):
-        return None
-
-    # Validate required fields
+    # Validate required fields (before enabled check, so disabled agents still report their ID)
     agent_id = metadata.get("id")
     if not agent_id:
         raise ValueError(f"Agent file {file_path.name}: missing required 'id' field in frontmatter")
+
+    # Check enabled flag (defaults to True)
+    if not metadata.get("enabled", True):
+        return None
 
     agent_id = str(agent_id)
 
@@ -221,6 +221,6 @@ def register_agents(agents: List[RiskBucket]) -> List[str]:
 def get_custom_agent_ids() -> List[str]:
     """Return list of currently registered custom agent IDs.
 
-    Returns only custom agent IDs (not built-in drift/intent/operations).
+    Returns only custom agent IDs (not built-in drift/intent).
     """
     return [bucket_id for bucket_id, bucket in RISK_BUCKETS.items() if bucket.custom]

@@ -179,13 +179,6 @@ def filter_by_confidence(data: dict) -> tuple[dict, dict]:
     help="Fail pipeline if intent alignment risk meets or exceeds"
     " this level (only applies if intent bucket enabled)",
 )
-@click.option(
-    "--operations-threshold",
-    type=click.Choice(["low", "medium", "high"], case_sensitive=False),
-    default="high",
-    help="Fail pipeline if operations risk meets or exceeds"
-    " this level (only applies if operations bucket enabled)",
-)
 @click.option("--post-comment", is_flag=True, help="Post summary as PR comment (CI mode only)")
 @click.option(
     "--pr-url",
@@ -221,9 +214,6 @@ def filter_by_confidence(data: dict) -> tuple[dict, dict]:
 )
 @click.option(
     "--skip-intent", is_flag=True, help="Skip PR intent alignment risk assessment (CI mode only)"
-)
-@click.option(
-    "--skip-operations", is_flag=True, help="Skip risky operations risk assessment (CI mode only)"
 )
 @click.option(
     "--comment-title",
@@ -284,7 +274,6 @@ def main(
     diff_ref: str,
     drift_threshold: str,
     intent_threshold: str,
-    operations_threshold: str,
     post_comment: bool,
     pr_url: str,
     bicep_dir: str,
@@ -293,7 +282,6 @@ def main(
     no_block: bool,
     skip_drift: bool,
     skip_intent: bool,
-    skip_operations: bool,
     comment_title: str,
     noise_file: str,
     noise_threshold: int,
@@ -379,29 +367,26 @@ def main(
             if bicep_dir:
                 bicep_content = _load_bicep_files(bicep_dir)
 
-        # Load custom agents if --agents-dir provided
+        # Load custom agents
         custom_agent_ids = []
         custom_thresholds = {}
 
-        if agents_dir:
-            if not ci:
-                sys.stderr.write("Warning: --agents-dir is only used in CI mode. Ignoring.\n")
-            else:
-                from .ci.agents import (
-                    load_agents_from_directory,
-                    register_agents,
-                )
+        if ci and agents_dir:
+            from .ci.agents import (
+                load_agents_from_directory,
+                register_agents,
+            )
 
-                agents, agent_errors = load_agents_from_directory(agents_dir)
-                for err in agent_errors:
-                    sys.stderr.write(f"Warning: {err}\n")
+            agents, agent_errors = load_agents_from_directory(agents_dir)
+            for err in agent_errors:
+                sys.stderr.write(f"Warning: {err}\n")
 
-                if agents:
-                    custom_agent_ids = register_agents(agents)
-                    agent_names = ", ".join(custom_agent_ids)
-                    sys.stderr.write(
-                        f"Loaded {len(custom_agent_ids)} custom agent(s): {agent_names}\n"
-                    )
+            if agents:
+                custom_agent_ids = register_agents(agents)
+                agent_names = ", ".join(custom_agent_ids)
+                sys.stderr.write(f"Loaded {len(custom_agent_ids)} agent(s): {agent_names}\n")
+        if not ci and agents_dir:
+            sys.stderr.write("Warning: --agents-dir is only used in CI mode. Ignoring.\n")
 
         # Parse --agent-threshold values
         for entry in agent_threshold:
@@ -433,7 +418,6 @@ def main(
             enabled_buckets = get_enabled_buckets(
                 skip_drift=skip_drift,
                 skip_intent=skip_intent,
-                skip_operations=skip_operations,
                 has_pr_metadata=bool(pr_title or pr_description),
                 custom_agent_ids=custom_agent_ids,
                 skip_agents=list(skip_agent),
@@ -639,9 +623,13 @@ def main(
                 try:
                     filtered_data = extract_json(filtered_response_text)
 
-                    # Extract the fresh risk_assessment and verdict
+                    # Merge the fresh risk_assessment into existing data.
+                    # Use update (not replace) so buckets the LLM omitted
+                    # in the re-analysis keep their original assessment.
                     if "risk_assessment" in filtered_data:
-                        high_confidence_data["risk_assessment"] = filtered_data["risk_assessment"]
+                        existing_ra = high_confidence_data.get("risk_assessment", {})
+                        existing_ra.update(filtered_data["risk_assessment"])
+                        high_confidence_data["risk_assessment"] = existing_ra
                     if "verdict" in filtered_data:
                         high_confidence_data["verdict"] = filtered_data["verdict"]
 
@@ -654,6 +642,21 @@ def main(
                         "⚠️  Warning: Could not parse re-analysis response. "
                         "Using original risk assessment (may be inaccurate).\n"
                     )
+
+        # Backfill missing buckets: the LLM may omit custom agents from
+        # risk_assessment even when the schema explicitly requests them.
+        # Add a default low-risk entry so they still appear in output.
+        if ci and enabled_buckets:
+            ra = high_confidence_data.get("risk_assessment", {})
+            for bucket_id in enabled_buckets:
+                if bucket_id not in ra:
+                    ra[bucket_id] = {
+                        "risk_level": "low",
+                        "concerns": [],
+                        "concern_summary": "None",
+                        "reasoning": "No assessment returned by LLM",
+                    }
+            high_confidence_data["risk_assessment"] = ra
 
         # Store enabled buckets in data for rendering (CI mode only)
         if ci and enabled_buckets:
@@ -692,7 +695,6 @@ def main(
                 enabled_buckets,
                 drift_threshold,
                 intent_threshold,
-                operations_threshold,
                 custom_thresholds=custom_thresholds,
             )
 

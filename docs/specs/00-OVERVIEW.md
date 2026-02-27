@@ -51,7 +51,7 @@ What-If Output → Validation → Pre-LLM Noise Filtering → LLM Analysis → C
 - PR metadata (auto-detected or via flags)
 
 **Output:**
-- Risk assessment across three independent buckets
+- Risk assessment across two built-in buckets (extensible via custom agents)
 - Pass/fail verdict
 - Optional PR comments
 
@@ -60,7 +60,7 @@ What-If Output → Validation → Pre-LLM Noise Filtering → LLM Analysis → C
 What-If Output + Git Diff + PR Context
   → Validation
   → LLM Risk Analysis
-  → Three-Bucket Evaluation
+  → Risk Bucket Evaluation
   → Verdict
   → Optional Re-analysis (if noise filtered)
   → PR Comment Posting
@@ -148,7 +148,6 @@ What-If Output + Git Diff + PR Context
     │ Risk Assessment │        │
     │  - Drift        │        │
     │  - Intent       │        │
-    │  - Operations   │        │
     └────────┬────────┘        │
              │                 │
              ▼                 │
@@ -218,7 +217,7 @@ bicep_whatif_advisor/
     ├── __init__.py
     ├── platform.py          # Platform auto-detection (172 lines)
     ├── diff.py              # Git diff collection (69 lines)
-    ├── risk_buckets.py      # Three-bucket risk eval (97 lines)
+    ├── risk_buckets.py      # Risk bucket evaluation (97 lines)
     ├── verdict.py           # Exit code constants (4 lines)
     ├── github.py            # GitHub PR comments (85 lines)
     └── azdevops.py          # Azure DevOps PR comments (93 lines)
@@ -237,7 +236,7 @@ bicep_whatif_advisor/
 - **noise_filter.py**: Pre-LLM property-line filtering removes deterministic noise (etag, provisioningState, IPv6 flags) before LLM analysis; LLM confidence scoring handles remaining ambiguous noise
 - **ci/platform.py**: Auto-detects GitHub Actions / Azure DevOps context
 - **ci/diff.py**: Collects git changes for drift detection
-- **ci/risk_buckets.py**: Evaluates three independent risk dimensions
+- **ci/risk_buckets.py**: Evaluates independent risk dimensions (drift, intent, plus custom agents)
 - **ci/github.py**: Posts analysis as GitHub PR comments
 - **ci/azdevops.py**: Posts analysis as Azure DevOps PR comments
 
@@ -277,20 +276,20 @@ Azure What-If output contains significant noise (spurious changes, cosmetic upda
 
 **Key Insight:** Pattern matching alone misses context; LLM can judge "is this likely noise?"
 
-### 4. Three-Bucket Risk Model
+### 4. Multi-Bucket Risk Model
 
-CI mode evaluates deployments across **three independent dimensions**, each with its own threshold:
+CI mode evaluates deployments across **two built-in dimensions** (drift, intent), each with its own threshold. Additional dimensions can be added via custom agents using `--agents-dir`:
 
 | Bucket              | Question                                          | Threshold Flag           |
 |---------------------|---------------------------------------------------|--------------------------|
 | **Drift**           | Does What-If differ from code changes?            | `--drift-threshold`      |
 | **Intent**          | Does What-If align with PR description?           | `--intent-threshold`     |
-| **Operations**      | Are the operations inherently risky?              | `--operations-threshold` |
 
-**Why three buckets?**
-- **Separation of concerns:** Infrastructure drift ≠ risky operations
-- **Independent tuning:** Teams can be strict on drift but lenient on new resources
+**Why separate buckets?**
+- **Separation of concerns:** Infrastructure drift ≠ intent misalignment
+- **Independent tuning:** Teams can be strict on drift but lenient on intent
 - **Clear reasoning:** "Deployment blocked due to high drift risk" vs. vague "unsafe"
+- **Extensibility:** Custom agents via `--agents-dir` add new risk dimensions without modifying core code
 
 Deployment is **blocked if ANY bucket exceeds its threshold** (AND logic), ensuring comprehensive safety.
 
@@ -361,8 +360,7 @@ bicep-whatif-advisor --ci
 ```bash
 bicep-whatif-advisor --ci \
   --drift-threshold high \        # Require high drift risk to block
-  --intent-threshold medium \     # Block on medium intent misalignment
-  --operations-threshold high     # Require high operation risk to block
+  --intent-threshold medium       # Block on medium intent misalignment
 ```
 
 Valid values: `low`, `medium`, `high` (default: `high` for all)
@@ -454,7 +452,7 @@ For detailed implementation of each module, see:
 - [05-OUTPUT-RENDERING.md](05-OUTPUT-RENDERING.md) - Output formatting
 - [06-NOISE-FILTERING.md](06-NOISE-FILTERING.md) - Confidence-based filtering
 - [07-PLATFORM-DETECTION.md](07-PLATFORM-DETECTION.md) - CI/CD auto-detection
-- [08-RISK-ASSESSMENT.md](08-RISK-ASSESSMENT.md) - Three-bucket risk model
+- [08-RISK-ASSESSMENT.md](08-RISK-ASSESSMENT.md) - Risk bucket model
 - [09-PR-INTEGRATION.md](09-PR-INTEGRATION.md) - GitHub/Azure DevOps comments
 - [10-GIT-DIFF.md](10-GIT-DIFF.md) - Git diff collection
 - [11-TESTING-STRATEGY.md](11-TESTING-STRATEGY.md) - Test architecture

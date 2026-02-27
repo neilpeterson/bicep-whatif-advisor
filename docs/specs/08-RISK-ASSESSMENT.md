@@ -1,38 +1,39 @@
-# 08 - Risk Assessment (Three-Bucket Model)
+# 08 - Risk Assessment (Multi-Bucket Model)
 
 ## Purpose
 
-The risk assessment system evaluates Azure deployments across three independent risk dimensions (buckets), each with its own configurable threshold. Deployments are blocked only if ANY bucket exceeds its threshold, ensuring comprehensive safety checks.
+The risk assessment system evaluates Azure deployments across independent risk dimensions (buckets), each with its own configurable threshold. Two buckets are built-in (drift and intent), and additional buckets can be added via custom agents (`--agents-dir`). Deployments are blocked only if ANY bucket exceeds its threshold, ensuring comprehensive safety checks.
 
 **Files:**
 - `bicep_whatif_advisor/ci/risk_buckets.py` (97 lines) - Bucket evaluation logic
 - `bicep_whatif_advisor/ci/verdict.py` (4 lines) - Risk level constants
 
-## Three-Bucket Model
+## Multi-Bucket Model
 
-### Independent Risk Dimensions
+### Built-in Risk Dimensions
 
 | Bucket | Question | Purpose |
 |--------|----------|---------|
 | **Drift** | Does What-If differ from code changes? | Detects infrastructure drift (out-of-band changes) |
 | **Intent** | Does What-If align with PR description? | Catches unintended changes (scope creep) |
-| **Operations** | Are the operations inherently risky? | Evaluates operational risk (deletions, security changes) |
+
+Additional risk dimensions can be added via custom agents (e.g., risky operations, compliance, cost analysis). See the custom agents documentation for details.
 
 **Key Design:** Buckets are **independent** - each has its own threshold and evaluation criteria.
 
 **Safety Contract:** Deployment blocked if **ANY** bucket exceeds threshold (AND logic).
 
-### Why Three Buckets?
+### Why Multiple Buckets?
 
 **Problem:** Single "risk score" conflates different concerns:
-- Infrastructure drift ≠ risky operations
-- Unintended changes ≠ dangerous operations
-- Teams need fine-grained control
+- Infrastructure drift ≠ intent misalignment
+- Different teams need fine-grained control
 
 **Solution:** Separate buckets enable:
-- **Independent tuning:** Strict on drift, lenient on new resources
+- **Independent tuning:** Strict on drift, lenient on intent
 - **Clear reasoning:** "Blocked due to high drift risk" vs. vague "unsafe"
 - **Targeted analysis:** LLM evaluates each dimension separately
+- **Extensibility:** Custom agents add new risk dimensions
 
 ## Implementation
 
@@ -62,9 +63,10 @@ Main evaluation function called by CLI:
 ```python
 def evaluate_risk_buckets(
     data: dict,
+    enabled_buckets: list,
     drift_threshold: str,
     intent_threshold: str,
-    operations_threshold: str
+    custom_thresholds: dict = None
 ) -> Tuple[bool, List[str], Dict[str, Any]]:
     """Evaluate risk buckets and determine if deployment is safe.
 
@@ -74,9 +76,10 @@ def evaluate_risk_buckets(
 
     Args:
         data: Parsed LLM response with risk_assessment (should contain only high-confidence resources)
+        enabled_buckets: List of bucket IDs to evaluate
         drift_threshold: Risk threshold for infrastructure drift bucket
         intent_threshold: Risk threshold for PR intent alignment bucket
-        operations_threshold: Risk threshold for risky operations bucket
+        custom_thresholds: Dict of custom agent thresholds (agent_id -> level)
 
     Returns:
         Tuple of (is_safe: bool, failed_buckets: list, risk_assessment: dict)
@@ -88,9 +91,10 @@ def evaluate_risk_buckets(
 | Parameter | Type | Example | Purpose |
 |-----------|------|---------|---------|
 | `data` | `dict` | `{"risk_assessment": {...}}` | Parsed LLM response with risk buckets |
+| `enabled_buckets` | `list` | `["drift", "intent"]` | Bucket IDs to evaluate |
 | `drift_threshold` | `str` | `"high"` | Fail if drift risk ≥ threshold |
 | `intent_threshold` | `str` | `"high"` | Fail if intent risk ≥ threshold |
-| `operations_threshold` | `str` | `"high"` | Fail if operations risk ≥ threshold |
+| `custom_thresholds` | `dict` | `{"compliance": "medium"}` | Custom agent thresholds |
 
 **Returns:** Tuple of:
 1. `is_safe` (`bool`) - Whether deployment is safe to proceed
@@ -107,37 +111,26 @@ def evaluate_risk_buckets(
 risk_assessment = data.get("risk_assessment", {})
 
 if not risk_assessment:
-    # No risk assessment provided - assume safe but warn
-    return True, [], {
-        "drift": {"risk_level": "low", "concerns": [], "reasoning": "No risk assessment provided"},
-        "operations": {"risk_level": "low", "concerns": [], "reasoning": "No risk assessment provided"}
-    }
+    # No risk assessment provided - default all enabled buckets to safe
+    default_ra = {}
+    for bucket_id in enabled_buckets:
+        default_ra[bucket_id] = {"risk_level": "low", "concerns": [], "reasoning": "No risk assessment provided"}
+    return True, [], default_ra
 
-# Extract bucket assessments
-drift_bucket = risk_assessment.get("drift", {})
-intent_bucket = risk_assessment.get("intent")  # May be None if not evaluated
-operations_bucket = risk_assessment.get("operations", {})
-
-# Validate and normalize risk levels
-drift_risk = _validate_risk_level(drift_bucket.get("risk_level", "low"))
-operations_risk = _validate_risk_level(operations_bucket.get("risk_level", "low"))
-
-# Evaluate each bucket against its threshold
+# Evaluate each enabled bucket against its threshold
 failed_buckets = []
 
-# Drift bucket
-if _exceeds_threshold(drift_risk, drift_threshold):
-    failed_buckets.append("drift")
+for bucket_id in enabled_buckets:
+    bucket_data = risk_assessment.get(bucket_id, {})
+    risk_level = _validate_risk_level(bucket_data.get("risk_level", "low"))
 
-# Intent bucket (only if evaluated)
-if intent_bucket is not None:
-    intent_risk = _validate_risk_level(intent_bucket.get("risk_level", "low"))
-    if _exceeds_threshold(intent_risk, intent_threshold):
-        failed_buckets.append("intent")
+    # Determine threshold for this bucket
+    threshold = custom_thresholds.get(bucket_id) if custom_thresholds else None
+    if threshold is None:
+        threshold = thresholds.get(bucket_id, "high")  # Built-in thresholds map
 
-# Operations bucket
-if _exceeds_threshold(operations_risk, operations_threshold):
-    failed_buckets.append("operations")
+    if _exceeds_threshold(risk_level, threshold):
+        failed_buckets.append(bucket_id)
 
 # Overall safety: all buckets must pass
 is_safe = len(failed_buckets) == 0
@@ -148,17 +141,15 @@ return is_safe, failed_buckets, risk_assessment
 **Logic Flow:**
 
 ```
-Input: data + thresholds
+Input: data + enabled_buckets + thresholds
     ↓
 Extract risk_assessment dict
     ↓
-If missing → default to safe (with warning)
+If missing → default all enabled buckets to safe
     ↓
-Extract drift, intent, operations buckets
-    ↓
-Validate risk levels (default to "low")
-    ↓
-For each bucket:
+For each enabled bucket:
+    ├── Extract risk_level (default to "low")
+    ├── Look up threshold (custom → built-in → default "high")
     ├── Compare risk_level vs threshold
     └── If exceeds → add to failed_buckets
     ↓
@@ -263,7 +254,8 @@ if ci:
     from .ci.risk_buckets import evaluate_risk_buckets
 
     is_safe, failed_buckets, risk_assessment = evaluate_risk_buckets(
-        high_confidence_data, drift_threshold, intent_threshold, operations_threshold
+        high_confidence_data, enabled_buckets, drift_threshold, intent_threshold,
+        custom_thresholds=custom_thresholds,
     )
 
     # Post comment if requested
@@ -297,7 +289,7 @@ if ci:
 |------|------|---------|---------|
 | `--drift-threshold` | Choice | `high` | Fail if drift risk ≥ threshold |
 | `--intent-threshold` | Choice | `high` | Fail if intent risk ≥ threshold |
-| `--operations-threshold` | Choice | `high` | Fail if operations risk ≥ threshold |
+| `--agent-threshold` | String | — | Set threshold for a custom agent (repeatable) |
 | `--no-block` | Boolean | `False` | Report findings without blocking |
 
 **Valid Choices:** `low`, `medium`, `high` (case-insensitive).
@@ -324,7 +316,7 @@ As of version 1.6.0, individual risk buckets can be disabled using skip flags:
 |------|---------|
 | `--skip-drift` | Skip infrastructure drift risk assessment |
 | `--skip-intent` | Skip PR intent alignment risk assessment |
-| `--skip-operations` | Skip risky operations risk assessment |
+| `--skip-agent <id>` | Skip a custom agent by ID (repeatable) |
 
 **Implementation:**
 - Bucket registry: `bicep_whatif_advisor/ci/buckets.py` - Central registry with bucket metadata
@@ -340,16 +332,15 @@ As of version 1.6.0, individual risk buckets can be disabled using skip flags:
 |----------|----------------------|
 | Infrastructure managed outside of code | `--skip-drift` |
 | Automated dependency update PRs | `--skip-intent` |
-| Focus only on drift detection | `--skip-intent --skip-operations` |
-| Focus only on operation safety | `--skip-drift --skip-intent` |
+| Focus only on drift detection | `--skip-intent` |
+| Skip a specific custom agent | `--skip-agent <agent_id>` |
 
 **Example:**
 ```bash
 # Only evaluate infrastructure drift
 az deployment group what-if ... | bicep-whatif-advisor \
   --ci \
-  --skip-intent \
-  --skip-operations
+  --skip-intent
 ```
 
 ### Bucket Registry (buckets.py)
@@ -360,16 +351,17 @@ az deployment group what-if ... | bicep-whatif-advisor \
 ```python
 @dataclass
 class RiskBucket:
-    id: str                     # Internal identifier: "drift", "intent", "operations"
+    id: str                     # Internal identifier: "drift", "intent"
     display_name: str           # User-facing name: "Infrastructure Drift"
     description: str            # Brief description for help text
     prompt_instructions: str    # LLM prompt instructions for this bucket
     optional: bool = False      # True if bucket can be omitted (like intent)
+    custom: bool = False        # True for user-created agents
 
 RISK_BUCKETS: Dict[str, RiskBucket] = {
     "drift": RiskBucket(...),
     "intent": RiskBucket(...),
-    "operations": RiskBucket(...)
+    # Custom agents are registered dynamically from --agents-dir
 }
 ```
 
@@ -389,18 +381,16 @@ RISK_BUCKETS: Dict[str, RiskBucket] = {
 {
   "risk_assessment": {
     "drift": {"risk_level": "low"},
-    "intent": {"risk_level": "low"},
-    "operations": {"risk_level": "low"}
+    "intent": {"risk_level": "low"}
   }
 }
 ```
 
-**Thresholds:** `--drift-threshold high --intent-threshold high --operations-threshold high`
+**Thresholds:** `--drift-threshold high --intent-threshold high`
 
 **Evaluation:**
 - Drift: `low` < `high` → Pass
 - Intent: `low` < `high` → Pass
-- Operations: `low` < `high` → Pass
 
 **Result:** `(True, [], {...})` → Exit code 0
 
@@ -411,18 +401,16 @@ RISK_BUCKETS: Dict[str, RiskBucket] = {
 {
   "risk_assessment": {
     "drift": {"risk_level": "high"},
-    "intent": {"risk_level": "low"},
-    "operations": {"risk_level": "low"}
+    "intent": {"risk_level": "low"}
   }
 }
 ```
 
-**Thresholds:** `--drift-threshold high --intent-threshold high --operations-threshold high`
+**Thresholds:** `--drift-threshold high --intent-threshold high`
 
 **Evaluation:**
 - Drift: `high` >= `high` → **Fail**
 - Intent: `low` < `high` → Pass
-- Operations: `low` < `high` → Pass
 
 **Result:** `(False, ["drift"], {...})` → Exit code 1
 
@@ -438,24 +426,22 @@ RISK_BUCKETS: Dict[str, RiskBucket] = {
 {
   "risk_assessment": {
     "drift": {"risk_level": "high"},
-    "intent": {"risk_level": "medium"},
-    "operations": {"risk_level": "high"}
+    "intent": {"risk_level": "medium"}
   }
 }
 ```
 
-**Thresholds:** `--drift-threshold high --intent-threshold low --operations-threshold medium`
+**Thresholds:** `--drift-threshold high --intent-threshold low`
 
 **Evaluation:**
 - Drift: `high` >= `high` → **Fail**
 - Intent: `medium` >= `low` → **Fail**
-- Operations: `high` >= `medium` → **Fail**
 
-**Result:** `(False, ["drift", "intent", "operations"], {...})` → Exit code 1
+**Result:** `(False, ["drift", "intent"], {...})` → Exit code 1
 
 **Output:**
 ```
-❌ Deployment blocked: Failed risk buckets: drift, intent, operations
+❌ Deployment blocked: Failed risk buckets: drift, intent
 ```
 
 ### Example 4: Strict Thresholds
@@ -465,20 +451,18 @@ RISK_BUCKETS: Dict[str, RiskBucket] = {
 {
   "risk_assessment": {
     "drift": {"risk_level": "low"},
-    "intent": {"risk_level": "medium"},
-    "operations": {"risk_level": "low"}
+    "intent": {"risk_level": "medium"}
   }
 }
 ```
 
-**Thresholds:** `--drift-threshold low --intent-threshold medium --operations-threshold low`
+**Thresholds:** `--drift-threshold low --intent-threshold medium`
 
 **Evaluation:**
 - Drift: `low` >= `low` → **Fail**
 - Intent: `medium` >= `medium` → **Fail**
-- Operations: `low` >= `low` → **Fail**
 
-**Result:** `(False, ["drift", "intent", "operations"], {...})` → Exit code 1
+**Result:** `(False, ["drift", "intent"], {...})` → Exit code 1
 
 **Why?** ALL thresholds set to block even low risk.
 
@@ -502,8 +486,7 @@ RISK_BUCKETS: Dict[str, RiskBucket] = {
 
 ```bash
 --drift-threshold high \
---intent-threshold high \
---operations-threshold high
+--intent-threshold high
 ```
 
 **Philosophy:** Block only critical risks.
@@ -514,11 +497,10 @@ RISK_BUCKETS: Dict[str, RiskBucket] = {
 
 ```bash
 --drift-threshold medium \
---intent-threshold high \
---operations-threshold medium
+--intent-threshold high
 ```
 
-**Philosophy:** Stricter on drift and operations, lenient on intent alignment.
+**Philosophy:** Stricter on drift, lenient on intent alignment.
 
 **Use Case:** General production deployments.
 
@@ -526,37 +508,31 @@ RISK_BUCKETS: Dict[str, RiskBucket] = {
 
 ```bash
 --drift-threshold low \
---intent-threshold low \
---operations-threshold low
+--intent-threshold low
 ```
 
 **Philosophy:** Block any risk, even minor.
 
 **Use Case:** Highly regulated environments, mission-critical systems.
 
-### Custom Per-Environment
+### With Custom Agents
 
-**Staging:**
-```bash
---drift-threshold high \
---intent-threshold high \
---operations-threshold medium
-```
-
-**Production:**
 ```bash
 --drift-threshold medium \
---intent-threshold medium \
---operations-threshold low
+--intent-threshold high \
+--agent-threshold compliance=medium \
+--agent-threshold cost=high
 ```
 
-## Benefits of Three-Bucket Model
+**Philosophy:** Built-in buckets plus custom agent thresholds.
+
+## Benefits of Multi-Bucket Model
 
 ### 1. Separation of Concerns
 
 - **Drift** - Infrastructure health
 - **Intent** - Change control
-- **Operations** - Operational safety
+- **Custom agents** - Additional risk dimensions (operations, compliance, cost, etc.)
 
 Each bucket addresses a distinct risk dimension.
 
@@ -638,7 +614,7 @@ intent_risk = intent_bucket.get("risk_level")  # Crashes if intent_bucket is Non
 
 ## Performance Characteristics
 
-- **Time complexity:** O(1) - Fixed number of buckets (3)
+- **Time complexity:** O(n) - Linear in number of enabled buckets
 - **Space complexity:** O(1) - Returns tuple, no additional allocations
 - **Bottleneck:** None - trivial computation
 
@@ -662,10 +638,9 @@ assert _validate_risk_level("invalid") == "low"
 data = {
     "risk_assessment": {
         "drift": {"risk_level": "high"},
-        "operations": {"risk_level": "low"}
     }
 }
-is_safe, failed, _ = evaluate_risk_buckets(data, "high", "high", "low")
+is_safe, failed, _ = evaluate_risk_buckets(data, ["drift"], "high", "high")
 assert is_safe == False
 assert "drift" in failed
 ```

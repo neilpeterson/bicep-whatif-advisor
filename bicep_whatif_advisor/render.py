@@ -225,7 +225,7 @@ def _print_risk_bucket_summary(
         console: Rich console for output
         risk_assessment: Risk assessment dict from LLM
         use_color: Whether to use color output
-        enabled_buckets: List of bucket IDs that were evaluated (e.g., ["drift", "operations"])
+        enabled_buckets: List of bucket IDs that were evaluated (e.g., ["drift", "intent"])
                         If None, defaults to all buckets present in risk_assessment
     """
     if not risk_assessment:
@@ -317,7 +317,7 @@ def _render_agent_detail_sections(data: dict, platform: str = None) -> list:
     """Render collapsible detail sections for custom agents.
 
     Only custom agents get collapsible sections. Built-in buckets
-    (drift, intent, operations) are table-row only.
+    (drift, intent) are table-row only.
 
     Args:
         data: Parsed LLM response with risk_assessment and _enabled_buckets

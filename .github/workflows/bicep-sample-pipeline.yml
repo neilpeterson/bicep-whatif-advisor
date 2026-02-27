@@ -70,7 +70,6 @@ jobs:
               --no-block \
               --comment-title "What-If Summary" \
               --bicep-dir tests/sample-bicep-deployment/ \
-              --skip-operations \
               --include-whatif \
               --noise-file tests/sample-bicep-deployment/.whatif-noise \
               --agents-dir tests/agents/
@@ -111,7 +110,6 @@ jobs:
             --exclude-change-types NoChange Ignore \
             | bicep-whatif-advisor \
               --format markdown \
-              --skip-operations \
               --noise-file tests/sample-bicep-deployment/.whatif-noise \
               --agents-dir tests/agents/ \
               >> $GITHUB_STEP_SUMMARY
