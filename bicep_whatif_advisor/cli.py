@@ -643,6 +643,21 @@ def main(
                         "Using original risk assessment (may be inaccurate).\n"
                     )
 
+        # Backfill missing buckets: the LLM may omit custom agents from
+        # risk_assessment even when the schema explicitly requests them.
+        # Add a default low-risk entry so they still appear in output.
+        if ci and enabled_buckets:
+            ra = high_confidence_data.get("risk_assessment", {})
+            for bucket_id in enabled_buckets:
+                if bucket_id not in ra:
+                    ra[bucket_id] = {
+                        "risk_level": "low",
+                        "concerns": [],
+                        "concern_summary": "None",
+                        "reasoning": "No assessment returned by LLM",
+                    }
+            high_confidence_data["risk_assessment"] = ra
+
         # Store enabled buckets in data for rendering (CI mode only)
         if ci and enabled_buckets:
             high_confidence_data["_enabled_buckets"] = enabled_buckets

@@ -212,6 +212,129 @@ class TestNoiseFilteringPipeline:
 
 
 @pytest.mark.integration
+class TestCustomAgentBackfill:
+    """Ensure custom agents appear in output even if LLM omits them."""
+
+    def test_missing_agent_backfilled_in_json(
+        self, clean_env, monkeypatch, mocker, create_only_fixture, tmp_path
+    ):
+        """When LLM omits a custom agent from risk_assessment, a default low entry is added."""
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+
+        # Create a minimal custom agent file
+        agent_file = tmp_path / "cost.md"
+        agent_file.write_text(
+            "---\nid: cost\ndisplay_name: Cost Impact\ndefault_threshold: high\n---\n"
+            "Evaluate cost risk.\n"
+        )
+
+        # LLM response only has drift — no cost bucket
+        response = {
+            "resources": [
+                {
+                    "resource_name": "storage1",
+                    "resource_type": "Storage/storageAccounts",
+                    "action": "Create",
+                    "summary": "Creates storage",
+                    "risk_level": "low",
+                    "risk_reason": None,
+                    "confidence_level": "high",
+                    "confidence_reason": "Real creation",
+                },
+            ],
+            "overall_summary": "1 create",
+            "risk_assessment": {
+                "drift": {
+                    "risk_level": "low",
+                    "concerns": [],
+                    "reasoning": "No drift",
+                },
+            },
+            "verdict": {
+                "safe": True,
+                "highest_risk_bucket": "none",
+                "overall_risk_level": "low",
+                "reasoning": "Safe",
+            },
+        }
+
+        mocker.patch(
+            "bicep_whatif_advisor.cli.get_provider",
+            return_value=MockProvider(response),
+        )
+        mocker.patch("bicep_whatif_advisor.ci.diff.get_diff", return_value="diff")
+
+        result = _runner().invoke(
+            main,
+            ["--ci", "--format", "json", "--agents-dir", str(tmp_path)],
+            input=create_only_fixture,
+        )
+        assert result.exit_code == 0
+
+        output = json.loads(result.output)
+        ra = output["high_confidence"]["risk_assessment"]
+        assert "drift" in ra
+        assert "cost" in ra
+        assert ra["cost"]["risk_level"] == "low"
+
+    def test_missing_agent_appears_in_markdown(
+        self, clean_env, monkeypatch, mocker, create_only_fixture, tmp_path
+    ):
+        """Backfilled agents appear as rows in the markdown risk table."""
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+
+        agent_file = tmp_path / "naming.md"
+        agent_file.write_text(
+            "---\nid: naming\ndisplay_name: Naming Convention\n"
+            "default_threshold: medium\n---\nEvaluate naming.\n"
+        )
+
+        response = {
+            "resources": [
+                {
+                    "resource_name": "vm1",
+                    "resource_type": "Compute/virtualMachines",
+                    "action": "Create",
+                    "summary": "Creates VM",
+                    "risk_level": "low",
+                    "risk_reason": None,
+                    "confidence_level": "high",
+                    "confidence_reason": "Real",
+                },
+            ],
+            "overall_summary": "1 VM",
+            "risk_assessment": {
+                "drift": {
+                    "risk_level": "low",
+                    "concerns": [],
+                    "reasoning": "No drift",
+                },
+            },
+            "verdict": {
+                "safe": True,
+                "highest_risk_bucket": "none",
+                "overall_risk_level": "low",
+                "reasoning": "Safe",
+            },
+        }
+
+        mocker.patch(
+            "bicep_whatif_advisor.cli.get_provider",
+            return_value=MockProvider(response),
+        )
+        mocker.patch("bicep_whatif_advisor.ci.diff.get_diff", return_value="diff")
+
+        result = _runner().invoke(
+            main,
+            ["--ci", "--format", "markdown", "--agents-dir", str(tmp_path)],
+            input=create_only_fixture,
+        )
+        assert result.exit_code == 0
+        assert "Naming Convention" in result.output
+        assert "Infrastructure Drift" in result.output
+
+
+@pytest.mark.integration
 class TestPlatformAutoDetect:
     def test_github_auto_enables_ci(
         self, clean_env, monkeypatch, mocker, create_only_fixture, sample_ci_response_safe
