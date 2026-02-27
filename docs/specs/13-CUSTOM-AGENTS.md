@@ -42,7 +42,7 @@ Risk levels for compliance:
 
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
-| `id` | Yes | — | Unique identifier (alphanumeric, hyphens, underscores). Must not collide with built-in IDs (`drift`, `intent`, `operations`). |
+| `id` | Yes | — | Unique identifier (alphanumeric, hyphens, underscores). Must not collide with built-in IDs (`drift`, `intent`). |
 | `display_name` | Yes | — | User-facing name shown in tables and PR comments. |
 | `default_threshold` | No | `high` | Default threshold if no `--agent-threshold` override. Must be `low`, `medium`, or `high`. |
 | `optional` | No | `false` | If `true`, agent can be conditionally skipped. |

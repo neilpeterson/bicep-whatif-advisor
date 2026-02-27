@@ -38,6 +38,7 @@ bicep-whatif-advisor/             # Root directory
 │   │   └── ollama.py       # Ollama provider
 │   └── ci/                 # CI/CD deployment gate features
 │       ├── __init__.py
+│       ├── agents.py       # Custom agent loader (markdown → RiskBucket)
 │       ├── buckets.py      # Risk bucket registry and definitions
 │       ├── platform.py     # CI/CD platform auto-detection
 │       ├── risk_buckets.py # Risk evaluation and threshold logic
@@ -48,9 +49,12 @@ bicep-whatif-advisor/             # Root directory
 ├── tests/
 │   ├── conftest.py         # Shared fixtures, MockProvider, sample responses
 │   ├── fixtures/           # Sample What-If outputs
+│   ├── agents/             # Sample custom agent markdown files
 │   ├── sample-bicep-deployment/  # Example Bicep template for testing
 │   ├── test_input.py       # Input validation tests
 │   ├── test_noise_filter.py # Noise filtering tests
+│   ├── test_agents.py      # Custom agent parsing/loading tests
+│   ├── test_agents_integration.py  # Agent CLI integration tests
 │   ├── test_buckets.py     # Risk bucket registry tests
 │   ├── test_risk_buckets.py # Risk evaluation tests
 │   ├── test_prompt.py      # Prompt construction tests
@@ -67,7 +71,7 @@ bicep-whatif-advisor/             # Root directory
 │   ├── publish-pypi.yml    # PyPI publishing on release
 │   └── bicep-sample-pipeline.yml  # Sample Bicep deployment pipeline
 ├── docs/                   # Documentation
-│   ├── specs/              # Technical specifications (00-12)
+│   ├── specs/              # Technical specifications (00-14)
 │   │   ├── 00-OVERVIEW.md
 │   │   ├── 01-CLI-INTERFACE.md
 │   │   ├── 02-INPUT-VALIDATION.md
@@ -80,7 +84,9 @@ bicep-whatif-advisor/             # Root directory
 │   │   ├── 09-PR-INTEGRATION.md
 │   │   ├── 10-GIT-DIFF.md
 │   │   ├── 11-TESTING-STRATEGY.md
-│   │   └── 12-BACKLOG.md
+│   │   ├── 12-BACKLOG.md
+│   │   ├── 13-CUSTOM-AGENTS.md
+│   │   └── 14-AGENT-DISPLAY.md
 │   └── guides/             # User guides
 │       ├── QUICKSTART.md
 │       ├── USER_GUIDE.md
@@ -253,7 +259,7 @@ Custom agents added via `--agents-dir` will also appear as keys in `risk_assessm
 
 Documentation is organized into two directories:
 
-**`/docs/specs/`** - Technical specifications (numbered 00-12 for reading order)
+**`/docs/specs/`** - Technical specifications (numbered 00-14 for reading order)
 - `00-OVERVIEW.md` - Project architecture, data flow, design principles
 - `01-CLI-INTERFACE.md` - CLI flags, orchestration, and smart defaults
 - `02-INPUT-VALIDATION.md` - Stdin processing and validation
@@ -267,6 +273,8 @@ Documentation is organized into two directories:
 - `10-GIT-DIFF.md` - Git diff collection for drift detection
 - `11-TESTING-STRATEGY.md` - Test architecture and fixtures
 - `12-BACKLOG.md` - Feature backlog and future enhancements
+- `13-CUSTOM-AGENTS.md` - Custom risk assessment agents
+- `14-AGENT-DISPLAY.md` - Per-agent collapsible detail sections
 
 **`/docs/guides/`** - User-facing guides (clear progression for new users)
 - `QUICKSTART.md` - 5-minute getting started guide
@@ -313,8 +321,8 @@ This directory contains sample Bicep templates and parameter files for testing t
 - **markdown:** Table format for PR comments
 
 ### Dependencies
-- Core: `click`, `rich`
-- Optional extras: `anthropic`, `openai`, `requests`
+- Core: `click`, `rich`, `requests`, `pyyaml`
+- Optional extras: `anthropic`, `openai`
 
 ## CI/CD Integration
 
@@ -375,7 +383,7 @@ cat whatif-output.txt | bicep-whatif-advisor --ci --skip-agent compliance
 
 ## Testing
 
-**Test suite:** 230 tests (221 unit + 9 integration), ~82% coverage, runs in ~1.5s.
+**Test suite:** 367 tests across 15 test files, ~82% coverage, runs in ~1.5s.
 
 **Run tests:**
 ```bash
@@ -408,7 +416,7 @@ All tests use `MockProvider` from `conftest.py` — no real API calls during tes
    - Currently supported via manual `--ci` flag
 
 2. **Test Coverage** ✅ **COMPLETED**
-   - 230 tests (221 unit + 9 integration), ~82% coverage
+   - 367 tests across 15 test files, ~82% coverage
    - CI workflow on Python 3.9/3.11/3.13
 
 3. **Enhanced Noise Filtering** (pre-LLM property filtering ✅ implemented)
