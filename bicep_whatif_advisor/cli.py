@@ -623,9 +623,13 @@ def main(
                 try:
                     filtered_data = extract_json(filtered_response_text)
 
-                    # Extract the fresh risk_assessment and verdict
+                    # Merge the fresh risk_assessment into existing data.
+                    # Use update (not replace) so buckets the LLM omitted
+                    # in the re-analysis keep their original assessment.
                     if "risk_assessment" in filtered_data:
-                        high_confidence_data["risk_assessment"] = filtered_data["risk_assessment"]
+                        existing_ra = high_confidence_data.get("risk_assessment", {})
+                        existing_ra.update(filtered_data["risk_assessment"])
+                        high_confidence_data["risk_assessment"] = existing_ra
                     if "verdict" in filtered_data:
                         high_confidence_data["verdict"] = filtered_data["verdict"]
 
