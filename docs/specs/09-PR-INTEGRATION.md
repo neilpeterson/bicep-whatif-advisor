@@ -416,7 +416,6 @@ if ci:
 |-------------|------------|--------------|
 | Infrastructure Drift | Low | No drift detected |
 | PR Intent Alignment | Low | Changes match PR |
-| Risky Operations | Medium | New public endpoint |
 
 **Summary:** 1 resource created.
 
@@ -432,7 +431,7 @@ if ci:
 ---
 
 ### Verdict: ✅ SAFE
-**Reasoning:** Changes align with PR intent. Only low-risk operations detected.
+**Reasoning:** Changes align with PR description.
 ```
 
 ### Blocked Deployment
@@ -446,7 +445,6 @@ if ci:
 |-------------|------------|--------------|
 | Infrastructure Drift | High | Critical resources drifting |
 | PR Intent Alignment | Low | Changes match PR |
-| Risky Operations | Low | No risky operations |
 
 **Summary:** Critical infrastructure drift detected.
 

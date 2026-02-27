@@ -110,7 +110,6 @@ jobs:
             --exclude-change-types NoChange Ignore \
             | bicep-whatif-advisor \
               --format markdown \
-              --skip-operations \
               --noise-file tests/sample-bicep-deployment/.whatif-noise \
               --agents-dir tests/agents/ \
               >> $GITHUB_STEP_SUMMARY

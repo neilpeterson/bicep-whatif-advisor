@@ -173,7 +173,7 @@ return prompt
 
 ### Implementation (lines 88-255)
 
-CI mode prompts are more complex, defining a three-bucket risk assessment framework with dynamic schema generation.
+CI mode prompts are more complex, defining a multi-bucket risk assessment framework with dynamic schema generation.
 
 #### Base Introduction (lines 90-104)
 
@@ -191,17 +191,17 @@ if pr_title or pr_description:
 
 base_prompt += (
     '\n\nEvaluate the deployment for safety and correctness across '
-    'three independent risk buckets:'
+    'independent risk buckets:'
 )
 ```
 
 **Dynamic Content:**
 - Item #3 (PR intent) only added if `pr_title` or `pr_description` provided
-- Sets expectation for "three independent risk buckets"
+- Sets expectation for "independent risk buckets"
 
 #### Dynamic Schema Generation (lines 106-137)
 
-**With PR metadata (3 buckets):**
+**With PR metadata (drift + intent):**
 
 ```json
 "risk_assessment": {
@@ -214,16 +214,11 @@ base_prompt += (
     "risk_level": "low|medium|high",
     "concerns": ["string — list of intent misalignment concerns"],
     "reasoning": "string — explanation of intent risk"
-  },
-  "operations": {
-    "risk_level": "low|medium|high",
-    "concerns": ["string — list of risky operation concerns"],
-    "reasoning": "string — explanation of operations risk"
   }
 }
 ```
 
-**Without PR metadata (2 buckets):**
+**Without PR metadata (drift only):**
 
 ```json
 "risk_assessment": {
@@ -231,11 +226,6 @@ base_prompt += (
     "risk_level": "low|medium|high",
     "concerns": ["string — list of specific drift concerns"],
     "reasoning": "string — explanation of drift risk"
-  },
-  "operations": {
-    "risk_level": "low|medium|high",
-    "concerns": ["string — list of risky operation concerns"],
-    "reasoning": "string — explanation of operations risk"
   }
 }
 ```
@@ -264,32 +254,12 @@ Risk levels for drift:
 
 **Purpose:** Detect changes not caused by the current PR (infrastructure drift).
 
-**Bucket 2: Risky Operations (lines 156-168)**
-
-```
-## Risk Bucket 2: Risky Azure Operations
-
-Evaluate the inherent risk of the operations being performed,
-regardless of intent.
-
-Risk levels for operations:
-- high: Deletion of stateful resources (databases, storage, vaults),
-  deletion of identity/RBAC, network security changes that open broad
-  access, encryption modifications, SKU downgrades
-- medium: Modifications to existing resources that change behavior
-  (policy changes, scaling config), new public endpoints, firewall changes
-- low: Adding new resources, tags, diagnostic/monitoring resources,
-  modifying descriptions
-```
-
-**Purpose:** Assess inherent risk of Azure operations (e.g., deleting a database is risky regardless of intent).
-
-**Bucket 3: Intent Alignment (lines 171-192)**
+**Bucket 2: Intent Alignment (lines 156-177)**
 
 **With PR metadata:**
 
 ```
-## Risk Bucket 3: Pull Request Intent Alignment
+## Risk Bucket 2: Pull Request Intent Alignment
 
 Compare the What-If output to the PR title and description. Flag any changes that:
 - Are NOT mentioned in the PR description
@@ -306,7 +276,7 @@ Risk levels for intent:
 **Without PR metadata:**
 
 ```
-## Risk Bucket 3: Pull Request Intent Alignment
+## Risk Bucket 2: Pull Request Intent Alignment
 
 NOTE: PR title and description were not provided, so intent alignment analysis is SKIPPED.
 Do NOT include the "intent" bucket in your risk_assessment response.
@@ -321,7 +291,7 @@ Do NOT include the "intent" bucket in your risk_assessment response.
 ```json
 "verdict": {
   "safe": true/false,
-  "highest_risk_bucket": "drift|intent|operations|none",
+  "highest_risk_bucket": "drift|intent|none",
   "overall_risk_level": "low|medium|high",
   "reasoning": "string — 2-3 sentence explanation considering all buckets"
 }
@@ -332,7 +302,7 @@ Do NOT include the "intent" bucket in your risk_assessment response.
 ```json
 "verdict": {
   "safe": true/false,
-  "highest_risk_bucket": "drift|operations|none",
+  "highest_risk_bucket": "drift|none",
   "overall_risk_level": "low|medium|high",
   "reasoning": "string — 2-3 sentence explanation considering all buckets"
 }
@@ -372,7 +342,7 @@ Respond with ONLY valid JSON matching this schema:
 
 **Structure:**
 1. Role and context ("deployment safety reviewer")
-2. Risk bucket instructions (drift, operations, intent)
+2. Risk bucket instructions (drift, intent)
 3. Confidence assessment guidelines
 4. JSON schema with dynamic risk_assessment and verdict fields
 
@@ -467,8 +437,8 @@ The prompt system **dynamically adjusts the response schema** based on available
 | Input | Schema Includes |
 |-------|-----------------|
 | Standard mode | resources, overall_summary |
-| CI mode (no PR metadata) | resources, overall_summary, risk_assessment (drift + operations), verdict (drift\|operations) |
-| CI mode (with PR metadata) | resources, overall_summary, risk_assessment (drift + intent + operations), verdict (drift\|intent\|operations) |
+| CI mode (no PR metadata) | resources, overall_summary, risk_assessment (drift), verdict (drift) |
+| CI mode (with PR metadata) | resources, overall_summary, risk_assessment (drift + intent), verdict (drift\|intent) |
 
 **Why Dynamic?**
 - Prevents LLM from hallucinating intent analysis when no PR metadata available
@@ -626,15 +596,12 @@ You are an Azure infrastructure deployment safety reviewer. You are given:
 2. The source code diff (Bicep/ARM template changes) that produced these changes
 3. The pull request title and description stating the INTENDED purpose of this change
 
-Evaluate the deployment for safety and correctness across three independent risk buckets:
+Evaluate the deployment for safety and correctness across independent risk buckets:
 
 ## Risk Bucket 1: Infrastructure Drift
 ...
 
-## Risk Bucket 2: Risky Azure Operations
-...
-
-## Risk Bucket 3: Pull Request Intent Alignment
+## Risk Bucket 2: Pull Request Intent Alignment
 ...
 
 Respond with ONLY valid JSON matching this schema:
@@ -643,12 +610,11 @@ Respond with ONLY valid JSON matching this schema:
   "overall_summary": "string",
   "risk_assessment": {
     "drift": {...},
-    "intent": {...},
-    "operations": {...}
+    "intent": {...}
   },
   "verdict": {
     "safe": true/false,
-    "highest_risk_bucket": "drift|intent|operations|none",
+    "highest_risk_bucket": "drift|intent|none",
     "overall_risk_level": "low|medium|high",
     "reasoning": "string"
   }

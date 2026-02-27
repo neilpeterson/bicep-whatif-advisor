@@ -50,7 +50,7 @@ class TestGetEnabledBuckets:
         assert result == ["drift", "compliance"]
 
     def test_with_pr_metadata_and_custom_agent(self):
-        """With PR metadata and custom agent, all three buckets enabled."""
+        """With PR metadata and custom agent, all buckets enabled."""
         result = get_enabled_buckets(has_pr_metadata=True, custom_agent_ids=["compliance"])
         assert result == ["drift", "intent", "compliance"]
 

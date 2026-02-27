@@ -300,12 +300,11 @@ def _print_risk_bucket_summary(
 ├──────────────────────┼────────────┼────────┼────────────────────┤
 │ Infrastructure Drift │ Low        │ ●      │ No drift detected  │
 │ PR Intent Alignment  │ Low        │ ●      │ Changes match PR   │
-│ Risky Operations     │ Medium     │ ●      │ Public endpoint    │
 ╰──────────────────────┴────────────┴────────┴────────────────────╯
 ```
 
 **Columns:**
-- **Risk Bucket:** Name of bucket (Drift, Intent, Operations)
+- **Risk Bucket:** Name of bucket (Drift, Intent, plus custom agents)
 - **Risk Level:** Capitalized risk level with color
 - **Status:** Colored dot indicator (● in risk level color)
 - **Key Concerns:** First concern from concerns array
@@ -465,7 +464,6 @@ Generates markdown suitable for GitHub/Azure DevOps PR comments.
 |-------------|------------|--------------|
 | Infrastructure Drift | Low | No drift detected |
 | PR Intent Alignment | Low | Changes match PR |
-| Risky Operations | Medium | New public endpoint |
 
 **Summary:** 1 resource created.
 

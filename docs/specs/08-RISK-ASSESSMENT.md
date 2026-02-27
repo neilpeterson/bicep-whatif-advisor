@@ -526,7 +526,7 @@ RISK_BUCKETS: Dict[str, RiskBucket] = {
 
 **Philosophy:** Built-in buckets plus custom agent thresholds.
 
-## Benefits of Three-Bucket Model
+## Benefits of Multi-Bucket Model
 
 ### 1. Separation of Concerns
 

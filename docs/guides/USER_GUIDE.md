@@ -273,7 +273,7 @@ Low-confidence resources are automatically:
 
 ## Custom Agents
 
-Extend the built-in risk assessment (drift, intent, operations) with custom risk dimensions defined as markdown files. Each agent file becomes an additional risk bucket that the LLM evaluates alongside the built-in ones.
+Extend the built-in risk assessment (drift, intent) with custom risk dimensions defined as markdown files. Each agent file becomes an additional risk bucket that the LLM evaluates alongside the built-in ones.
 
 ### Creating an Agent File
 
@@ -304,7 +304,7 @@ Risk levels for compliance:
 
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
-| `id` | Yes | — | Unique identifier (alphanumeric, hyphens, underscores). Must not match `drift`, `intent`, or `operations`. |
+| `id` | Yes | — | Unique identifier (alphanumeric, hyphens, underscores). Must not match `drift` or `intent`. |
 | `display_name` | Yes | — | Name shown in tables and PR comments |
 | `default_threshold` | No | `high` | Default threshold: `low`, `medium`, or `high` |
 | `optional` | No | `false` | If `true`, can be conditionally skipped |
@@ -377,7 +377,7 @@ Built-in buckets still use their dedicated flags (`--drift-threshold`, etc.).
 ### Notes
 
 - Custom agents are **CI mode only**. Using `--agents-dir` without `--ci` emits a warning.
-- Custom agent IDs must not collide with built-in IDs (`drift`, `intent`, `operations`).
+- Custom agent IDs must not collide with built-in IDs (`drift`, `intent`).
 - At least one bucket (built-in or custom) must be enabled in CI mode.
 - All custom agents use the same JSON response schema as built-in buckets (`risk_level`, `concerns`, `concern_summary`, `reasoning`).
 
@@ -413,7 +413,7 @@ For CI/CD pipelines. Automatically enabled when running in GitHub Actions or Azu
 
 **Features:**
 - Everything in Standard Mode, plus:
-- Three-bucket risk assessment (drift, intent, operations)
+- Two built-in risk buckets (drift, intent) plus custom agents
 - Git diff analysis
 - PR intent validation
 - Deployment verdicts with configurable thresholds
@@ -482,10 +482,8 @@ az deployment group what-if ... | bicep-whatif-advisor --ci --diff-ref origin/ma
 | `--pr-url` | PR URL for comment posting (auto-detected) | - |
 | `--drift-threshold` | Drift bucket threshold: `low`, `medium`, `high` | `high` |
 | `--intent-threshold` | Intent bucket threshold: `low`, `medium`, `high` | `high` |
-| `--operations-threshold` | Operations bucket threshold: `low`, `medium`, `high` | `high` |
 | `--skip-drift` | Skip infrastructure drift risk assessment | `false` |
 | `--skip-intent` | Skip PR intent alignment risk assessment | `false` |
-| `--skip-operations` | Skip risky operations risk assessment | `false` |
 | `--post-comment` | Post analysis as PR comment (auto-enabled if token exists) | `false` |
 | `--comment-title` | Custom title for PR comment | `What-If Deployment Review` |
 | `--no-block` | Report findings without failing pipeline (exit code 0) | `false` |
@@ -581,8 +579,7 @@ az deployment group what-if -g my-rg -f main.bicep | bicep-whatif-advisor \
 az deployment group what-if -g my-rg -f main.bicep | bicep-whatif-advisor \
   --ci \
   --drift-threshold low \
-  --intent-threshold low \
-  --operations-threshold low
+  --intent-threshold low
 ```
 
 ### Skipping Risk Buckets
@@ -598,16 +595,11 @@ az deployment group what-if ... | bicep-whatif-advisor \
   --ci \
   --skip-intent
 
-# Skip risky operations assessment (focus only on drift and intent)
-az deployment group what-if ... | bicep-whatif-advisor \
-  --ci \
-  --skip-operations
-
-# Combine skip flags (only evaluate drift bucket)
+# Combine skip flags (only evaluate drift, skip intent and custom agents)
 az deployment group what-if ... | bicep-whatif-advisor \
   --ci \
   --skip-intent \
-  --skip-operations \
+  --skip-agent compliance \
   --pr-title "Update configuration"
 ```
 
@@ -695,8 +687,8 @@ The tool automatically retries once on network errors.
 If CI mode produces unexpected results:
 
 1. Check the PR comment for detailed reasoning
-2. Review the three risk buckets independently
-3. Adjust thresholds if needed (`--drift-threshold`, `--intent-threshold`, `--operations-threshold`)
+2. Review the risk buckets independently
+3. Adjust thresholds if needed (`--drift-threshold`, `--intent-threshold`, and custom agent thresholds via `--agent-threshold`)
 4. Provide more context in PR description for intent validation
 5. See [RISK_ASSESSMENT.md](./RISK_ASSESSMENT.md) for how risk evaluation works
 

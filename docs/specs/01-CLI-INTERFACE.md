@@ -34,7 +34,6 @@ def main(
     diff_ref: str,
     drift_threshold: str,
     intent_threshold: str,
-    operations_threshold: str,
     post_comment: bool,
     pr_url: str,
     bicep_dir: str,
@@ -117,7 +116,6 @@ bicep-whatif-advisor --no-color  # For piping to files
 | `--diff-ref` | String | `HEAD~1` | Git reference to diff against |
 | `--drift-threshold` | Choice | `high` | Fail if drift risk ≥ threshold (`low`/`medium`/`high`) |
 | `--intent-threshold` | Choice | `high` | Fail if intent risk ≥ threshold |
-| `--operations-threshold` | Choice | `high` | Fail if operations risk ≥ threshold |
 | `--no-block` | Boolean | `False` | Report findings without failing pipeline |
 
 **Implementation:**
@@ -131,7 +129,7 @@ bicep-whatif-advisor --no-color  # For piping to files
     default="high",
     help="Fail pipeline if drift risk meets or exceeds this level (CI mode only)"
 )
-# ... similar for intent-threshold and operations-threshold
+# ... similar for intent-threshold
 @click.option("--no-block", is_flag=True, help="Don't fail pipeline even if deployment is unsafe - only report findings (CI mode only)")
 ```
 
@@ -143,8 +141,7 @@ az deployment group what-if ... | bicep-whatif-advisor --ci
 # Strict thresholds
 bicep-whatif-advisor --ci \
   --drift-threshold medium \
-  --intent-threshold medium \
-  --operations-threshold medium
+  --intent-threshold medium
 
 # Report-only mode (no blocking)
 bicep-whatif-advisor --ci --no-block

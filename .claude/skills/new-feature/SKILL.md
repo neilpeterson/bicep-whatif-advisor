@@ -136,7 +136,6 @@ def evaluate_risk_buckets(
     data: dict,
     drift_threshold: str,
     intent_threshold: str,
-    operations_threshold: str,
     new_bucket_threshold: str,  # Add new parameter
 ) -> tuple[bool, list[str], dict]:
     # Add evaluation logic for new bucket
@@ -685,7 +684,6 @@ def evaluate_risk_buckets(
     data: dict,
     drift_threshold: str,
     intent_threshold: str,
-    operations_threshold: str,
     compliance_threshold: str,
 ) -> tuple[bool, list[str], dict]:
     # Add compliance evaluation

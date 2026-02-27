@@ -7,8 +7,8 @@ custom agents. Teams define new risk dimensions (compliance, cost review,
 naming conventions, etc.) as markdown files that plug into the existing
 pipeline — no code changes required.
 
-Custom agents are **additive** to the three built-in buckets (drift,
-intent, operations). They use the same evaluation pipeline: each agent
+Custom agents are **additive** to the two built-in buckets (drift,
+intent). They use the same evaluation pipeline: each agent
 produces a `risk_level` (low/medium/high) with independent threshold
 control.
 

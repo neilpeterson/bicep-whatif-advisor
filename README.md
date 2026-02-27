@@ -5,17 +5,16 @@
 [![Python versions](https://img.shields.io/pypi/pyversions/bicep-whatif-advisor)](https://pypi.org/project/bicep-whatif-advisor/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-AI-powered deployment safety gate for Azure Bicep and ARM templates. Pipe Azure What-If output through an LLM (Anthropic Claude, Azure OpenAI, or Ollama) to detect infrastructure drift, validate PR intent alignment, and flag risky operations. Integrates into GitHub Actions and Azure DevOps with zero-config platform detection, automatic PR comments, and configurable risk thresholds. Also works as a standalone CLI for local What-If analysis.
+AI-powered deployment safety gate for Azure Bicep and ARM templates. Pipe Azure What-If output through an LLM (Anthropic Claude, Azure OpenAI, or Ollama) to detect infrastructure drift, validate PR intent alignment, and evaluate custom risk dimensions. Integrates into GitHub Actions and Azure DevOps with zero-config platform detection, automatic PR comments, and configurable risk thresholds. Also works as a standalone CLI for local What-If analysis.
 
 ## How It Works
 
-Pipe Azure What-If output to the tool in your CI/CD pipeline. It auto-detects the platform, collects PR metadata and code diff, then sends everything to the LLM for analysis across three built-in risk categories:
+Pipe Azure What-If output to the tool in your CI/CD pipeline. It auto-detects the platform, collects PR metadata and code diff, then sends everything to the LLM for analysis across two built-in risk categories:
 
 - **Infrastructure Drift** - Detects changes not in your code (out-of-band modifications)
 - **PR Intent Alignment** - Ensures changes match PR description
-- **Risky Operations** - Flags dangerous operations (deletions, security changes, downgrades)
 
-You can also add **custom risk assessment agents** via markdown files to evaluate additional dimensions like compliance, cost, or naming conventions. See [Custom Agents](#custom-agents) below.
+You can also add **custom risk assessment agents** via markdown files to evaluate additional dimensions like compliance, cost, risky operations, or naming conventions. See [Custom Agents](#custom-agents) below.
 
 Known Azure What-If noise (etag, provisioningState, etc.) is filtered before LLM analysis. Results are posted as a PR comment and the pipeline exits with code 0 (safe) or 1 (unsafe) based on configurable thresholds.
 
@@ -85,11 +84,10 @@ Each risk bucket has an independent threshold: `low`, `medium`, `high` (default:
 # Block on medium or high risk
 bicep-whatif-advisor \
   --drift-threshold medium \
-  --intent-threshold medium \
-  --operations-threshold medium
+  --intent-threshold medium
 ```
 
-Skip individual buckets with `--skip-drift`, `--skip-intent`, or `--skip-operations`.
+Skip individual buckets with `--skip-drift` or `--skip-intent`.
 
 ### Custom Agents
 

@@ -71,7 +71,7 @@ az deployment group what-if \
   - **Note:** Azure DevOps requires build service permissions to post PR comments (see guide for setup)
 
 **Understand the AI:**
-- [RISK_ASSESSMENT.md](./RISK_ASSESSMENT.md) - How the three-bucket risk model works
+- [RISK_ASSESSMENT.md](./RISK_ASSESSMENT.md) - How the risk assessment model works
 
 ## Common Issues
 
