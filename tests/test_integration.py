@@ -271,7 +271,10 @@ class TestCustomAgentBackfill:
         )
         assert result.exit_code == 0
 
-        output = json.loads(result.output)
+        # Extract JSON from output (CliRunner may mix in extra text on some platforms)
+        from bicep_whatif_advisor.cli import extract_json
+
+        output = extract_json(result.output)
         ra = output["high_confidence"]["risk_assessment"]
         assert "drift" in ra
         assert "cost" in ra
