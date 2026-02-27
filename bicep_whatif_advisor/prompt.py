@@ -166,6 +166,14 @@ def _build_ci_system_prompt(
         bucket_text = f"""
 ## Risk Bucket {i}: {bucket.display_name}
 {bucket.prompt_instructions}"""
+        # Custom agents must be prescriptive — only evaluate what's explicitly defined
+        if bucket.custom:
+            bucket_text += f"""
+
+IMPORTANT: For the "{bucket_id}" bucket, ONLY evaluate the specific checks described above. \
+Do NOT flag issues outside the scope of these instructions, even if they are legitimate \
+security or operational concerns. If no resources match the defined checks, return \
+risk_level "low" with an empty concerns array."""
         # Add findings instructions for custom agents with table/list display
         if bucket.custom and bucket.display in ("table", "list"):
             bucket_text += f"""
