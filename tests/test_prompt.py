@@ -73,6 +73,51 @@ class TestBuildSystemPrompt:
         result = build_system_prompt(ci_mode=True, enabled_buckets=["operations"])
         assert "1 independent risk bucket:" in result
 
+    def test_custom_agent_table_display_has_findings_in_schema(self):
+        from bicep_whatif_advisor.ci.buckets import RISK_BUCKETS, RiskBucket
+
+        RISK_BUCKETS["naming"] = RiskBucket(
+            id="naming",
+            display_name="Naming Convention",
+            description="Custom agent",
+            prompt_instructions="Check naming.",
+            custom=True,
+            display="table",
+            icon="📛",
+        )
+        try:
+            result = build_system_prompt(ci_mode=True, enabled_buckets=["operations", "naming"])
+            # The naming bucket should have a findings array in the schema
+            assert '"findings"' in result
+            assert '"resource"' in result
+            assert '"issue"' in result
+            assert '"recommendation"' in result
+            # And the findings instructions should be present
+            assert 'populate the "findings" array' in result
+        finally:
+            del RISK_BUCKETS["naming"]
+
+    def test_builtin_bucket_no_findings_in_schema(self):
+        result = build_system_prompt(ci_mode=True, enabled_buckets=["drift", "operations"])
+        assert '"findings"' not in result
+
+    def test_summary_display_no_findings_in_schema(self):
+        from bicep_whatif_advisor.ci.buckets import RISK_BUCKETS, RiskBucket
+
+        RISK_BUCKETS["cost"] = RiskBucket(
+            id="cost",
+            display_name="Cost Impact",
+            description="Custom agent",
+            prompt_instructions="Check cost.",
+            custom=True,
+            display="summary",
+        )
+        try:
+            result = build_system_prompt(ci_mode=True, enabled_buckets=["operations", "cost"])
+            assert '"findings"' not in result
+        finally:
+            del RISK_BUCKETS["cost"]
+
 
 @pytest.mark.unit
 class TestBuildUserPrompt:

@@ -2,6 +2,8 @@
 id: cost
 display_name: Cost Impact
 default_threshold: high
+display: summary
+icon: "💰"
 ---
 
 **Cost Impact Risk:**

@@ -2,6 +2,8 @@
 id: naming
 display_name: Naming Convention
 default_threshold: medium
+display: table
+icon: "📛"
 ---
 
 **Naming Convention Risk:**

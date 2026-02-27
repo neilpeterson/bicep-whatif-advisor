@@ -131,7 +131,23 @@ def _build_ci_system_prompt(
     risk_buckets_schema = []
     for bucket_id in enabled_buckets:
         bucket = RISK_BUCKETS[bucket_id]
-        risk_buckets_schema.append(f'''    "{bucket_id}": {{
+        # Custom agents with table or list display get a findings array
+        if bucket.custom and bucket.display in ("table", "list"):
+            risk_buckets_schema.append(f'''    "{bucket_id}": {{
+      "risk_level": "low|medium|high",
+      "concerns": ["array of specific concerns"],
+      "concern_summary": "1-2 sentence summary of all concerns for table display, or 'None'",
+      "reasoning": "explanation of risk assessment",
+      "findings": [
+        {{
+          "resource": "string — resource name from the What-If output",
+          "issue": "string — specific issue found",
+          "recommendation": "string — actionable recommendation"
+        }}
+      ]
+    }}''')
+        else:
+            risk_buckets_schema.append(f'''    "{bucket_id}": {{
       "risk_level": "low|medium|high",
       "concerns": ["array of specific concerns"],
       "concern_summary": "1-2 sentence summary of all concerns for table display, or 'None'",
@@ -147,9 +163,17 @@ def _build_ci_system_prompt(
     bucket_instructions_list = []
     for i, bucket_id in enumerate(enabled_buckets, 1):
         bucket = RISK_BUCKETS[bucket_id]
-        bucket_instructions_list.append(f"""
+        bucket_text = f"""
 ## Risk Bucket {i}: {bucket.display_name}
-{bucket.prompt_instructions}""")
+{bucket.prompt_instructions}"""
+        # Add findings instructions for custom agents with table/list display
+        if bucket.custom and bucket.display in ("table", "list"):
+            bucket_text += f"""
+For the "{bucket_id}" bucket, also populate the "findings" array with per-resource details.
+Each finding should have "resource" (the resource name from the What-If output),
+"issue" (specific issue found), and "recommendation" (actionable fix).
+Include one finding per affected resource. If no issues found, return an empty array."""
+        bucket_instructions_list.append(bucket_text)
 
     bucket_instructions = "\n".join(bucket_instructions_list)
 

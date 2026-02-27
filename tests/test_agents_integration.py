@@ -282,6 +282,97 @@ class TestAgentsCLIIntegration:
         )
         assert result.exit_code == 0
 
+    def test_agent_table_display_findings_in_markdown_output(
+        self, clean_env, monkeypatch, mocker, tmp_path
+    ):
+        """Custom agent with display: table renders findings in markdown."""
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+
+        agents_dir = tmp_path / "agents"
+        agents_dir.mkdir()
+        (agents_dir / "naming.md").write_text(
+            "---\nid: naming\n"
+            "display_name: Naming Convention\n"
+            "default_threshold: high\n"
+            'display: table\nicon: "\U0001f4db"\n---\n'
+            "Check naming conventions.\n"
+        )
+
+        response = {
+            "resources": [
+                {
+                    "resource_name": "storageaccount1",
+                    "resource_type": "Storage/storageAccounts",
+                    "action": "Create",
+                    "summary": "Creates storage",
+                    "risk_level": "low",
+                    "risk_reason": None,
+                    "confidence_level": "high",
+                    "confidence_reason": "Real creation",
+                },
+            ],
+            "overall_summary": "1 create",
+            "risk_assessment": {
+                "drift": {
+                    "risk_level": "low",
+                    "concerns": [],
+                    "concern_summary": "None",
+                    "reasoning": "ok",
+                },
+                "operations": {
+                    "risk_level": "low",
+                    "concerns": [],
+                    "concern_summary": "None",
+                    "reasoning": "ok",
+                },
+                "naming": {
+                    "risk_level": "medium",
+                    "concerns": ["bad name"],
+                    "concern_summary": "Storage account missing CAF prefix",
+                    "reasoning": "Non-standard name.",
+                    "findings": [
+                        {
+                            "resource": "storageaccount1",
+                            "issue": "No CAF prefix",
+                            "recommendation": "Use st<workload><env>",
+                        }
+                    ],
+                },
+            },
+            "verdict": {
+                "safe": True,
+                "highest_risk_bucket": "naming",
+                "overall_risk_level": "medium",
+                "reasoning": "Naming issues found but not blocking.",
+            },
+        }
+
+        mocker.patch(
+            "bicep_whatif_advisor.cli.get_provider",
+            return_value=MockProvider(response),
+        )
+        mocker.patch(
+            "bicep_whatif_advisor.ci.diff.get_diff",
+            return_value="diff content",
+        )
+
+        result = _runner().invoke(
+            main,
+            [
+                "--ci",
+                "--format",
+                "markdown",
+                "--agents-dir",
+                str(agents_dir),
+            ],
+            input=WHATIF_INPUT,
+        )
+        assert result.exit_code == 0
+        assert "Naming Convention Details" in result.output
+        assert "| Resource | Issue | Recommendation |" in result.output
+        assert "storageaccount1" in result.output
+        assert "No CAF prefix" in result.output
+
     def test_default_threshold_from_agent_file(self, clean_env, monkeypatch, mocker, tmp_path):
         """Agent's default_threshold is used when no --agent-threshold."""
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")

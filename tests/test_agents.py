@@ -147,6 +147,42 @@ class TestParseAgentFile:
         bucket = parse_agent_file(agent_file)
         assert bucket.id == "cost-review_v2"
 
+    def test_display_field_defaults_to_summary(self, tmp_path):
+        agent_file = tmp_path / "test.md"
+        agent_file.write_text("---\nid: test\ndisplay_name: Test\n---\nBody")
+        bucket = parse_agent_file(agent_file)
+        assert bucket.display == "summary"
+
+    def test_display_field_table(self, tmp_path):
+        agent_file = tmp_path / "test.md"
+        agent_file.write_text("---\nid: test\ndisplay_name: Test\ndisplay: table\n---\nBody")
+        bucket = parse_agent_file(agent_file)
+        assert bucket.display == "table"
+
+    def test_display_field_list(self, tmp_path):
+        agent_file = tmp_path / "test.md"
+        agent_file.write_text("---\nid: test\ndisplay_name: Test\ndisplay: list\n---\nBody")
+        bucket = parse_agent_file(agent_file)
+        assert bucket.display == "list"
+
+    def test_invalid_display_raises(self, tmp_path):
+        agent_file = tmp_path / "test.md"
+        agent_file.write_text("---\nid: test\ndisplay_name: Test\ndisplay: chart\n---\nBody")
+        with pytest.raises(ValueError, match="display"):
+            parse_agent_file(agent_file)
+
+    def test_icon_field(self, tmp_path):
+        agent_file = tmp_path / "test.md"
+        agent_file.write_text('---\nid: test\ndisplay_name: Test\nicon: "\U0001f4b0"\n---\nBody')
+        bucket = parse_agent_file(agent_file)
+        assert bucket.icon == "\U0001f4b0"
+
+    def test_icon_default_empty(self, tmp_path):
+        agent_file = tmp_path / "test.md"
+        agent_file.write_text("---\nid: test\ndisplay_name: Test\n---\nBody")
+        bucket = parse_agent_file(agent_file)
+        assert bucket.icon == ""
+
 
 # -------------------------------------------------------------------
 # load_agents_from_directory

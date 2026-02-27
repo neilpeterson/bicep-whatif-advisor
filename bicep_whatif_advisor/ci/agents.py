@@ -19,6 +19,7 @@ BUILTIN_BUCKET_IDS = frozenset({"drift", "intent", "operations"})
 _VALID_ID_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
 
 _VALID_THRESHOLDS = {"low", "medium", "high"}
+_VALID_DISPLAY_MODES = {"summary", "table", "list"}
 
 
 def _parse_frontmatter(content: str) -> Tuple[dict, str]:
@@ -113,6 +114,17 @@ def parse_agent_file(file_path: Path) -> RiskBucket:
 
     optional = bool(metadata.get("optional", False))
 
+    # Validate display mode
+    display = str(metadata.get("display", "summary")).lower()
+    if display not in _VALID_DISPLAY_MODES:
+        raise ValueError(
+            f"Agent file {file_path.name}: invalid"
+            f" display '{display}'"
+            f" (must be summary, table, or list)"
+        )
+
+    icon = str(metadata.get("icon", ""))
+
     return RiskBucket(
         id=agent_id,
         display_name=str(display_name),
@@ -121,6 +133,8 @@ def parse_agent_file(file_path: Path) -> RiskBucket:
         optional=optional,
         default_threshold=default_threshold,
         custom=True,
+        display=display,
+        icon=icon,
     )
 
 
