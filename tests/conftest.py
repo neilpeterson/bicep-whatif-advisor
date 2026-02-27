@@ -6,9 +6,28 @@ from typing import List, Tuple, Union
 
 import pytest
 
+from bicep_whatif_advisor.ci.buckets import RISK_BUCKETS
 from bicep_whatif_advisor.providers import Provider
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
+
+
+# ---------------------------------------------------------------------------
+# Global RISK_BUCKETS cleanup (autouse for all tests)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def clean_risk_buckets_global():
+    """Restore RISK_BUCKETS to original state after each test.
+
+    Prevents custom/bundled agent registrations from leaking between tests.
+    """
+    original_keys = set(RISK_BUCKETS.keys())
+    yield
+    current_keys = set(RISK_BUCKETS.keys())
+    for key in current_keys - original_keys:
+        del RISK_BUCKETS[key]
 
 
 # ---------------------------------------------------------------------------

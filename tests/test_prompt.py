@@ -5,6 +5,15 @@ import pytest
 from bicep_whatif_advisor.prompt import build_system_prompt, build_user_prompt
 
 
+@pytest.fixture()
+def _register_operations_agent():
+    """Register the bundled operations agent for tests that need it."""
+    from bicep_whatif_advisor.ci.agents import load_bundled_agents, register_agents
+
+    agents, _ = load_bundled_agents()
+    register_agents(agents)
+
+
 @pytest.mark.unit
 class TestBuildSystemPrompt:
     def test_standard_mode_returns_string(self):
@@ -32,8 +41,9 @@ class TestBuildSystemPrompt:
         assert "risk_assessment" in result
         assert "verdict" in result
 
+    @pytest.mark.usefixtures("_register_operations_agent")
     def test_ci_mode_includes_drift_and_operations(self):
-        result = build_system_prompt(ci_mode=True)
+        result = build_system_prompt(ci_mode=True, enabled_buckets=["drift", "operations"])
         assert "Infrastructure Drift" in result
         assert "Risky Operations" in result
 
@@ -50,6 +60,7 @@ class TestBuildSystemPrompt:
         result = build_system_prompt(ci_mode=True, pr_description="Some desc")
         assert "PR Intent Alignment" in result
 
+    @pytest.mark.usefixtures("_register_operations_agent")
     def test_ci_mode_custom_enabled_buckets(self):
         result = build_system_prompt(ci_mode=True, enabled_buckets=["operations"])
         assert "Risky Operations" in result
@@ -65,10 +76,12 @@ class TestBuildSystemPrompt:
             result = build_system_prompt(ci_mode=mode)
             assert "Confidence Assessment" in result
 
+    @pytest.mark.usefixtures("_register_operations_agent")
     def test_ci_mode_dynamic_bucket_count(self):
         result = build_system_prompt(ci_mode=True, enabled_buckets=["drift", "operations"])
         assert "2 independent risk buckets" in result
 
+    @pytest.mark.usefixtures("_register_operations_agent")
     def test_ci_mode_single_bucket_wording(self):
         result = build_system_prompt(ci_mode=True, enabled_buckets=["operations"])
         assert "1 independent risk bucket:" in result
@@ -83,10 +96,10 @@ class TestBuildSystemPrompt:
             prompt_instructions="Check naming.",
             custom=True,
             display="table",
-            icon="📛",
+            icon="\U0001f4db",
         )
         try:
-            result = build_system_prompt(ci_mode=True, enabled_buckets=["operations", "naming"])
+            result = build_system_prompt(ci_mode=True, enabled_buckets=["drift", "naming"])
             # The naming bucket should have a findings array in the schema
             assert '"findings"' in result
             assert '"resource"' in result
@@ -98,10 +111,18 @@ class TestBuildSystemPrompt:
             del RISK_BUCKETS["naming"]
 
     def test_builtin_bucket_no_findings_in_schema(self):
-        result = build_system_prompt(ci_mode=True, enabled_buckets=["drift", "operations"])
+        """Built-in buckets (drift) don't get findings in the schema."""
+        result = build_system_prompt(ci_mode=True, enabled_buckets=["drift"])
         assert '"findings"' not in result
 
+    @pytest.mark.usefixtures("_register_operations_agent")
+    def test_operations_agent_has_findings_in_schema(self):
+        """operations is now a bundled agent with display:table, so it gets findings."""
+        result = build_system_prompt(ci_mode=True, enabled_buckets=["drift", "operations"])
+        assert '"findings"' in result
+
     def test_summary_display_no_findings_in_schema(self):
+        """Summary-display custom agents don't get findings in the schema."""
         from bicep_whatif_advisor.ci.buckets import RISK_BUCKETS, RiskBucket
 
         RISK_BUCKETS["cost"] = RiskBucket(
@@ -113,7 +134,7 @@ class TestBuildSystemPrompt:
             display="summary",
         )
         try:
-            result = build_system_prompt(ci_mode=True, enabled_buckets=["operations", "cost"])
+            result = build_system_prompt(ci_mode=True, enabled_buckets=["drift", "cost"])
             assert '"findings"' not in result
         finally:
             del RISK_BUCKETS["cost"]

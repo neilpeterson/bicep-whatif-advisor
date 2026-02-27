@@ -30,7 +30,9 @@ bicep-whatif-advisor/             # Root directory
 │   ├── render.py           # Output formatting (table, json, markdown)
 │   ├── noise_filter.py     # Pre-LLM property-line noise filtering
 │   ├── data/
-│   │   └── builtin_noise_patterns.txt  # Bundled known-noisy Azure property keywords
+│   │   ├── builtin_noise_patterns.txt  # Bundled known-noisy Azure property keywords
+│   │   └── agents/
+│   │       └── operations.md           # Bundled operations risk agent (display: table)
 │   ├── providers/          # LLM provider implementations
 │   │   ├── __init__.py     # Provider base class and registry
 │   │   ├── anthropic.py    # Anthropic Claude provider

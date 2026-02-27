@@ -13,7 +13,7 @@ import yaml
 from .buckets import RISK_BUCKETS, RiskBucket
 
 # Built-in bucket IDs that custom agents must not collide with
-BUILTIN_BUCKET_IDS = frozenset({"drift", "intent", "operations"})
+BUILTIN_BUCKET_IDS = frozenset({"drift", "intent"})
 
 # Valid characters for agent IDs: alphanumeric, hyphens, underscores
 _VALID_ID_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
@@ -218,9 +218,24 @@ def register_agents(agents: List[RiskBucket]) -> List[str]:
     return registered
 
 
+def load_bundled_agents() -> Tuple[List[RiskBucket], List[str]]:
+    """Load bundled agent files shipped with the package.
+
+    Bundled agents live in ``bicep_whatif_advisor/data/agents/`` and are
+    loaded the same way as user agents from ``--agents-dir``.
+
+    Returns:
+        Tuple of (list of RiskBucket instances, list of error messages).
+    """
+    bundled_dir = Path(__file__).parent.parent / "data" / "agents"
+    if not bundled_dir.exists():
+        return [], []
+    return load_agents_from_directory(str(bundled_dir))
+
+
 def get_custom_agent_ids() -> List[str]:
     """Return list of currently registered custom agent IDs.
 
-    Returns only custom agent IDs (not built-in drift/intent/operations).
+    Returns only custom agent IDs (not built-in drift/intent).
     """
     return [bucket_id for bucket_id, bucket in RISK_BUCKETS.items() if bucket.custom]

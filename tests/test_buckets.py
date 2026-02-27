@@ -12,11 +12,11 @@ from bicep_whatif_advisor.ci.buckets import (
 
 @pytest.mark.unit
 class TestRiskBucketsRegistry:
-    def test_registry_has_three_buckets(self):
-        assert len(RISK_BUCKETS) == 3
+    def test_registry_has_two_builtin_buckets(self):
+        assert len(RISK_BUCKETS) == 2
 
     def test_registry_keys(self):
-        assert set(RISK_BUCKETS.keys()) == {"drift", "intent", "operations"}
+        assert set(RISK_BUCKETS.keys()) == {"drift", "intent"}
 
     def test_all_buckets_are_risk_bucket_instances(self):
         for bucket in RISK_BUCKETS.values():
@@ -25,9 +25,8 @@ class TestRiskBucketsRegistry:
     def test_intent_bucket_is_optional(self):
         assert RISK_BUCKETS["intent"].optional is True
 
-    def test_drift_and_operations_not_optional(self):
+    def test_drift_not_optional(self):
         assert RISK_BUCKETS["drift"].optional is False
-        assert RISK_BUCKETS["operations"].optional is False
 
     def test_get_bucket_existing(self):
         bucket = get_bucket("drift")
@@ -41,22 +40,28 @@ class TestRiskBucketsRegistry:
 @pytest.mark.unit
 class TestGetEnabledBuckets:
     def test_default_no_pr_metadata(self):
-        """Without PR metadata, intent is excluded by default."""
+        """Without PR metadata or agents, only drift is enabled."""
         result = get_enabled_buckets()
+        assert result == ["drift"]
+
+    def test_with_operations_agent(self):
+        """With operations as a bundled agent, drift + operations are enabled."""
+        result = get_enabled_buckets(custom_agent_ids=["operations"])
         assert result == ["drift", "operations"]
 
-    def test_with_pr_metadata(self):
-        """With PR metadata, all three buckets enabled."""
-        result = get_enabled_buckets(has_pr_metadata=True)
+    def test_with_pr_metadata_and_operations(self):
+        """With PR metadata and operations agent, all three buckets enabled."""
+        result = get_enabled_buckets(has_pr_metadata=True, custom_agent_ids=["operations"])
         assert result == ["drift", "intent", "operations"]
 
     def test_skip_drift(self):
-        result = get_enabled_buckets(skip_drift=True)
+        result = get_enabled_buckets(skip_drift=True, custom_agent_ids=["operations"])
         assert "drift" not in result
         assert "operations" in result
 
     def test_skip_operations(self):
-        result = get_enabled_buckets(skip_operations=True)
+        """--skip-operations maps to skipping the operations bundled agent."""
+        result = get_enabled_buckets(skip_operations=True, custom_agent_ids=["operations"])
         assert "drift" in result
         assert "operations" not in result
 
@@ -66,7 +71,12 @@ class TestGetEnabledBuckets:
         assert "drift" in result
 
     def test_skip_all_returns_empty(self):
-        result = get_enabled_buckets(skip_drift=True, skip_intent=True, skip_operations=True)
+        result = get_enabled_buckets(
+            skip_drift=True,
+            skip_intent=True,
+            skip_operations=True,
+            custom_agent_ids=["operations"],
+        )
         assert result == []
 
     def test_intent_not_enabled_without_pr_metadata_even_if_not_skipped(self):
@@ -74,7 +84,7 @@ class TestGetEnabledBuckets:
         assert "intent" not in result
 
     def test_custom_agents_appended(self):
-        result = get_enabled_buckets(custom_agent_ids=["compliance", "cost"])
+        result = get_enabled_buckets(custom_agent_ids=["operations", "compliance", "cost"])
         assert result == ["drift", "operations", "compliance", "cost"]
 
     def test_custom_agents_with_skip(self):
@@ -90,15 +100,15 @@ class TestGetEnabledBuckets:
             custom_agent_ids=["compliance"],
             skip_agents=["compliance"],
         )
-        assert result == ["drift", "operations"]
+        assert result == ["drift"]
 
     def test_custom_agents_none_is_noop(self):
         result = get_enabled_buckets(custom_agent_ids=None)
-        assert result == ["drift", "operations"]
+        assert result == ["drift"]
 
     def test_custom_agents_empty_list(self):
         result = get_enabled_buckets(custom_agent_ids=[])
-        assert result == ["drift", "operations"]
+        assert result == ["drift"]
 
 
 @pytest.mark.unit
@@ -122,5 +132,5 @@ class TestRiskBucketFields:
         assert bucket.custom is False
 
     def test_builtin_buckets_not_custom(self):
-        for bucket in RISK_BUCKETS.values():
-            assert bucket.custom is False
+        for bucket_id in ("drift", "intent"):
+            assert RISK_BUCKETS[bucket_id].custom is False

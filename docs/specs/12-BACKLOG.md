@@ -119,29 +119,10 @@ Current output formats are table, JSON, and markdown. Teams that want a standalo
 
 ## F-07: Refactor Operations Bucket to Bundled Agent
 
-**Status:** Open
+**Status:** ✅ Completed
 **Area:** Architecture / CI Mode
 **Related spec:** 08-RISK-ASSESSMENT.md, 14-AGENT-DISPLAY.md
 
-### Problem
+### Resolution
 
-The three built-in risk buckets (drift, intent, operations) are hardcoded in `buckets.py`. However, the operations bucket has no special context dependencies — it only evaluates the What-If output for risky Azure operations. This makes it functionally identical to a custom agent, yet it cannot benefit from agent features like `display: table` for per-resource findings, custom icons, or user customization of its prompt instructions.
-
-Drift and intent have genuine reasons to remain built-in: drift requires the code diff, and intent requires PR metadata and is conditionally enabled. Operations has neither constraint.
-
-### Goals
-
-1. Convert the operations bucket from a hardcoded built-in to a bundled agent that ships with the package (e.g., in `bicep_whatif_advisor/data/agents/operations.md`).
-2. Load the bundled agent automatically — users get the same out-of-the-box behavior without needing an `--agents-dir`.
-3. Allow users to override the bundled operations agent by placing their own `operations.md` in their `--agents-dir`.
-4. Migrate CLI flags:
-   - `--skip-operations` → `--skip-agent operations` (or keep as an alias for backwards compatibility)
-   - `--operations-threshold` → `--agent-threshold operations=<level>` (or keep as an alias)
-5. Give the operations agent `display: table` so its findings render as a per-resource table in PR comments.
-
-### Design Considerations
-
-- **Bundled agent loading order:** Bundled agents should load first, then user agents from `--agents-dir`. If a user agent has the same ID as a bundled agent, the user version wins (override pattern).
-- **Backwards compatibility:** Existing pipelines using `--skip-operations` and `--operations-threshold` should continue to work. Either keep the flags as aliases or provide a deprecation path.
-- **Built-in asymmetry:** After this change, only drift and intent remain as true built-ins. This is acceptable since both have real context dependencies that justify special handling.
-- **BUILTIN_BUCKET_IDS:** The `operations` ID would need to be removed from this frozenset so it no longer blocks agent registration with that ID.
+Converted the operations bucket from a hardcoded built-in to a bundled agent that ships with the package at `bicep_whatif_advisor/data/agents/operations.md`. Only drift and intent remain as true built-in buckets. The bundled agent loads automatically in CI mode via `load_bundled_agents()`, gaining `display: table` for per-resource findings in PR comments. All existing CLI flags (`--skip-operations`, `--operations-threshold`) continue to work via backwards-compatible mapping. Users can override the bundled operations agent by placing their own `operations.md` in their `--agents-dir`.

@@ -63,8 +63,11 @@ def evaluate_risk_buckets(
     thresholds = {
         "drift": drift_threshold,
         "intent": intent_threshold,
-        "operations": operations_threshold,
     }
+
+    # Map operations_threshold for backwards compat (operations is now a bundled agent)
+    if operations_threshold:
+        thresholds["operations"] = operations_threshold
 
     # Merge custom thresholds
     if custom_thresholds:

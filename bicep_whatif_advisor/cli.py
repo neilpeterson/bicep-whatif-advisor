@@ -379,29 +379,40 @@ def main(
             if bicep_dir:
                 bicep_content = _load_bicep_files(bicep_dir)
 
-        # Load custom agents if --agents-dir provided
+        # Load custom agents
         custom_agent_ids = []
         custom_thresholds = {}
 
-        if agents_dir:
-            if not ci:
-                sys.stderr.write("Warning: --agents-dir is only used in CI mode. Ignoring.\n")
-            else:
-                from .ci.agents import (
-                    load_agents_from_directory,
-                    register_agents,
-                )
+        if ci:
+            from .ci.agents import (
+                load_agents_from_directory,
+                load_bundled_agents,
+                register_agents,
+            )
 
-                agents, agent_errors = load_agents_from_directory(agents_dir)
-                for err in agent_errors:
+            # Always load bundled agents first (e.g., operations)
+            bundled_agents, bundled_errors = load_bundled_agents()
+            for err in bundled_errors:
+                sys.stderr.write(f"Warning: {err}\n")
+
+            # Load user agents from --agents-dir (can override bundled agents)
+            user_agents = []
+            if agents_dir:
+                user_agent_list, user_errors = load_agents_from_directory(agents_dir)
+                for err in user_errors:
                     sys.stderr.write(f"Warning: {err}\n")
+                user_agents = user_agent_list
 
-                if agents:
-                    custom_agent_ids = register_agents(agents)
-                    agent_names = ", ".join(custom_agent_ids)
-                    sys.stderr.write(
-                        f"Loaded {len(custom_agent_ids)} custom agent(s): {agent_names}\n"
-                    )
+            # User agents override bundled agents with the same ID
+            user_ids = {a.id for a in user_agents}
+            merged_agents = [a for a in bundled_agents if a.id not in user_ids] + user_agents
+
+            if merged_agents:
+                custom_agent_ids = register_agents(merged_agents)
+                agent_names = ", ".join(custom_agent_ids)
+                sys.stderr.write(f"Loaded {len(custom_agent_ids)} agent(s): {agent_names}\n")
+        elif agents_dir:
+            sys.stderr.write("Warning: --agents-dir is only used in CI mode. Ignoring.\n")
 
         # Parse --agent-threshold values
         for entry in agent_threshold:
@@ -423,6 +434,10 @@ def main(
                 )
                 continue
             custom_thresholds[agent_id] = level
+
+        # Map --operations-threshold into custom_thresholds for backwards compat
+        if operations_threshold and "operations" not in custom_thresholds:
+            custom_thresholds["operations"] = operations_threshold
 
         # Determine which risk buckets are enabled (CI mode only)
         # Do this before getting provider to validate flags early

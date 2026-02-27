@@ -74,9 +74,9 @@ class TestRenderMarkdown:
         data = {
             "resources": [],
             "overall_summary": "",
+            "_enabled_buckets": ["drift"],
             "risk_assessment": {
                 "drift": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
-                "operations": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
             },
             "verdict": {"safe": True, "reasoning": "All safe"},
         }
@@ -173,15 +173,16 @@ class TestRenderMarkdown:
         data = {
             "resources": [],
             "overall_summary": "",
+            "_enabled_buckets": ["drift", "intent"],
             "risk_assessment": {
                 "drift": {"risk_level": "low", "concerns": ["drift concern"], "reasoning": ""},
-                "operations": {"risk_level": "medium", "concerns": ["op concern"], "reasoning": ""},
+                "intent": {"risk_level": "medium", "concerns": ["intent concern"], "reasoning": ""},
             },
             "verdict": {"safe": True, "reasoning": "ok"},
         }
         md = render_markdown(data, ci_mode=True)
         assert "Infrastructure Drift" in md
-        assert "Risky Operations" in md
+        assert "PR Intent Alignment" in md
 
     def test_github_no_br_between_details(self):
         """GitHub platform should not include <br> between collapsible sections."""
@@ -316,8 +317,13 @@ class TestRenderTable:
 
 @pytest.fixture()
 def _register_custom_buckets():
-    """Register custom buckets for agent detail section tests."""
+    """Register bundled + custom buckets for agent detail section tests."""
+    from bicep_whatif_advisor.ci.agents import load_bundled_agents, register_agents
     from bicep_whatif_advisor.ci.buckets import RISK_BUCKETS, RiskBucket
+
+    # Load bundled agents (operations)
+    bundled, _ = load_bundled_agents()
+    register_agents(bundled)
 
     RISK_BUCKETS["cost"] = RiskBucket(
         id="cost",
@@ -338,7 +344,7 @@ def _register_custom_buckets():
         icon="\U0001f4db",
     )
     yield
-    for key in ("cost", "naming"):
+    for key in ("cost", "naming", "operations"):
         RISK_BUCKETS.pop(key, None)
 
 
@@ -430,15 +436,39 @@ class TestAgentDetailSections:
             del RISK_BUCKETS["security"]
 
     def test_builtin_buckets_no_collapsible(self):
+        """Built-in buckets (drift, intent) don't get collapsible sections."""
         data = {
-            "_enabled_buckets": ["drift", "operations"],
+            "_enabled_buckets": ["drift"],
             "risk_assessment": {
                 "drift": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
-                "operations": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
             },
         }
         lines = _render_agent_detail_sections(data)
         assert len(lines) == 0
+
+    def test_operations_agent_gets_collapsible(self):
+        """operations is now a bundled agent (custom=True), gets collapsible section."""
+        from bicep_whatif_advisor.ci.agents import load_bundled_agents, register_agents
+
+        agents, _ = load_bundled_agents()
+        register_agents(agents)
+
+        data = {
+            "_enabled_buckets": ["drift", "operations"],
+            "risk_assessment": {
+                "drift": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
+                "operations": {
+                    "risk_level": "low",
+                    "concerns": [],
+                    "reasoning": "Low risk operations only.",
+                    "findings": [],
+                },
+            },
+        }
+        lines = _render_agent_detail_sections(data)
+        md = "\n".join(lines)
+        assert "<details>" in md
+        assert "Risky Operations Details" in md
 
     def test_table_display_empty_findings_falls_back_to_reasoning(self):
         data = {

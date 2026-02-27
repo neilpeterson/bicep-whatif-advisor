@@ -6,6 +6,7 @@ from bicep_whatif_advisor.ci.agents import (
     _parse_frontmatter,
     get_custom_agent_ids,
     load_agents_from_directory,
+    load_bundled_agents,
     parse_agent_file,
     register_agents,
 )
@@ -14,17 +15,6 @@ from bicep_whatif_advisor.ci.buckets import (
     RiskBucket,
     get_bucket,
 )
-
-
-@pytest.fixture(autouse=True)
-def clean_risk_buckets():
-    """Restore RISK_BUCKETS to original state after each test."""
-    original_keys = set(RISK_BUCKETS.keys())
-    yield
-    current_keys = set(RISK_BUCKETS.keys())
-    for key in current_keys - original_keys:
-        del RISK_BUCKETS[key]
-
 
 # -------------------------------------------------------------------
 # _parse_frontmatter
@@ -110,6 +100,13 @@ class TestParseAgentFile:
         agent_file.write_text("---\nid: drift\ndisplay_name: X\n---\nBody")
         with pytest.raises(ValueError, match="built-in"):
             parse_agent_file(agent_file)
+
+    def test_operations_id_allowed(self, tmp_path):
+        """operations is no longer a built-in, so agents can use the ID."""
+        agent_file = tmp_path / "ops.md"
+        agent_file.write_text("---\nid: operations\ndisplay_name: My Ops\n---\nBody")
+        bucket = parse_agent_file(agent_file)
+        assert bucket.id == "operations"
 
     def test_invalid_threshold_raises(self, tmp_path):
         agent_file = tmp_path / "bad.md"
@@ -352,8 +349,40 @@ class TestGetCustomAgentIds:
         assert "test_get_ids" in ids
         assert "drift" not in ids
         assert "intent" not in ids
-        assert "operations" not in ids
 
     def test_empty_when_no_custom(self):
         ids = get_custom_agent_ids()
         assert ids == []
+
+
+# -------------------------------------------------------------------
+# load_bundled_agents
+# -------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestLoadBundledAgents:
+    def test_loads_operations_agent(self):
+        agents, errors = load_bundled_agents()
+        assert len(errors) == 0
+        assert any(a.id == "operations" for a in agents)
+
+    def test_operations_agent_has_table_display(self):
+        agents, _ = load_bundled_agents()
+        ops = next(a for a in agents if a.id == "operations")
+        assert ops.display == "table"
+        assert ops.custom is True
+
+    def test_operations_agent_has_correct_fields(self):
+        agents, _ = load_bundled_agents()
+        ops = next(a for a in agents if a.id == "operations")
+        assert ops.display_name == "Risky Operations"
+        assert ops.default_threshold == "high"
+        assert "Risky Operations Risk" in ops.prompt_instructions
+
+    def test_bundled_agents_register_successfully(self):
+        agents, _ = load_bundled_agents()
+        ids = register_agents(agents)
+        assert "operations" in ids
+        assert "operations" in RISK_BUCKETS
+        assert RISK_BUCKETS["operations"].custom is True
