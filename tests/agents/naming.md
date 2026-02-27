@@ -3,6 +3,7 @@ id: naming
 display_name: Naming Convention
 default_threshold: medium
 display: table
+enabled: false
 icon: "📛"
 ---
 
