@@ -5,6 +5,7 @@ import pytest
 from bicep_whatif_advisor.ci.agents import (
     _parse_frontmatter,
     get_custom_agent_ids,
+    get_disabled_agent_ids,
     load_agents_from_directory,
     load_bundled_agents,
     parse_agent_file,
@@ -386,3 +387,43 @@ class TestLoadBundledAgents:
         assert "operations" in ids
         assert "operations" in RISK_BUCKETS
         assert RISK_BUCKETS["operations"].custom is True
+
+
+# -------------------------------------------------------------------
+# get_disabled_agent_ids
+# -------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestGetDisabledAgentIds:
+    def test_returns_disabled_ids(self, tmp_path):
+        (tmp_path / "a.md").write_text(
+            "---\nid: operations\ndisplay_name: Ops\nenabled: false\n---\nBody"
+        )
+        (tmp_path / "b.md").write_text("---\nid: cost\ndisplay_name: Cost\n---\nBody")
+        disabled = get_disabled_agent_ids(str(tmp_path))
+        assert "operations" in disabled
+        assert "cost" not in disabled
+
+    def test_empty_when_all_enabled(self, tmp_path):
+        (tmp_path / "a.md").write_text("---\nid: cost\ndisplay_name: Cost\n---\nBody")
+        disabled = get_disabled_agent_ids(str(tmp_path))
+        assert disabled == []
+
+    def test_nonexistent_directory(self):
+        disabled = get_disabled_agent_ids("/nonexistent/dir")
+        assert disabled == []
+
+    def test_disabled_agent_suppresses_bundled(self, tmp_path):
+        """A user agent with enabled: false should prevent the bundled agent from loading."""
+        (tmp_path / "ops.md").write_text(
+            "---\nid: operations\ndisplay_name: Ops\nenabled: false\n---\nBody"
+        )
+        bundled, _ = load_bundled_agents()
+        user_agents, _ = load_agents_from_directory(str(tmp_path))
+        disabled_ids = set(get_disabled_agent_ids(str(tmp_path)))
+
+        user_ids = {a.id for a in user_agents} | disabled_ids
+        merged = [a for a in bundled if a.id not in user_ids] + user_agents
+
+        assert not any(a.id == "operations" for a in merged)

@@ -373,6 +373,7 @@ def main(
 
         if ci:
             from .ci.agents import (
+                get_disabled_agent_ids,
                 load_agents_from_directory,
                 load_bundled_agents,
                 register_agents,
@@ -385,14 +386,18 @@ def main(
 
             # Load user agents from --agents-dir (can override bundled agents)
             user_agents = []
+            disabled_ids = set()
             if agents_dir:
                 user_agent_list, user_errors = load_agents_from_directory(agents_dir)
                 for err in user_errors:
                     sys.stderr.write(f"Warning: {err}\n")
                 user_agents = user_agent_list
+                # Track agents explicitly disabled by user (enabled: false)
+                disabled_ids = set(get_disabled_agent_ids(agents_dir))
 
-            # User agents override bundled agents with the same ID
-            user_ids = {a.id for a in user_agents}
+            # User agents override bundled agents with the same ID;
+            # disabled user agents (enabled: false) also suppress bundled agents
+            user_ids = {a.id for a in user_agents} | disabled_ids
             merged_agents = [a for a in bundled_agents if a.id not in user_ids] + user_agents
 
             if merged_agents:

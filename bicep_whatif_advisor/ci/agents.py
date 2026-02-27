@@ -78,14 +78,14 @@ def parse_agent_file(file_path: Path) -> Optional[RiskBucket]:
     content = file_path.read_text(encoding="utf-8")
     metadata, body = _parse_frontmatter(content)
 
-    # Check enabled flag (defaults to True)
-    if not metadata.get("enabled", True):
-        return None
-
-    # Validate required fields
+    # Validate required fields (before enabled check, so disabled agents still report their ID)
     agent_id = metadata.get("id")
     if not agent_id:
         raise ValueError(f"Agent file {file_path.name}: missing required 'id' field in frontmatter")
+
+    # Check enabled flag (defaults to True)
+    if not metadata.get("enabled", True):
+        return None
 
     agent_id = str(agent_id)
 
@@ -179,6 +179,34 @@ def load_agents_from_directory(
             errors.append(str(e))
 
     return agents, errors
+
+
+def get_disabled_agent_ids(agents_dir: str) -> List[str]:
+    """Get IDs of agents explicitly disabled (enabled: false) in a directory.
+
+    Args:
+        agents_dir: Path to directory containing agent .md files
+
+    Returns:
+        List of agent IDs that have enabled: false
+    """
+    dir_path = Path(agents_dir)
+    disabled_ids = []
+
+    if not dir_path.exists() or not dir_path.is_dir():
+        return disabled_ids
+
+    for md_file in sorted(dir_path.glob("*.md")):
+        try:
+            content = md_file.read_text(encoding="utf-8")
+            metadata, _ = _parse_frontmatter(content)
+            agent_id = metadata.get("id")
+            if agent_id and not metadata.get("enabled", True):
+                disabled_ids.append(str(agent_id))
+        except (ValueError, UnicodeDecodeError, OSError):
+            pass
+
+    return disabled_ids
 
 
 def register_agents(agents: List[RiskBucket]) -> List[str]:
