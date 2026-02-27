@@ -248,7 +248,7 @@ class TestCLIMain:
         whatif_input = "Resource changes: 1\n+ Microsoft.Storage/test"
         result = runner.invoke(
             main,
-            ["--ci", "--skip-drift", "--skip-intent", "--skip-operations"],
+            ["--ci", "--skip-drift", "--skip-intent"],
             input=whatif_input,
         )
         assert result.exit_code == 2

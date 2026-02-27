@@ -15,7 +15,7 @@ def build_system_prompt(
         ci_mode: Enable CI mode with risk assessment and verdict
         pr_title: Pull request title for intent analysis (CI mode only)
         pr_description: Pull request description for intent analysis (CI mode only)
-        enabled_buckets: List of bucket IDs to include (e.g., ["drift", "operations"])
+        enabled_buckets: List of bucket IDs to include (e.g., ["drift", "intent"])
                         If None, defaults to all buckets
 
     Returns:
@@ -96,7 +96,7 @@ def _build_ci_system_prompt(
     Args:
         pr_title: Optional PR title
         pr_description: Optional PR description
-        enabled_buckets: List of bucket IDs to include (e.g., ["drift", "operations"])
+        enabled_buckets: List of bucket IDs to include (e.g., ["drift", "intent"])
                         If None, defaults to all buckets
 
     Returns:

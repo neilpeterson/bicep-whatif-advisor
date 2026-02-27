@@ -5,9 +5,7 @@ import pytest
 from bicep_whatif_advisor.ci.agents import (
     _parse_frontmatter,
     get_custom_agent_ids,
-    get_disabled_agent_ids,
     load_agents_from_directory,
-    load_bundled_agents,
     parse_agent_file,
     register_agents,
 )
@@ -101,13 +99,6 @@ class TestParseAgentFile:
         agent_file.write_text("---\nid: drift\ndisplay_name: X\n---\nBody")
         with pytest.raises(ValueError, match="built-in"):
             parse_agent_file(agent_file)
-
-    def test_operations_id_allowed(self, tmp_path):
-        """operations is no longer a built-in, so agents can use the ID."""
-        agent_file = tmp_path / "ops.md"
-        agent_file.write_text("---\nid: operations\ndisplay_name: My Ops\n---\nBody")
-        bucket = parse_agent_file(agent_file)
-        assert bucket.id == "operations"
 
     def test_invalid_threshold_raises(self, tmp_path):
         agent_file = tmp_path / "bad.md"
@@ -354,76 +345,3 @@ class TestGetCustomAgentIds:
     def test_empty_when_no_custom(self):
         ids = get_custom_agent_ids()
         assert ids == []
-
-
-# -------------------------------------------------------------------
-# load_bundled_agents
-# -------------------------------------------------------------------
-
-
-@pytest.mark.unit
-class TestLoadBundledAgents:
-    def test_loads_operations_agent(self):
-        agents, errors = load_bundled_agents()
-        assert len(errors) == 0
-        assert any(a.id == "operations" for a in agents)
-
-    def test_operations_agent_has_table_display(self):
-        agents, _ = load_bundled_agents()
-        ops = next(a for a in agents if a.id == "operations")
-        assert ops.display == "table"
-        assert ops.custom is True
-
-    def test_operations_agent_has_correct_fields(self):
-        agents, _ = load_bundled_agents()
-        ops = next(a for a in agents if a.id == "operations")
-        assert ops.display_name == "Risky Operations"
-        assert ops.default_threshold == "high"
-        assert "Risky Operations Risk" in ops.prompt_instructions
-
-    def test_bundled_agents_register_successfully(self):
-        agents, _ = load_bundled_agents()
-        ids = register_agents(agents)
-        assert "operations" in ids
-        assert "operations" in RISK_BUCKETS
-        assert RISK_BUCKETS["operations"].custom is True
-
-
-# -------------------------------------------------------------------
-# get_disabled_agent_ids
-# -------------------------------------------------------------------
-
-
-@pytest.mark.unit
-class TestGetDisabledAgentIds:
-    def test_returns_disabled_ids(self, tmp_path):
-        (tmp_path / "a.md").write_text(
-            "---\nid: operations\ndisplay_name: Ops\nenabled: false\n---\nBody"
-        )
-        (tmp_path / "b.md").write_text("---\nid: cost\ndisplay_name: Cost\n---\nBody")
-        disabled = get_disabled_agent_ids(str(tmp_path))
-        assert "operations" in disabled
-        assert "cost" not in disabled
-
-    def test_empty_when_all_enabled(self, tmp_path):
-        (tmp_path / "a.md").write_text("---\nid: cost\ndisplay_name: Cost\n---\nBody")
-        disabled = get_disabled_agent_ids(str(tmp_path))
-        assert disabled == []
-
-    def test_nonexistent_directory(self):
-        disabled = get_disabled_agent_ids("/nonexistent/dir")
-        assert disabled == []
-
-    def test_disabled_agent_suppresses_bundled(self, tmp_path):
-        """A user agent with enabled: false should prevent the bundled agent from loading."""
-        (tmp_path / "ops.md").write_text(
-            "---\nid: operations\ndisplay_name: Ops\nenabled: false\n---\nBody"
-        )
-        bundled, _ = load_bundled_agents()
-        user_agents, _ = load_agents_from_directory(str(tmp_path))
-        disabled_ids = set(get_disabled_agent_ids(str(tmp_path)))
-
-        user_ids = {a.id for a in user_agents} | disabled_ids
-        merged = [a for a in bundled if a.id not in user_ids] + user_agents
-
-        assert not any(a.id == "operations" for a in merged)

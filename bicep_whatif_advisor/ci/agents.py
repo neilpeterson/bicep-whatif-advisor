@@ -181,34 +181,6 @@ def load_agents_from_directory(
     return agents, errors
 
 
-def get_disabled_agent_ids(agents_dir: str) -> List[str]:
-    """Get IDs of agents explicitly disabled (enabled: false) in a directory.
-
-    Args:
-        agents_dir: Path to directory containing agent .md files
-
-    Returns:
-        List of agent IDs that have enabled: false
-    """
-    dir_path = Path(agents_dir)
-    disabled_ids = []
-
-    if not dir_path.exists() or not dir_path.is_dir():
-        return disabled_ids
-
-    for md_file in sorted(dir_path.glob("*.md")):
-        try:
-            content = md_file.read_text(encoding="utf-8")
-            metadata, _ = _parse_frontmatter(content)
-            agent_id = metadata.get("id")
-            if agent_id and not metadata.get("enabled", True):
-                disabled_ids.append(str(agent_id))
-        except (ValueError, UnicodeDecodeError, OSError):
-            pass
-
-    return disabled_ids
-
-
 def register_agents(agents: List[RiskBucket]) -> List[str]:
     """Register custom agents in the global RISK_BUCKETS registry.
 
@@ -244,21 +216,6 @@ def register_agents(agents: List[RiskBucket]) -> List[str]:
         registered.append(agent.id)
 
     return registered
-
-
-def load_bundled_agents() -> Tuple[List[RiskBucket], List[str]]:
-    """Load bundled agent files shipped with the package.
-
-    Bundled agents live in ``bicep_whatif_advisor/data/agents/`` and are
-    loaded the same way as user agents from ``--agents-dir``.
-
-    Returns:
-        Tuple of (list of RiskBucket instances, list of error messages).
-    """
-    bundled_dir = Path(__file__).parent.parent / "data" / "agents"
-    if not bundled_dir.exists():
-        return [], []
-    return load_agents_from_directory(str(bundled_dir))
 
 
 def get_custom_agent_ids() -> List[str]:

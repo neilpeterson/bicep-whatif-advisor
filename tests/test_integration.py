@@ -152,11 +152,10 @@ class TestNoiseFilteringPipeline:
             "overall_summary": "Mixed changes",
             "risk_assessment": {
                 "drift": {"risk_level": "medium", "concerns": ["stale"], "reasoning": ""},
-                "operations": {"risk_level": "medium", "concerns": ["vnet"], "reasoning": ""},
             },
             "verdict": {
                 "safe": False,
-                "highest_risk_bucket": "operations",
+                "highest_risk_bucket": "drift",
                 "overall_risk_level": "medium",
                 "reasoning": "medium risk",
             },
@@ -179,7 +178,6 @@ class TestNoiseFilteringPipeline:
             "overall_summary": "1 create",
             "risk_assessment": {
                 "drift": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
-                "operations": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
             },
             "verdict": {
                 "safe": True,

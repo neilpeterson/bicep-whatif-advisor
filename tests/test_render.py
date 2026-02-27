@@ -317,13 +317,8 @@ class TestRenderTable:
 
 @pytest.fixture()
 def _register_custom_buckets():
-    """Register bundled + custom buckets for agent detail section tests."""
-    from bicep_whatif_advisor.ci.agents import load_bundled_agents, register_agents
+    """Register custom buckets for agent detail section tests."""
     from bicep_whatif_advisor.ci.buckets import RISK_BUCKETS, RiskBucket
-
-    # Load bundled agents (operations)
-    bundled, _ = load_bundled_agents()
-    register_agents(bundled)
 
     RISK_BUCKETS["cost"] = RiskBucket(
         id="cost",
@@ -344,7 +339,7 @@ def _register_custom_buckets():
         icon="\U0001f4db",
     )
     yield
-    for key in ("cost", "naming", "operations"):
+    for key in ("cost", "naming"):
         RISK_BUCKETS.pop(key, None)
 
 
@@ -353,10 +348,9 @@ def _register_custom_buckets():
 class TestAgentDetailSections:
     def test_custom_agent_summary_collapsible(self):
         data = {
-            "_enabled_buckets": ["drift", "operations", "cost"],
+            "_enabled_buckets": ["drift", "cost"],
             "risk_assessment": {
                 "drift": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
-                "operations": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
                 "cost": {
                     "risk_level": "low",
                     "concerns": [],
@@ -372,10 +366,9 @@ class TestAgentDetailSections:
 
     def test_custom_agent_table_collapsible(self):
         data = {
-            "_enabled_buckets": ["drift", "operations", "naming"],
+            "_enabled_buckets": ["drift", "naming"],
             "risk_assessment": {
                 "drift": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
-                "operations": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
                 "naming": {
                     "risk_level": "medium",
                     "concerns": ["bad names"],
@@ -445,30 +438,6 @@ class TestAgentDetailSections:
         }
         lines = _render_agent_detail_sections(data)
         assert len(lines) == 0
-
-    def test_operations_agent_gets_collapsible(self):
-        """operations is now a bundled agent (custom=True), gets collapsible section."""
-        from bicep_whatif_advisor.ci.agents import load_bundled_agents, register_agents
-
-        agents, _ = load_bundled_agents()
-        register_agents(agents)
-
-        data = {
-            "_enabled_buckets": ["drift", "operations"],
-            "risk_assessment": {
-                "drift": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
-                "operations": {
-                    "risk_level": "low",
-                    "concerns": [],
-                    "reasoning": "Low risk operations only.",
-                    "findings": [],
-                },
-            },
-        }
-        lines = _render_agent_detail_sections(data)
-        md = "\n".join(lines)
-        assert "<details>" in md
-        assert "Risky Operations Details" in md
 
     def test_table_display_empty_findings_falls_back_to_reasoning(self):
         data = {

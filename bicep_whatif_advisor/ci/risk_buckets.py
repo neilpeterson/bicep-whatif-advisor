@@ -35,7 +35,7 @@ def evaluate_risk_buckets(
     Args:
         data: Parsed LLM response with risk_assessment
               (should contain only high-confidence resources)
-        enabled_buckets: List of bucket IDs to evaluate (e.g., ["drift", "operations"])
+        enabled_buckets: List of bucket IDs to evaluate (e.g., ["drift", "intent"])
         drift_threshold: Risk threshold for drift bucket (only used if enabled)
         intent_threshold: Risk threshold for intent bucket (only used if enabled)
         custom_thresholds: Dict mapping agent_id to threshold string.

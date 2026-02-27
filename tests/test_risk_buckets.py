@@ -53,29 +53,29 @@ class TestEvaluateRiskBuckets:
         data = {
             "risk_assessment": {
                 "drift": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
-                "operations": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
+                "compliance": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
             }
         }
-        is_safe, failed, ra = evaluate_risk_buckets(data, ["drift", "operations"], "high", "high")
+        is_safe, failed, ra = evaluate_risk_buckets(data, ["drift", "compliance"], "high", "high")
         assert is_safe is True
         assert failed == []
 
-    def test_unsafe_operations_high(self):
+    def test_unsafe_custom_agent_high(self):
         data = {
             "risk_assessment": {
                 "drift": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
-                "operations": {"risk_level": "high", "concerns": ["db delete"], "reasoning": "bad"},
+                "compliance": {"risk_level": "high", "concerns": ["db delete"], "reasoning": "bad"},
             }
         }
         is_safe, failed, ra = evaluate_risk_buckets(
             data,
-            ["drift", "operations"],
+            ["drift", "compliance"],
             "high",
             "high",
-            custom_thresholds={"operations": "high"},
+            custom_thresholds={"compliance": "high"},
         )
         assert is_safe is False
-        assert "operations" in failed
+        assert "compliance" in failed
 
     def test_unsafe_drift_medium_with_medium_threshold(self):
         data = {
@@ -85,10 +85,10 @@ class TestEvaluateRiskBuckets:
                     "concerns": ["drift found"],
                     "reasoning": "drift",
                 },
-                "operations": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
+                "compliance": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
             }
         }
-        is_safe, failed, ra = evaluate_risk_buckets(data, ["drift", "operations"], "medium", "high")
+        is_safe, failed, ra = evaluate_risk_buckets(data, ["drift", "compliance"], "medium", "high")
         assert is_safe is False
         assert "drift" in failed
 
@@ -96,35 +96,35 @@ class TestEvaluateRiskBuckets:
         data = {
             "risk_assessment": {
                 "drift": {"risk_level": "high", "concerns": [], "reasoning": ""},
-                "operations": {"risk_level": "high", "concerns": [], "reasoning": ""},
+                "compliance": {"risk_level": "high", "concerns": [], "reasoning": ""},
             }
         }
         is_safe, failed, ra = evaluate_risk_buckets(
             data,
-            ["drift", "operations"],
+            ["drift", "compliance"],
             "high",
             "high",
-            custom_thresholds={"operations": "high"},
+            custom_thresholds={"compliance": "high"},
         )
         assert is_safe is False
-        assert set(failed) == {"drift", "operations"}
+        assert set(failed) == {"drift", "compliance"}
 
     def test_no_risk_assessment_defaults_safe(self):
         data = {}
-        is_safe, failed, ra = evaluate_risk_buckets(data, ["drift", "operations"], "high", "high")
+        is_safe, failed, ra = evaluate_risk_buckets(data, ["drift", "compliance"], "high", "high")
         assert is_safe is True
         assert failed == []
         # Default assessment should contain enabled buckets
         assert "drift" in ra
-        assert "operations" in ra
+        assert "compliance" in ra
 
     def test_missing_bucket_in_assessment_skipped(self):
         data = {
             "risk_assessment": {
-                "operations": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
+                "compliance": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
             }
         }
-        is_safe, failed, ra = evaluate_risk_buckets(data, ["drift", "operations"], "high", "high")
+        is_safe, failed, ra = evaluate_risk_buckets(data, ["drift", "compliance"], "high", "high")
         assert is_safe is True
 
     def test_with_intent_bucket(self):
@@ -132,11 +132,11 @@ class TestEvaluateRiskBuckets:
             "risk_assessment": {
                 "drift": {"risk_level": "low", "concerns": [], "reasoning": ""},
                 "intent": {"risk_level": "high", "concerns": ["unintended"], "reasoning": ""},
-                "operations": {"risk_level": "low", "concerns": [], "reasoning": ""},
+                "compliance": {"risk_level": "low", "concerns": [], "reasoning": ""},
             }
         }
         is_safe, failed, ra = evaluate_risk_buckets(
-            data, ["drift", "intent", "operations"], "high", "high"
+            data, ["drift", "intent", "compliance"], "high", "high"
         )
         assert is_safe is False
         assert "intent" in failed

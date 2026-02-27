@@ -81,10 +81,10 @@ def get_enabled_buckets(
         skip_intent: True to disable intent bucket
         has_pr_metadata: True if PR title/description available (controls intent bucket)
         custom_agent_ids: List of registered custom agent IDs to include
-        skip_agents: List of custom agent IDs to skip (e.g., ["operations"])
+        skip_agents: List of custom agent IDs to skip (e.g., ["compliance"])
 
     Returns:
-        List of bucket IDs that should be evaluated (e.g., ["drift", "operations"])
+        List of bucket IDs that should be evaluated (e.g., ["drift", "compliance"])
     """
     enabled = []
 

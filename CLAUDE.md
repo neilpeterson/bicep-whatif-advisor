@@ -30,9 +30,7 @@ bicep-whatif-advisor/             # Root directory
 │   ├── render.py           # Output formatting (table, json, markdown)
 │   ├── noise_filter.py     # Pre-LLM property-line noise filtering
 │   ├── data/
-│   │   ├── builtin_noise_patterns.txt  # Bundled known-noisy Azure property keywords
-│   │   └── agents/
-│   │       └── operations.md           # Bundled operations risk agent (display: table)
+│   │   └── builtin_noise_patterns.txt  # Bundled known-noisy Azure property keywords
 │   ├── providers/          # LLM provider implementations
 │   │   ├── __init__.py     # Provider base class and registry
 │   │   ├── anthropic.py    # Anthropic Claude provider
@@ -155,15 +153,15 @@ ruff format .                       # Format code
 ### Two Operating Modes
 
 1. **Interactive Mode (default):** Reads What-If output from stdin, sends to LLM, displays formatted table/JSON/markdown
-2. **CI Mode (`--ci` flag):** Also accepts git diff, evaluates deployment safety across three risk buckets, sets pass/fail exit codes, optionally posts PR comments
+2. **CI Mode (`--ci` flag):** Also accepts git diff, evaluates deployment safety across risk buckets, sets pass/fail exit codes, optionally posts PR comments
 
 ### Risk Bucket System (CI Mode)
 
-CI mode evaluates three independent risk categories:
+CI mode evaluates independent risk categories:
 
-1. **Infrastructure Drift**: Compares What-If output to code diff to detect changes not in the PR (out-of-band modifications)
-2. **PR Intent Alignment**: Compares What-If output to PR title/description to catch unintended changes (optional - skipped if no PR metadata)
-3. **Risky Operations**: Evaluates inherent risk of Azure operations (deletions, security changes, etc.)
+1. **Infrastructure Drift** (built-in): Compares What-If output to code diff to detect changes not in the PR (out-of-band modifications)
+2. **PR Intent Alignment** (built-in): Compares What-If output to PR title/description to catch unintended changes (optional - skipped if no PR metadata)
+3. **Custom Agents** (user-created via `--agents-dir`): Additional risk dimensions defined as markdown files with YAML frontmatter
 
 Each bucket has an independent configurable threshold (low, medium, high). Deployment fails if ANY bucket exceeds its threshold.
 
@@ -208,7 +206,7 @@ All providers use temperature 0 for deterministic output.
 
 Per-resource fields include `risk_level` (low|medium|high) and `risk_reason`.
 
-Three-bucket risk assessment:
+Multi-bucket risk assessment:
 
 ```json
 {
@@ -224,21 +222,18 @@ Three-bucket risk assessment:
       "risk_level": "low|medium|high",
       "concerns": ["..."],
       "reasoning": "..."
-    },
-    "operations": {
-      "risk_level": "low|medium|high",
-      "concerns": ["..."],
-      "reasoning": "..."
     }
   },
   "verdict": {
     "safe": true|false,
-    "highest_risk_bucket": "drift|intent|operations|none",
+    "highest_risk_bucket": "drift|intent|none",
     "overall_risk_level": "low|medium|high",
     "reasoning": "..."
   }
 }
 ```
+
+Custom agents added via `--agents-dir` will also appear as keys in `risk_assessment`.
 
 **Note:** The `intent` bucket is only included if PR title/description are provided via `--pr-title` or `--pr-description` flags.
 
@@ -254,11 +249,6 @@ Three-bucket risk assessment:
 - **Medium:** Modifications not aligned with PR intent, unexpected resource types
 - **Low:** New resources not mentioned but aligned with intent, minor scope differences
 
-**Risky Operations Bucket:**
-- **High:** Deletion of stateful resources (databases, storage, key vaults), RBAC deletions, broad network security changes, encryption changes, SKU downgrades
-- **Medium:** Behavioral changes to existing resources, new public endpoints, firewall changes, policy modifications
-- **Low:** New resources, tags, monitoring resources, cosmetic changes
-
 ## Documentation Structure
 
 Documentation is organized into two directories:
@@ -272,7 +262,7 @@ Documentation is organized into two directories:
 - `05-OUTPUT-RENDERING.md` - Table/JSON/Markdown formatting
 - `06-NOISE-FILTERING.md` - Confidence scoring and pattern matching
 - `07-PLATFORM-DETECTION.md` - GitHub Actions & Azure DevOps auto-detection
-- `08-RISK-ASSESSMENT.md` - Three-bucket risk model and threshold logic
+- `08-RISK-ASSESSMENT.md` - Multi-bucket risk model and threshold logic
 - `09-PR-INTEGRATION.md` - GitHub & Azure DevOps PR comment posting
 - `10-GIT-DIFF.md` - Git diff collection for drift detection
 - `11-TESTING-STRATEGY.md` - Test architecture and fixtures
@@ -332,12 +322,12 @@ When implementing CI mode (`--ci` flag):
 
 1. Accept both What-If output and git diff as input
 2. Include source code context in prompt
-3. Return structured safety verdict with three-bucket risk assessment
+3. Return structured safety verdict with multi-bucket risk assessment
 4. Post formatted markdown comments to GitHub/Azure DevOps PRs
 5. Exit with code 0 (safe) or 1 (unsafe) based on independent thresholds:
    - `--drift-threshold` (default: high)
    - `--intent-threshold` (default: high)
-   - `--agent-threshold operations=high` (bundled agent, default: high)
+   - `--agent-threshold <agent_id>=<level>` (for custom agents)
 
 **Environment variables for PR comments:**
 - GitHub: `GITHUB_TOKEN`, `GITHUB_REPOSITORY`, `GITHUB_PR_NUMBER`
@@ -359,7 +349,7 @@ cat whatif-output.txt | bicep-whatif-advisor \
 - `--no-block`: Report findings without failing pipeline (exit code 0 even if unsafe)
 - `--skip-drift`: Skip infrastructure drift risk assessment (CI mode only)
 - `--skip-intent`: Skip PR intent alignment risk assessment (CI mode only)
-- `--skip-agent operations`: Skip risky operations agent (CI mode only)
+- `--skip-agent <id>`: Skip a custom agent by ID (repeatable, CI mode only)
 
 **Noise filtering flags (all modes):**
 - `--noise-file`: Path to additional patterns file (additive with built-ins)
@@ -379,11 +369,8 @@ cat whatif-output.txt | bicep-whatif-advisor --ci --skip-drift
 # Skip intent assessment (useful for automated maintenance PRs)
 cat whatif-output.txt | bicep-whatif-advisor --ci --skip-intent
 
-# Skip the operations agent
-cat whatif-output.txt | bicep-whatif-advisor --ci --skip-agent operations
-
-# Only evaluate operations (skip drift and intent)
-cat whatif-output.txt | bicep-whatif-advisor --ci --skip-drift --skip-intent
+# Skip a custom agent
+cat whatif-output.txt | bicep-whatif-advisor --ci --skip-agent compliance
 ```
 
 ## Testing

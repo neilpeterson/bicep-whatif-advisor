@@ -117,12 +117,12 @@ Current output formats are table, JSON, and markdown. Teams that want a standalo
 
 ---
 
-## F-07: Refactor Operations Bucket to Bundled Agent
+## F-07: Remove Operations as Built-in Bucket
 
 **Status:** ✅ Completed
 **Area:** Architecture / CI Mode
-**Related spec:** 08-RISK-ASSESSMENT.md, 14-AGENT-DISPLAY.md
+**Related spec:** 08-RISK-ASSESSMENT.md
 
 ### Resolution
 
-Converted the operations bucket from a hardcoded built-in to a bundled agent that ships with the package at `bicep_whatif_advisor/data/agents/operations.md`. Only drift and intent remain as true built-in buckets. The bundled agent loads automatically in CI mode via `load_bundled_agents()`, gaining `display: table` for per-resource findings in PR comments. All existing CLI flags (`--skip-operations`, `--operations-threshold`) continue to work via backwards-compatible mapping. Users can override the bundled operations agent by placing their own `operations.md` in their `--agents-dir`.
+Removed operations as a built-in risk bucket. The core tool now provides two built-in buckets (drift and intent) plus user-created custom agents via `--agents-dir`. Users who want risky operations analysis can create their own agent markdown file. The `--skip-operations` and `--operations-threshold` CLI flags were removed.

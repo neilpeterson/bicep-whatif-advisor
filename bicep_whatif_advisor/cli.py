@@ -371,40 +371,21 @@ def main(
         custom_agent_ids = []
         custom_thresholds = {}
 
-        if ci:
+        if ci and agents_dir:
             from .ci.agents import (
-                get_disabled_agent_ids,
                 load_agents_from_directory,
-                load_bundled_agents,
                 register_agents,
             )
 
-            # Always load bundled agents first (e.g., operations)
-            bundled_agents, bundled_errors = load_bundled_agents()
-            for err in bundled_errors:
+            agents, agent_errors = load_agents_from_directory(agents_dir)
+            for err in agent_errors:
                 sys.stderr.write(f"Warning: {err}\n")
 
-            # Load user agents from --agents-dir (can override bundled agents)
-            user_agents = []
-            disabled_ids = set()
-            if agents_dir:
-                user_agent_list, user_errors = load_agents_from_directory(agents_dir)
-                for err in user_errors:
-                    sys.stderr.write(f"Warning: {err}\n")
-                user_agents = user_agent_list
-                # Track agents explicitly disabled by user (enabled: false)
-                disabled_ids = set(get_disabled_agent_ids(agents_dir))
-
-            # User agents override bundled agents with the same ID;
-            # disabled user agents (enabled: false) also suppress bundled agents
-            user_ids = {a.id for a in user_agents} | disabled_ids
-            merged_agents = [a for a in bundled_agents if a.id not in user_ids] + user_agents
-
-            if merged_agents:
-                custom_agent_ids = register_agents(merged_agents)
+            if agents:
+                custom_agent_ids = register_agents(agents)
                 agent_names = ", ".join(custom_agent_ids)
                 sys.stderr.write(f"Loaded {len(custom_agent_ids)} agent(s): {agent_names}\n")
-        elif agents_dir:
+        if not ci and agents_dir:
             sys.stderr.write("Warning: --agents-dir is only used in CI mode. Ignoring.\n")
 
         # Parse --agent-threshold values

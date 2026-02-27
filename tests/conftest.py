@@ -146,11 +146,6 @@ def sample_ci_response_safe():
                 "concerns": [],
                 "reasoning": "No drift detected",
             },
-            "operations": {
-                "risk_level": "low",
-                "concerns": [],
-                "reasoning": "Only creating new resources",
-            },
         },
         "verdict": {
             "safe": True,
@@ -179,20 +174,14 @@ def sample_ci_response_unsafe():
         "overall_summary": "1 database deletion.",
         "risk_assessment": {
             "drift": {
-                "risk_level": "low",
-                "concerns": [],
-                "reasoning": "No drift detected",
-            },
-            "operations": {
                 "risk_level": "high",
-                "concerns": ["Deletion of production database"],
-                "concern_summary": "Production database deletion is high risk",
-                "reasoning": "Stateful resource deletion is high risk",
+                "concerns": ["Deletion of production database not in code diff"],
+                "reasoning": "Stateful resource deletion detected as drift",
             },
         },
         "verdict": {
             "safe": False,
-            "highest_risk_bucket": "operations",
+            "highest_risk_bucket": "drift",
             "overall_risk_level": "high",
             "reasoning": "Unsafe. Deleting a production database.",
         },
@@ -225,11 +214,6 @@ def sample_ci_response_with_intent():
                 "risk_level": "low",
                 "concerns": [],
                 "reasoning": "Matches PR intent",
-            },
-            "operations": {
-                "risk_level": "low",
-                "concerns": [],
-                "reasoning": "Low risk operations",
             },
         },
         "verdict": {

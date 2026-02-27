@@ -63,11 +63,6 @@ class TestAgentsCLIIntegration:
                     "concerns": [],
                     "reasoning": "ok",
                 },
-                "operations": {
-                    "risk_level": "low",
-                    "concerns": [],
-                    "reasoning": "ok",
-                },
                 "compliance": {
                     "risk_level": "low",
                     "concerns": [],
@@ -144,11 +139,6 @@ class TestAgentsCLIIntegration:
                     "concerns": [],
                     "reasoning": "",
                 },
-                "operations": {
-                    "risk_level": "low",
-                    "concerns": [],
-                    "reasoning": "",
-                },
                 "compliance": {
                     "risk_level": "medium",
                     "concerns": ["policy issue"],
@@ -202,11 +192,6 @@ class TestAgentsCLIIntegration:
             "overall_summary": "",
             "risk_assessment": {
                 "drift": {
-                    "risk_level": "low",
-                    "concerns": [],
-                    "reasoning": "",
-                },
-                "operations": {
                     "risk_level": "low",
                     "concerns": [],
                     "reasoning": "",
@@ -319,12 +304,6 @@ class TestAgentsCLIIntegration:
                     "concern_summary": "None",
                     "reasoning": "ok",
                 },
-                "operations": {
-                    "risk_level": "low",
-                    "concerns": [],
-                    "concern_summary": "None",
-                    "reasoning": "ok",
-                },
                 "naming": {
                     "risk_level": "medium",
                     "concerns": ["bad name"],
@@ -404,11 +383,6 @@ class TestAgentsCLIIntegration:
             "overall_summary": "",
             "risk_assessment": {
                 "drift": {
-                    "risk_level": "low",
-                    "concerns": [],
-                    "reasoning": "",
-                },
-                "operations": {
                     "risk_level": "low",
                     "concerns": [],
                     "reasoning": "",
