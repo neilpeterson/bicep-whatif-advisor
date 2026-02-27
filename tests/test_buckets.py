@@ -59,9 +59,9 @@ class TestGetEnabledBuckets:
         assert "drift" not in result
         assert "operations" in result
 
-    def test_skip_operations(self):
-        """--skip-operations maps to skipping the operations bundled agent."""
-        result = get_enabled_buckets(skip_operations=True, custom_agent_ids=["operations"])
+    def test_skip_operations_via_skip_agents(self):
+        """Operations is skipped via --skip-agent operations."""
+        result = get_enabled_buckets(custom_agent_ids=["operations"], skip_agents=["operations"])
         assert "drift" in result
         assert "operations" not in result
 
@@ -74,8 +74,8 @@ class TestGetEnabledBuckets:
         result = get_enabled_buckets(
             skip_drift=True,
             skip_intent=True,
-            skip_operations=True,
             custom_agent_ids=["operations"],
+            skip_agents=["operations"],
         )
         assert result == []
 

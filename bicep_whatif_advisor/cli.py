@@ -179,13 +179,6 @@ def filter_by_confidence(data: dict) -> tuple[dict, dict]:
     help="Fail pipeline if intent alignment risk meets or exceeds"
     " this level (only applies if intent bucket enabled)",
 )
-@click.option(
-    "--operations-threshold",
-    type=click.Choice(["low", "medium", "high"], case_sensitive=False),
-    default="high",
-    help="Fail pipeline if operations risk meets or exceeds"
-    " this level (only applies if operations bucket enabled)",
-)
 @click.option("--post-comment", is_flag=True, help="Post summary as PR comment (CI mode only)")
 @click.option(
     "--pr-url",
@@ -221,9 +214,6 @@ def filter_by_confidence(data: dict) -> tuple[dict, dict]:
 )
 @click.option(
     "--skip-intent", is_flag=True, help="Skip PR intent alignment risk assessment (CI mode only)"
-)
-@click.option(
-    "--skip-operations", is_flag=True, help="Skip risky operations risk assessment (CI mode only)"
 )
 @click.option(
     "--comment-title",
@@ -284,7 +274,6 @@ def main(
     diff_ref: str,
     drift_threshold: str,
     intent_threshold: str,
-    operations_threshold: str,
     post_comment: bool,
     pr_url: str,
     bicep_dir: str,
@@ -293,7 +282,6 @@ def main(
     no_block: bool,
     skip_drift: bool,
     skip_intent: bool,
-    skip_operations: bool,
     comment_title: str,
     noise_file: str,
     noise_threshold: int,
@@ -435,10 +423,6 @@ def main(
                 continue
             custom_thresholds[agent_id] = level
 
-        # Map --operations-threshold into custom_thresholds for backwards compat
-        if operations_threshold and "operations" not in custom_thresholds:
-            custom_thresholds["operations"] = operations_threshold
-
         # Determine which risk buckets are enabled (CI mode only)
         # Do this before getting provider to validate flags early
         enabled_buckets = None
@@ -448,7 +432,6 @@ def main(
             enabled_buckets = get_enabled_buckets(
                 skip_drift=skip_drift,
                 skip_intent=skip_intent,
-                skip_operations=skip_operations,
                 has_pr_metadata=bool(pr_title or pr_description),
                 custom_agent_ids=custom_agent_ids,
                 skip_agents=list(skip_agent),
@@ -707,7 +690,6 @@ def main(
                 enabled_buckets,
                 drift_threshold,
                 intent_threshold,
-                operations_threshold,
                 custom_thresholds=custom_thresholds,
             )
 

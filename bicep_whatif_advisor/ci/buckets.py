@@ -70,7 +70,6 @@ Risk levels for intent:
 def get_enabled_buckets(
     skip_drift: bool = False,
     skip_intent: bool = False,
-    skip_operations: bool = False,
     has_pr_metadata: bool = False,
     custom_agent_ids: List[str] = None,
     skip_agents: List[str] = None,
@@ -80,11 +79,9 @@ def get_enabled_buckets(
     Args:
         skip_drift: True to disable drift bucket
         skip_intent: True to disable intent bucket
-        skip_operations: True to disable operations bucket (maps to skip_agents for
-                        backwards compat — operations is now a bundled agent)
         has_pr_metadata: True if PR title/description available (controls intent bucket)
         custom_agent_ids: List of registered custom agent IDs to include
-        skip_agents: List of custom agent IDs to skip
+        skip_agents: List of custom agent IDs to skip (e.g., ["operations"])
 
     Returns:
         List of bucket IDs that should be evaluated (e.g., ["drift", "operations"])
@@ -98,14 +95,8 @@ def get_enabled_buckets(
     if not skip_intent and has_pr_metadata:
         enabled.append("intent")
 
-    # Build skip set for custom/bundled agents
-    skip_set = set(skip_agents or [])
-
-    # Map --skip-operations to the skip set (operations is now a bundled agent)
-    if skip_operations:
-        skip_set.add("operations")
-
     # Append custom/bundled agents (respecting skip list)
+    skip_set = set(skip_agents or [])
     if custom_agent_ids:
         for agent_id in custom_agent_ids:
             if agent_id not in skip_set:
