@@ -6,7 +6,7 @@ them as additional RiskBucket entries in the bucket registry.
 
 import re
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import yaml
 
@@ -58,14 +58,14 @@ def _parse_frontmatter(content: str) -> Tuple[dict, str]:
     return metadata, body
 
 
-def parse_agent_file(file_path: Path) -> RiskBucket:
+def parse_agent_file(file_path: Path) -> Optional[RiskBucket]:
     """Parse a markdown agent file into a RiskBucket.
 
     Args:
         file_path: Path to the .md agent file
 
     Returns:
-        RiskBucket instance
+        RiskBucket instance, or None if the agent has enabled: false
 
     Raises:
         ValueError: If the file is missing required fields or has invalid format
@@ -77,6 +77,10 @@ def parse_agent_file(file_path: Path) -> RiskBucket:
 
     content = file_path.read_text(encoding="utf-8")
     metadata, body = _parse_frontmatter(content)
+
+    # Check enabled flag (defaults to True)
+    if not metadata.get("enabled", True):
+        return None
 
     # Validate required fields
     agent_id = metadata.get("id")
@@ -169,7 +173,8 @@ def load_agents_from_directory(
     for md_file in md_files:
         try:
             agent = parse_agent_file(md_file)
-            agents.append(agent)
+            if agent is not None:
+                agents.append(agent)
         except (ValueError, FileNotFoundError, UnicodeDecodeError) as e:
             errors.append(str(e))
 

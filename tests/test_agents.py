@@ -183,6 +183,25 @@ class TestParseAgentFile:
         bucket = parse_agent_file(agent_file)
         assert bucket.icon == ""
 
+    def test_enabled_true_by_default(self, tmp_path):
+        agent_file = tmp_path / "test.md"
+        agent_file.write_text("---\nid: test\ndisplay_name: Test\n---\nBody")
+        bucket = parse_agent_file(agent_file)
+        assert bucket is not None
+
+    def test_enabled_false_returns_none(self, tmp_path):
+        agent_file = tmp_path / "test.md"
+        agent_file.write_text("---\nid: test\ndisplay_name: Test\nenabled: false\n---\nBody")
+        result = parse_agent_file(agent_file)
+        assert result is None
+
+    def test_enabled_true_explicit(self, tmp_path):
+        agent_file = tmp_path / "test.md"
+        agent_file.write_text("---\nid: test\ndisplay_name: Test\nenabled: true\n---\nBody")
+        bucket = parse_agent_file(agent_file)
+        assert bucket is not None
+        assert bucket.id == "test"
+
 
 # -------------------------------------------------------------------
 # load_agents_from_directory
@@ -196,6 +215,14 @@ class TestLoadAgentsFromDirectory:
         (tmp_path / "b.md").write_text("---\nid: agent_b\ndisplay_name: B\n---\nB")
         agents, errors = load_agents_from_directory(str(tmp_path))
         assert len(agents) == 2
+        assert len(errors) == 0
+
+    def test_skips_disabled_agents(self, tmp_path):
+        (tmp_path / "a.md").write_text("---\nid: agent_a\ndisplay_name: A\n---\nA")
+        (tmp_path / "b.md").write_text("---\nid: agent_b\ndisplay_name: B\nenabled: false\n---\nB")
+        agents, errors = load_agents_from_directory(str(tmp_path))
+        assert len(agents) == 1
+        assert agents[0].id == "agent_a"
         assert len(errors) == 0
 
     def test_skips_non_md_files(self, tmp_path):
