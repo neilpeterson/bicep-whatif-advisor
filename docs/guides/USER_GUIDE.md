@@ -12,6 +12,7 @@ Complete guide to using `bicep-whatif-advisor` for local development and underst
 - [Basic Usage](#basic-usage)
 - [Output Formats](#output-formats)
 - [Noise Filtering](#noise-filtering)
+- [Custom Agents](#custom-agents)
 - [Operating Modes](#operating-modes)
 - [CLI Flags Reference](#cli-flags-reference)
 - [Environment Variables](#environment-variables)
@@ -270,6 +271,118 @@ Low-confidence resources are automatically:
 
 ---
 
+## Custom Agents
+
+Extend the built-in risk assessment (drift, intent, operations) with custom risk dimensions defined as markdown files. Each agent file becomes an additional risk bucket that the LLM evaluates alongside the built-in ones.
+
+### Creating an Agent File
+
+Each agent is a `.md` file with YAML frontmatter for metadata and a markdown body with LLM instructions:
+
+```markdown
+---
+id: compliance
+display_name: Compliance Review
+default_threshold: high
+---
+
+**Compliance Risk:**
+Evaluate whether the deployment changes comply with organizational
+policies including encryption requirements, network isolation,
+and data residency.
+
+Risk levels for compliance:
+- high: Changes to encryption settings, public network access enabled,
+  data residency violations, removal of compliance tags
+- medium: Policy assignment changes, diagnostic settings modifications,
+  new resource types not in approved list
+- low: Tag changes for compliance metadata, monitoring additions,
+  minor configuration updates within policy bounds
+```
+
+#### Frontmatter Fields
+
+| Field | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `id` | Yes | — | Unique identifier (alphanumeric, hyphens, underscores). Must not match `drift`, `intent`, or `operations`. |
+| `display_name` | Yes | — | Name shown in tables and PR comments |
+| `default_threshold` | No | `high` | Default threshold: `low`, `medium`, or `high` |
+| `optional` | No | `false` | If `true`, can be conditionally skipped |
+
+#### Writing Instructions
+
+The markdown body is embedded directly into the LLM system prompt. Write it as clear instructions including:
+
+- What the agent should evaluate
+- Explicit risk level criteria (high/medium/low)
+- Examples of what constitutes each risk level
+
+### Using Custom Agents
+
+Point the tool at a directory containing your agent `.md` files:
+
+```bash
+# Basic usage
+az deployment group what-if ... | bicep-whatif-advisor --ci \
+  --agents-dir ./agents/
+
+# Override a threshold
+az deployment group what-if ... | bicep-whatif-advisor --ci \
+  --agents-dir ./agents/ \
+  --agent-threshold compliance=medium
+
+# Multiple threshold overrides
+az deployment group what-if ... | bicep-whatif-advisor --ci \
+  --agents-dir ./agents/ \
+  --agent-threshold compliance=medium \
+  --agent-threshold cost-review=low
+
+# Skip a specific agent
+az deployment group what-if ... | bicep-whatif-advisor --ci \
+  --agents-dir ./agents/ \
+  --skip-agent cost-review
+```
+
+### Directory Structure
+
+```
+agents/
+  compliance.md          # Evaluated as "Compliance Review" bucket
+  cost-review.md         # Evaluated as "Cost Review" bucket
+  naming-conventions.md  # Evaluated as "Naming Conventions" bucket
+```
+
+Files are loaded alphabetically. Non-`.md` files are ignored. Invalid files produce warnings but don't block execution — successfully parsed agents are still loaded.
+
+### How It Works
+
+Custom agents plug into the existing pipeline with zero changes to the prompt builder or renderers:
+
+1. Agent files are parsed and registered in the bucket registry
+2. The LLM system prompt includes instructions for all enabled buckets (built-in + custom)
+3. The LLM returns a `risk_assessment` entry for each custom bucket
+4. Each bucket is evaluated against its threshold independently
+5. Tables and PR comments display all buckets dynamically
+
+### Threshold Behavior
+
+Each custom agent has three threshold sources (highest priority wins):
+
+1. **`--agent-threshold id=level`** — CLI override (highest priority)
+2. **`default_threshold`** in frontmatter — Agent file default
+3. **`high`** — Fallback if neither is specified
+
+Built-in buckets still use their dedicated flags (`--drift-threshold`, etc.).
+
+### Notes
+
+- Custom agents are **CI mode only**. Using `--agents-dir` without `--ci` emits a warning.
+- Custom agent IDs must not collide with built-in IDs (`drift`, `intent`, `operations`).
+- At least one bucket (built-in or custom) must be enabled in CI mode.
+- All custom agents use the same JSON response schema as built-in buckets (`risk_level`, `concerns`, `concern_summary`, `reasoning`).
+
+---
+
 ## Operating Modes
 
 ### Standard Mode (Default)
@@ -376,6 +489,14 @@ az deployment group what-if ... | bicep-whatif-advisor --ci --diff-ref origin/ma
 | `--post-comment` | Post analysis as PR comment (auto-enabled if token exists) | `false` |
 | `--comment-title` | Custom title for PR comment | `What-If Deployment Review` |
 | `--no-block` | Report findings without failing pipeline (exit code 0) | `false` |
+
+### Custom Agent Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--agents-dir` | Path to directory of custom agent `.md` files (CI mode only) | - |
+| `--agent-threshold` | Set threshold for a custom agent (`id=level`). Repeatable. | - |
+| `--skip-agent` | Skip a custom agent by ID. Repeatable. | - |
 
 ### Noise Filtering Flags
 

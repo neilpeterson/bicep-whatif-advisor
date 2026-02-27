@@ -6,6 +6,7 @@ import pytest
 
 from bicep_whatif_advisor.render import (
     _colorize,
+    _render_agent_detail_sections,
     render_json,
     render_markdown,
     render_table,
@@ -311,3 +312,177 @@ class TestRenderTable:
         data = {"resources": [], "overall_summary": ""}
         # Should not raise; the width is used internally
         render_table(data, no_color=True)
+
+
+@pytest.fixture()
+def _register_custom_buckets():
+    """Register custom buckets for agent detail section tests."""
+    from bicep_whatif_advisor.ci.buckets import RISK_BUCKETS, RiskBucket
+
+    RISK_BUCKETS["cost"] = RiskBucket(
+        id="cost",
+        display_name="Cost Impact",
+        description="Custom agent",
+        prompt_instructions="Check cost.",
+        custom=True,
+        display="summary",
+        icon="\U0001f4b0",
+    )
+    RISK_BUCKETS["naming"] = RiskBucket(
+        id="naming",
+        display_name="Naming Convention",
+        description="Custom agent",
+        prompt_instructions="Check naming.",
+        custom=True,
+        display="table",
+        icon="\U0001f4db",
+    )
+    yield
+    for key in ("cost", "naming"):
+        RISK_BUCKETS.pop(key, None)
+
+
+@pytest.mark.unit
+@pytest.mark.usefixtures("_register_custom_buckets")
+class TestAgentDetailSections:
+    def test_custom_agent_summary_collapsible(self):
+        data = {
+            "_enabled_buckets": ["drift", "operations", "cost"],
+            "risk_assessment": {
+                "drift": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
+                "operations": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
+                "cost": {
+                    "risk_level": "low",
+                    "concerns": [],
+                    "reasoning": "Minor cost impact.",
+                },
+            },
+        }
+        lines = _render_agent_detail_sections(data)
+        md = "\n".join(lines)
+        assert "\U0001f4b0 Cost Impact Details" in md
+        assert "<details>" in md
+        assert "Minor cost impact." in md
+
+    def test_custom_agent_table_collapsible(self):
+        data = {
+            "_enabled_buckets": ["drift", "operations", "naming"],
+            "risk_assessment": {
+                "drift": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
+                "operations": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
+                "naming": {
+                    "risk_level": "medium",
+                    "concerns": ["bad names"],
+                    "reasoning": "Some bad names.",
+                    "findings": [
+                        {
+                            "resource": "storageaccount1",
+                            "issue": "No CAF prefix",
+                            "recommendation": "Use st<workload><env>",
+                        }
+                    ],
+                },
+            },
+        }
+        lines = _render_agent_detail_sections(data)
+        md = "\n".join(lines)
+        assert "\U0001f4db Naming Convention Details" in md
+        assert "| Resource | Issue | Recommendation |" in md
+        assert "storageaccount1" in md
+        assert "No CAF prefix" in md
+
+    def test_custom_agent_list_collapsible(self):
+        from bicep_whatif_advisor.ci.buckets import RISK_BUCKETS, RiskBucket
+
+        RISK_BUCKETS["security"] = RiskBucket(
+            id="security",
+            display_name="Security Review",
+            description="Custom agent",
+            prompt_instructions="Check security.",
+            custom=True,
+            display="list",
+            icon="\U0001f512",
+        )
+        try:
+            data = {
+                "_enabled_buckets": ["security"],
+                "risk_assessment": {
+                    "security": {
+                        "risk_level": "high",
+                        "concerns": ["open ports"],
+                        "reasoning": "Open ports detected.",
+                        "findings": [
+                            {
+                                "resource": "nsg-web",
+                                "issue": "Port 22 open to internet",
+                                "recommendation": "Restrict SSH access",
+                            }
+                        ],
+                    },
+                },
+            }
+            lines = _render_agent_detail_sections(data)
+            md = "\n".join(lines)
+            assert "\U0001f512 Security Review Details" in md
+            assert "- **nsg-web**: Port 22 open to internet" in md
+            assert "Recommendation: Restrict SSH access" in md
+        finally:
+            del RISK_BUCKETS["security"]
+
+    def test_builtin_buckets_no_collapsible(self):
+        data = {
+            "_enabled_buckets": ["drift", "operations"],
+            "risk_assessment": {
+                "drift": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
+                "operations": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
+            },
+        }
+        lines = _render_agent_detail_sections(data)
+        assert len(lines) == 0
+
+    def test_table_display_empty_findings_falls_back_to_reasoning(self):
+        data = {
+            "_enabled_buckets": ["naming"],
+            "risk_assessment": {
+                "naming": {
+                    "risk_level": "low",
+                    "concerns": [],
+                    "reasoning": "All names follow CAF convention.",
+                    "findings": [],
+                },
+            },
+        }
+        lines = _render_agent_detail_sections(data)
+        md = "\n".join(lines)
+        assert "All names follow CAF convention." in md
+        assert "| Resource |" not in md
+
+    def test_github_no_br_in_agent_sections(self):
+        data = {
+            "_enabled_buckets": ["cost"],
+            "risk_assessment": {
+                "cost": {
+                    "risk_level": "low",
+                    "concerns": [],
+                    "reasoning": "Low cost.",
+                },
+            },
+        }
+        lines = _render_agent_detail_sections(data, platform="github")
+        md = "\n".join(lines)
+        assert "<br>" not in md
+
+    def test_azuredevops_br_in_agent_sections(self):
+        data = {
+            "_enabled_buckets": ["cost"],
+            "risk_assessment": {
+                "cost": {
+                    "risk_level": "low",
+                    "concerns": [],
+                    "reasoning": "Low cost.",
+                },
+            },
+        }
+        lines = _render_agent_detail_sections(data, platform="azuredevops")
+        md = "\n".join(lines)
+        assert "<br>" in md

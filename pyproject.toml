@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bicep-whatif-advisor"
-version = "2.5.3"
+version = "3.0.0"
 description = "AI-powered Azure Bicep What-If deployment advisor with automated safety reviews"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -32,6 +32,7 @@ dependencies = [
     "click>=8.0.0",
     "rich>=13.0.0",
     "requests>=2.31.0",  # Required for CI mode (GitHub/Azure DevOps PR comments)
+    "pyyaml>=6.0",  # Required for custom agent frontmatter parsing
 ]
 
 [project.optional-dependencies]

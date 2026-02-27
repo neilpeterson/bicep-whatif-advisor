@@ -313,6 +313,80 @@ def _print_ci_verdict(console: Console, verdict: dict, use_color: bool) -> None:
     console.print()
 
 
+def _render_agent_detail_sections(data: dict, platform: str = None) -> list:
+    """Render collapsible detail sections for custom agents.
+
+    Only custom agents get collapsible sections. Built-in buckets
+    (drift, intent, operations) are table-row only.
+
+    Args:
+        data: Parsed LLM response with risk_assessment and _enabled_buckets
+        platform: CI/CD platform ("github", "azuredevops", or None)
+
+    Returns:
+        List of markdown lines
+    """
+    from .ci.buckets import RISK_BUCKETS
+
+    lines = []
+    enabled_buckets = data.get("_enabled_buckets")
+    risk_assessment = data.get("risk_assessment", {})
+    if not enabled_buckets or not risk_assessment:
+        return lines
+
+    for bucket_id in enabled_buckets:
+        bucket = RISK_BUCKETS.get(bucket_id)
+        if not bucket or not bucket.custom:
+            continue
+
+        bucket_data = risk_assessment.get(bucket_id, {})
+        if not bucket_data:
+            continue
+
+        # Build header with optional icon
+        icon_prefix = f"{bucket.icon} " if bucket.icon else ""
+        header = f"{icon_prefix}{bucket.display_name} Details"
+
+        lines.append("<details>")
+        lines.append(f"<summary>{header}</summary>")
+        lines.append("")
+
+        findings = bucket_data.get("findings", [])
+
+        if bucket.display == "table" and findings:
+            lines.append("| Resource | Issue | Recommendation |")
+            lines.append("|----------|-------|----------------|")
+            for finding in findings:
+                resource = finding.get("resource", "").replace("|", "\\|")
+                issue = finding.get("issue", "").replace("|", "\\|")
+                recommendation = finding.get("recommendation", "").replace("|", "\\|")
+                lines.append(f"| {resource} | {issue} | {recommendation} |")
+            lines.append("")
+        elif bucket.display == "list" and findings:
+            for finding in findings:
+                resource = finding.get("resource", "")
+                issue = finding.get("issue", "")
+                recommendation = finding.get("recommendation", "")
+                lines.append(f"- **{resource}**: {issue}")
+                if recommendation:
+                    lines.append(f"  - Recommendation: {recommendation}")
+            lines.append("")
+        else:
+            # summary mode, or table/list with empty findings — fall back to reasoning
+            reasoning = bucket_data.get("reasoning", "")
+            if reasoning:
+                lines.append(reasoning)
+                lines.append("")
+
+        lines.append("</details>")
+        lines.append("")
+        if platform != "github":
+            lines.append("<br>")
+            lines.append("")
+
+    return lines
+
+
 def render_json(data: dict, low_confidence_data: dict = None) -> None:
     """Render output as pretty-printed JSON.
 
@@ -474,6 +548,9 @@ def render_markdown(
         if platform != "github":
             lines.append("<br>")
             lines.append("")
+
+    # Custom agent detail sections (collapsible)
+    lines.extend(_render_agent_detail_sections(data, platform))
 
     # Raw What-If output (opt-in collapsible section)
     if whatif_content:

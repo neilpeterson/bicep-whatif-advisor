@@ -12,6 +12,7 @@ Complete guide for integrating `bicep-whatif-advisor` as an automated deployment
 - [GitHub Actions](#github-actions)
 - [Azure DevOps](#azure-devops)
 - [Other CI Platforms](#other-ci-platforms)
+- [Custom Agents](#custom-agents)
 - [Advanced Features](#advanced-features)
 - [Troubleshooting](#troubleshooting)
 
@@ -509,6 +510,95 @@ stage('What-If Review') {
   }
 }
 ```
+
+---
+
+## Custom Agents
+
+Add custom risk assessment dimensions to your pipeline using markdown-based agent files. Each agent becomes an additional risk bucket evaluated alongside the built-in drift, intent, and operations buckets.
+
+### Setup
+
+1. Create an `agents/` directory in your repository with `.md` files:
+
+```
+agents/
+  compliance.md
+  cost-review.md
+```
+
+2. Each file uses YAML frontmatter for metadata and a markdown body for LLM instructions:
+
+```markdown
+---
+id: compliance
+display_name: Compliance Review
+default_threshold: high
+---
+
+**Compliance Risk:**
+Evaluate whether changes comply with organizational policies.
+
+Risk levels for compliance:
+- high: Encryption disabled, public access enabled, data residency violations
+- medium: Policy assignment changes, unapproved resource types
+- low: Tag updates, monitoring additions
+```
+
+### GitHub Actions Example
+
+```yaml
+- env:
+    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  run: |
+    az deployment group what-if \
+      --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+      --template-file main.bicep \
+      --exclude-change-types NoChange Ignore \
+      | bicep-whatif-advisor \
+        --agents-dir ./agents \
+        --agent-threshold compliance=medium
+```
+
+### Azure DevOps Example
+
+```yaml
+inlineScript: |
+  pip install bicep-whatif-advisor[anthropic]
+
+  az deployment group what-if \
+    --resource-group $(RESOURCE_GROUP) \
+    --template-file $(BICEP_TEMPLATE) \
+    --exclude-change-types NoChange Ignore \
+    | bicep-whatif-advisor \
+      --agents-dir ./agents \
+      --agent-threshold compliance=medium
+```
+
+### Custom Agent Flags
+
+| Flag | Description |
+|------|-------------|
+| `--agents-dir PATH` | Directory containing agent `.md` files |
+| `--agent-threshold ID=LEVEL` | Override threshold for a specific agent (repeatable) |
+| `--skip-agent ID` | Skip a specific custom agent (repeatable) |
+
+### How It Works in CI
+
+Custom agents are evaluated alongside built-in buckets. The PR comment includes all enabled buckets:
+
+```markdown
+| Risk Assessment | Risk Level | Key Concerns |
+|---|---|---|
+| Infrastructure Drift | Low | No drift detected |
+| Risky Operations | Low | Only creating new resources |
+| Compliance Review | Medium | New resource type not in approved list |
+```
+
+Deployment is blocked if **any** bucket (built-in or custom) exceeds its threshold.
+
+**For full details,** see [USER_GUIDE.md - Custom Agents](./USER_GUIDE.md#custom-agents)
 
 ---
 

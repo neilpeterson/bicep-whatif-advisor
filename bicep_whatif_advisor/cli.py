@@ -251,6 +251,27 @@ def filter_by_confidence(data: dict) -> tuple[dict, dict]:
     is_flag=True,
     help="Include raw What-If output in PR comment as collapsible section",
 )
+@click.option(
+    "--agents-dir",
+    type=str,
+    default=None,
+    help="Path to directory of custom risk assessment agent .md files (CI mode only)",
+)
+@click.option(
+    "--agent-threshold",
+    type=str,
+    multiple=True,
+    help=(
+        "Set threshold for a custom agent (format: agent_id=level,"
+        " e.g., --agent-threshold compliance=high). Repeatable."
+    ),
+)
+@click.option(
+    "--skip-agent",
+    type=str,
+    multiple=True,
+    help=("Skip a custom agent by ID (e.g., --skip-agent compliance). Repeatable. CI mode only."),
+)
 @click.version_option(version=__version__)
 def main(
     provider: str,
@@ -278,6 +299,9 @@ def main(
     noise_threshold: int,
     no_builtin_patterns: bool,
     include_whatif: bool,
+    agents_dir: str,
+    agent_threshold: tuple,
+    skip_agent: tuple,
 ):
     """Analyze Azure What-If deployment output using LLMs.
 
@@ -355,6 +379,51 @@ def main(
             if bicep_dir:
                 bicep_content = _load_bicep_files(bicep_dir)
 
+        # Load custom agents if --agents-dir provided
+        custom_agent_ids = []
+        custom_thresholds = {}
+
+        if agents_dir:
+            if not ci:
+                sys.stderr.write("Warning: --agents-dir is only used in CI mode. Ignoring.\n")
+            else:
+                from .ci.agents import (
+                    load_agents_from_directory,
+                    register_agents,
+                )
+
+                agents, agent_errors = load_agents_from_directory(agents_dir)
+                for err in agent_errors:
+                    sys.stderr.write(f"Warning: {err}\n")
+
+                if agents:
+                    custom_agent_ids = register_agents(agents)
+                    agent_names = ", ".join(custom_agent_ids)
+                    sys.stderr.write(
+                        f"Loaded {len(custom_agent_ids)} custom agent(s): {agent_names}\n"
+                    )
+
+        # Parse --agent-threshold values
+        for entry in agent_threshold:
+            if "=" not in entry:
+                sys.stderr.write(
+                    f"Warning: Invalid --agent-threshold"
+                    f" format: '{entry}'."
+                    f" Expected format: agent_id=level\n"
+                )
+                continue
+            agent_id, level = entry.split("=", 1)
+            agent_id = agent_id.strip()
+            level = level.strip().lower()
+            if level not in ("low", "medium", "high"):
+                sys.stderr.write(
+                    f"Warning: Invalid threshold level"
+                    f" '{level}' for agent '{agent_id}'."
+                    f" Must be low, medium, or high.\n"
+                )
+                continue
+            custom_thresholds[agent_id] = level
+
         # Determine which risk buckets are enabled (CI mode only)
         # Do this before getting provider to validate flags early
         enabled_buckets = None
@@ -366,6 +435,8 @@ def main(
                 skip_intent=skip_intent,
                 skip_operations=skip_operations,
                 has_pr_metadata=bool(pr_title or pr_description),
+                custom_agent_ids=custom_agent_ids,
+                skip_agents=list(skip_agent),
             )
 
             # Validation: At least one bucket must be enabled in CI mode
@@ -622,6 +693,7 @@ def main(
                 drift_threshold,
                 intent_threshold,
                 operations_threshold,
+                custom_thresholds=custom_thresholds,
             )
 
             # Post comment if requested
