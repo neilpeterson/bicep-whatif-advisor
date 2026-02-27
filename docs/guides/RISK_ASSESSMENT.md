@@ -8,7 +8,8 @@ Complete guide to understanding how `bicep-whatif-advisor` evaluates deployment 
 
 - [Overview](#overview)
 - [The Decision Flow](#the-decision-flow)
-- [Three Risk Buckets](#three-risk-buckets)
+- [Three Built-in Risk Buckets](#three-built-in-risk-buckets)
+- [Custom Risk Agents](#custom-risk-agents)
 - [Risk Levels](#risk-levels)
 - [How Risk Levels Are Determined](#how-risk-levels-are-determined)
 - [Thresholds and Control](#thresholds-and-control)
@@ -45,9 +46,9 @@ Azure What-If Output + Code Diff
     Exit Code (0 or 1)
 ```
 
-## Three Risk Buckets
+## Three Built-in Risk Buckets
 
-Each deployment is evaluated independently across three categories:
+Each deployment is evaluated independently across three built-in categories:
 
 ### 1. Infrastructure Drift 🔄
 
@@ -154,6 +155,82 @@ LOW:
 - Diagnostic/monitoring resources
 - Description modifications
 ```
+
+## Custom Risk Agents
+
+In addition to the three built-in buckets, you can define **custom risk agents** using markdown files. Each agent adds a new risk bucket that is evaluated alongside the built-in ones.
+
+### Why Custom Agents?
+
+The built-in buckets cover general deployment safety. Custom agents let you enforce organization-specific policies:
+
+- **Compliance** — Encryption requirements, data residency, approved resource types
+- **Cost Review** — SKU selections, reserved capacity changes, scaling policies
+- **Naming Conventions** — Resource naming standards, tagging requirements
+- **Security Hardening** — Network isolation, private endpoints, managed identities
+
+### How They Work
+
+Custom agents use the same pipeline as built-in buckets:
+
+```
+Built-in Buckets          Custom Agents (from .md files)
+┌──────────────┐          ┌──────────────┐
+│ Drift        │          │ Compliance   │
+│ Intent       │          │ Cost Review  │
+│ Operations   │          │ Security     │
+└──────────────┘          └──────────────┘
+       │                         │
+       └────────┬────────────────┘
+                ↓
+        All evaluated by LLM
+                ↓
+        Each gets risk_level (low/medium/high)
+                ↓
+        Each checked against its threshold
+                ↓
+        ANY failure → deployment blocked
+```
+
+Each agent file provides:
+- **Metadata** (YAML frontmatter): ID, display name, default threshold
+- **Instructions** (markdown body): What to evaluate and risk level criteria
+
+The LLM receives instructions for all enabled buckets in a single prompt and returns a risk assessment for each.
+
+### Example Agent File
+
+```markdown
+---
+id: compliance
+display_name: Compliance Review
+default_threshold: high
+---
+
+**Compliance Risk:**
+Evaluate whether the deployment changes comply with organizational
+policies including encryption requirements and network isolation.
+
+Risk levels for compliance:
+- high: Encryption disabled, public access enabled, data residency violations
+- medium: Policy changes, unapproved resource types
+- low: Tag updates, monitoring additions
+```
+
+### Threshold Control
+
+Custom agent thresholds work the same as built-in thresholds:
+
+```bash
+bicep-whatif-advisor --ci \
+  --agents-dir ./agents \
+  --agent-threshold compliance=medium \
+  --agent-threshold cost-review=low
+```
+
+If no `--agent-threshold` is specified, the `default_threshold` from the agent file is used (defaults to `high`).
+
+**For setup details,** see [USER_GUIDE.md - Custom Agents](./USER_GUIDE.md#custom-agents)
 
 ## Risk Levels
 
@@ -698,9 +775,11 @@ This lets you see the risk assessment before pushing.
 
 ### Q: Can I customize the risk guidelines?
 
-**A:** You cannot customize the guidelines directly, but you can:
+**A:** Yes! You can add **custom risk agents** as markdown files that define entirely new risk dimensions with your own guidelines and criteria. See [Custom Risk Agents](#custom-risk-agents) above.
 
-1. **Adjust thresholds** to change sensitivity
+You can also:
+
+1. **Adjust thresholds** to change sensitivity on built-in buckets
 2. **Choose different models** with different characteristics
 3. **Provide context** via PR descriptions
 

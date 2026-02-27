@@ -9,11 +9,13 @@ AI-powered deployment safety gate for Azure Bicep and ARM templates. Pipe Azure 
 
 ## How It Works
 
-Pipe Azure What-If output to the tool in your CI/CD pipeline. It auto-detects the platform, collects PR metadata and code diff, then sends everything to the LLM for analysis across three risk categories:
+Pipe Azure What-If output to the tool in your CI/CD pipeline. It auto-detects the platform, collects PR metadata and code diff, then sends everything to the LLM for analysis across three built-in risk categories:
 
 - **Infrastructure Drift** - Detects changes not in your code (out-of-band modifications)
 - **PR Intent Alignment** - Ensures changes match PR description
 - **Risky Operations** - Flags dangerous operations (deletions, security changes, downgrades)
+
+You can also add **custom risk assessment agents** via markdown files to evaluate additional dimensions like compliance, cost, or naming conventions. See [Custom Agents](#custom-agents) below.
 
 Known Azure What-If noise (etag, provisioningState, etc.) is filtered before LLM analysis. Results are posted as a PR comment and the pipeline exits with code 0 (safe) or 1 (unsafe) based on configurable thresholds.
 
@@ -88,6 +90,36 @@ bicep-whatif-advisor \
 ```
 
 Skip individual buckets with `--skip-drift`, `--skip-intent`, or `--skip-operations`.
+
+### Custom Agents
+
+Add custom risk assessment dimensions using markdown files with YAML frontmatter. Each file defines a new risk bucket that runs alongside the built-in ones:
+
+```markdown
+---
+id: compliance
+display_name: Compliance Review
+default_threshold: high
+---
+
+**Compliance Risk:**
+Evaluate whether changes comply with organizational policies.
+
+Risk levels for compliance:
+- high: Encryption disabled, public access enabled, data residency violations
+- medium: Policy assignment changes, unapproved resource types
+- low: Tag updates for compliance metadata, monitoring additions
+```
+
+Point the tool at a directory of agent files:
+
+```bash
+bicep-whatif-advisor --ci \
+  --agents-dir ./agents/ \
+  --agent-threshold compliance=medium
+```
+
+Custom agents support `--agent-threshold` for per-agent thresholds and `--skip-agent` to disable individual agents. See the [User Guide](docs/guides/USER_GUIDE.md#custom-agents) for details.
 
 ### LLM Providers
 

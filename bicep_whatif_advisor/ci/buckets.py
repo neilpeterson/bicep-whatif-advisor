@@ -13,6 +13,8 @@ class RiskBucket:
     description: str  # Brief description for help text
     prompt_instructions: str  # LLM prompt instructions for this bucket
     optional: bool = False  # True if bucket can be omitted (like intent when no PR metadata)
+    default_threshold: str = "high"  # Default threshold for custom agents
+    custom: bool = False  # True for custom agents loaded from markdown files
 
 
 # Central registry of all risk assessment buckets
@@ -93,6 +95,8 @@ def get_enabled_buckets(
     skip_intent: bool = False,
     skip_operations: bool = False,
     has_pr_metadata: bool = False,
+    custom_agent_ids: List[str] = None,
+    skip_agents: List[str] = None,
 ) -> List[str]:
     """Get list of enabled bucket IDs based on skip flags and context.
 
@@ -101,6 +105,8 @@ def get_enabled_buckets(
         skip_intent: True to disable intent bucket
         skip_operations: True to disable operations bucket
         has_pr_metadata: True if PR title/description available (controls intent bucket)
+        custom_agent_ids: List of registered custom agent IDs to include
+        skip_agents: List of custom agent IDs to skip
 
     Returns:
         List of bucket IDs that should be evaluated (e.g., ["drift", "operations"])
@@ -116,6 +122,13 @@ def get_enabled_buckets(
 
     if not skip_operations:
         enabled.append("operations")
+
+    # Append custom agents (respecting skip list)
+    if custom_agent_ids:
+        skip_set = set(skip_agents or [])
+        for agent_id in custom_agent_ids:
+            if agent_id not in skip_set:
+                enabled.append(agent_id)
 
     return enabled
 

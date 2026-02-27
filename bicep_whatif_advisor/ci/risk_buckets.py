@@ -25,6 +25,7 @@ def evaluate_risk_buckets(
     drift_threshold: str = "high",
     intent_threshold: str = "high",
     operations_threshold: str = "high",
+    custom_thresholds: Dict[str, str] = None,
 ) -> Tuple[bool, List[str], Dict[str, Any]]:
     """Evaluate enabled risk buckets and determine if deployment is safe.
 
@@ -39,6 +40,8 @@ def evaluate_risk_buckets(
         drift_threshold: Risk threshold for drift bucket (only used if enabled)
         intent_threshold: Risk threshold for intent bucket (only used if enabled)
         operations_threshold: Risk threshold for operations bucket (only used if enabled)
+        custom_thresholds: Dict mapping custom agent_id to threshold string.
+                          Falls back to bucket's default_threshold if not specified.
 
     Returns:
         Tuple of (is_safe: bool, failed_buckets: list, risk_assessment: dict)
@@ -56,12 +59,16 @@ def evaluate_risk_buckets(
             }
         return True, [], default_assessment
 
-    # Threshold map for each bucket
+    # Threshold map for built-in buckets
     thresholds = {
         "drift": drift_threshold,
         "intent": intent_threshold,
         "operations": operations_threshold,
     }
+
+    # Merge custom thresholds
+    if custom_thresholds:
+        thresholds.update(custom_thresholds)
 
     # Evaluate each enabled bucket
     failed_buckets = []
@@ -76,8 +83,14 @@ def evaluate_risk_buckets(
         # Get and validate risk level
         risk_level = _validate_risk_level(bucket_data.get("risk_level", "low"))
 
-        # Check against threshold
-        threshold = thresholds.get(bucket_id, "high")
+        # Check against threshold: explicit > bucket default > "high"
+        threshold = thresholds.get(bucket_id)
+        if threshold is None:
+            from .buckets import get_bucket
+
+            bucket = get_bucket(bucket_id)
+            threshold = bucket.default_threshold if bucket else "high"
+
         if _exceeds_threshold(risk_level, threshold):
             failed_buckets.append(bucket_id)
 

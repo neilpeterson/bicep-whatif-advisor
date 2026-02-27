@@ -72,3 +72,55 @@ class TestGetEnabledBuckets:
     def test_intent_not_enabled_without_pr_metadata_even_if_not_skipped(self):
         result = get_enabled_buckets(skip_intent=False, has_pr_metadata=False)
         assert "intent" not in result
+
+    def test_custom_agents_appended(self):
+        result = get_enabled_buckets(custom_agent_ids=["compliance", "cost"])
+        assert result == ["drift", "operations", "compliance", "cost"]
+
+    def test_custom_agents_with_skip(self):
+        result = get_enabled_buckets(
+            custom_agent_ids=["compliance", "cost"],
+            skip_agents=["cost"],
+        )
+        assert "compliance" in result
+        assert "cost" not in result
+
+    def test_custom_agents_all_skipped(self):
+        result = get_enabled_buckets(
+            custom_agent_ids=["compliance"],
+            skip_agents=["compliance"],
+        )
+        assert result == ["drift", "operations"]
+
+    def test_custom_agents_none_is_noop(self):
+        result = get_enabled_buckets(custom_agent_ids=None)
+        assert result == ["drift", "operations"]
+
+    def test_custom_agents_empty_list(self):
+        result = get_enabled_buckets(custom_agent_ids=[])
+        assert result == ["drift", "operations"]
+
+
+@pytest.mark.unit
+class TestRiskBucketFields:
+    def test_default_threshold_defaults_to_high(self):
+        bucket = RiskBucket(
+            id="test",
+            display_name="Test",
+            description="",
+            prompt_instructions="",
+        )
+        assert bucket.default_threshold == "high"
+
+    def test_custom_defaults_to_false(self):
+        bucket = RiskBucket(
+            id="test",
+            display_name="Test",
+            description="",
+            prompt_instructions="",
+        )
+        assert bucket.custom is False
+
+    def test_builtin_buckets_not_custom(self):
+        for bucket in RISK_BUCKETS.values():
+            assert bucket.custom is False
