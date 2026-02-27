@@ -3,7 +3,7 @@ id: cost
 display_name: Cost Impact
 default_threshold: high
 display: summary
-enabled: true
+enabled: False
 icon: "💰"
 ---
 
