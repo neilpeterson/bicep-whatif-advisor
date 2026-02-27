@@ -138,8 +138,7 @@ cat tests/fixtures/create_only.txt | bicep-whatif-advisor
 cat tests/fixtures/create_only.txt | bicep-whatif-advisor \
   --ci \
   --drift-threshold high \
-  --intent-threshold high \
-  --operations-threshold high
+  --intent-threshold high
 
 # Or run directly via Python module:
 cat tests/fixtures/create_only.txt | python -m bicep_whatif_advisor.cli
@@ -335,10 +334,10 @@ When implementing CI mode (`--ci` flag):
 2. Include source code context in prompt
 3. Return structured safety verdict with three-bucket risk assessment
 4. Post formatted markdown comments to GitHub/Azure DevOps PRs
-5. Exit with code 0 (safe) or 1 (unsafe) based on three independent thresholds:
+5. Exit with code 0 (safe) or 1 (unsafe) based on independent thresholds:
    - `--drift-threshold` (default: high)
    - `--intent-threshold` (default: high)
-   - `--operations-threshold` (default: high)
+   - `--agent-threshold operations=high` (bundled agent, default: high)
 
 **Environment variables for PR comments:**
 - GitHub: `GITHUB_TOKEN`, `GITHUB_REPOSITORY`, `GITHUB_PR_NUMBER`
@@ -351,7 +350,6 @@ cat whatif-output.txt | bicep-whatif-advisor \
   --diff-ref origin/main \
   --drift-threshold high \
   --intent-threshold high \
-  --operations-threshold high \
   --pr-title "Add monitoring resources" \
   --pr-description "This PR adds Application Insights diagnostics" \
   --post-comment
@@ -361,7 +359,7 @@ cat whatif-output.txt | bicep-whatif-advisor \
 - `--no-block`: Report findings without failing pipeline (exit code 0 even if unsafe)
 - `--skip-drift`: Skip infrastructure drift risk assessment (CI mode only)
 - `--skip-intent`: Skip PR intent alignment risk assessment (CI mode only)
-- `--skip-operations`: Skip risky operations risk assessment (CI mode only)
+- `--skip-agent operations`: Skip risky operations agent (CI mode only)
 
 **Noise filtering flags (all modes):**
 - `--noise-file`: Path to additional patterns file (additive with built-ins)
@@ -380,6 +378,9 @@ cat whatif-output.txt | bicep-whatif-advisor --ci --skip-drift
 
 # Skip intent assessment (useful for automated maintenance PRs)
 cat whatif-output.txt | bicep-whatif-advisor --ci --skip-intent
+
+# Skip the operations agent
+cat whatif-output.txt | bicep-whatif-advisor --ci --skip-agent operations
 
 # Only evaluate operations (skip drift and intent)
 cat whatif-output.txt | bicep-whatif-advisor --ci --skip-drift --skip-intent
