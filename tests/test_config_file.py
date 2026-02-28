@@ -1,7 +1,5 @@
 """Tests for --config-file CLI option."""
 
-import json
-
 import pytest
 import yaml
 from click.testing import CliRunner
@@ -283,7 +281,11 @@ class TestConfigFileCLI:
             main, ["--config-file", str(cfg)], input=WHATIF_INPUT
         )
         assert result.exit_code == 0
-        parsed = json.loads(result.output)
+        # CI mode prints a Rich banner to stdout before JSON, so use
+        # extract_json (same approach as test_cli.py) instead of json.loads.
+        from bicep_whatif_advisor.cli import extract_json
+
+        parsed = extract_json(result.output)
         assert "high_confidence" in parsed
 
     def test_missing_config_file_exits_error(self, clean_env):
