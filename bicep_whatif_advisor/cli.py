@@ -79,16 +79,13 @@ def _load_config_file(ctx, param, value):
 
     if not isinstance(config, dict):
         raise click.BadParameter(
-            "Config file must contain a YAML mapping (key: value),"
-            " not a list or scalar"
+            "Config file must contain a YAML mapping (key: value), not a list or scalar"
         )
 
     # Warn about unknown keys (non-fatal for forward compatibility)
     unknown = set(config.keys()) - _KNOWN_CONFIG_KEYS
     if unknown:
-        sys.stderr.write(
-            f"Warning: Unknown config keys ignored: {', '.join(sorted(unknown))}\n"
-        )
+        sys.stderr.write(f"Warning: Unknown config keys ignored: {', '.join(sorted(unknown))}\n")
         for key in unknown:
             del config[key]
 

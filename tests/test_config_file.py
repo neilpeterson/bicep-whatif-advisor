@@ -239,9 +239,7 @@ class TestConfigFileCLI:
         )
         cfg = tmp_path / "config.yaml"
         cfg.write_text("format: markdown\n")
-        result = runner.invoke(
-            main, ["--config-file", str(cfg)], input=WHATIF_INPUT
-        )
+        result = runner.invoke(main, ["--config-file", str(cfg)], input=WHATIF_INPUT)
         assert result.exit_code == 0
         assert "| #" in result.output  # markdown table
 
@@ -260,9 +258,7 @@ class TestConfigFileCLI:
         )
         cfg = tmp_path / "config.yaml"
         cfg.write_text("ci: true\ndrift_threshold: medium\nformat: json\n")
-        result = runner.invoke(
-            main, ["--config-file", str(cfg)], input=WHATIF_INPUT
-        )
+        result = runner.invoke(main, ["--config-file", str(cfg)], input=WHATIF_INPUT)
         assert result.exit_code == 0
 
     def test_config_enables_ci_mode(
@@ -277,9 +273,7 @@ class TestConfigFileCLI:
         mocker.patch("bicep_whatif_advisor.ci.diff.get_diff", return_value="diff")
         cfg = tmp_path / "config.yaml"
         cfg.write_text("ci: true\nformat: json\n")
-        result = runner.invoke(
-            main, ["--config-file", str(cfg)], input=WHATIF_INPUT
-        )
+        result = runner.invoke(main, ["--config-file", str(cfg)], input=WHATIF_INPUT)
         assert result.exit_code == 0
         # CI mode prints a Rich banner to stdout before JSON, so use
         # extract_json (same approach as test_cli.py) instead of json.loads.
@@ -301,22 +295,16 @@ class TestConfigFileCLI:
         runner = _make_runner()
         cfg = tmp_path / "bad.yaml"
         cfg.write_text("provider: [\ninvalid")
-        result = runner.invoke(
-            main, ["--config-file", str(cfg)], input=WHATIF_INPUT
-        )
+        result = runner.invoke(main, ["--config-file", str(cfg)], input=WHATIF_INPUT)
         assert result.exit_code != 0
 
-    def test_invalid_choice_in_config_exits_error(
-        self, clean_env, monkeypatch, tmp_path
-    ):
+    def test_invalid_choice_in_config_exits_error(self, clean_env, monkeypatch, tmp_path):
         """Invalid choice value in config is caught by Click."""
         runner = _make_runner()
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
         cfg = tmp_path / "config.yaml"
         cfg.write_text("provider: not-a-provider\n")
-        result = runner.invoke(
-            main, ["--config-file", str(cfg)], input=WHATIF_INPUT
-        )
+        result = runner.invoke(main, ["--config-file", str(cfg)], input=WHATIF_INPUT)
         assert result.exit_code != 0
 
     def test_config_sets_multiple_options(
@@ -330,13 +318,8 @@ class TestConfigFileCLI:
             return_value=_mock_provider(sample_standard_response),
         )
         cfg = tmp_path / "config.yaml"
-        cfg.write_text(
-            "provider: anthropic\nmodel: claude-haiku\n"
-            "format: json\nverbose: true\n"
-        )
-        result = runner.invoke(
-            main, ["--config-file", str(cfg)], input=WHATIF_INPUT
-        )
+        cfg.write_text("provider: anthropic\nmodel: claude-haiku\nformat: json\nverbose: true\n")
+        result = runner.invoke(main, ["--config-file", str(cfg)], input=WHATIF_INPUT)
         assert result.exit_code == 0
         mock_get.assert_called_once_with("anthropic", "claude-haiku")
 
@@ -352,9 +335,7 @@ class TestConfigFileCLI:
         )
         cfg = tmp_path / "config.yaml"
         cfg.write_text("verbose: true\nno_color: true\nformat: json\n")
-        result = runner.invoke(
-            main, ["--config-file", str(cfg)], input=WHATIF_INPUT
-        )
+        result = runner.invoke(main, ["--config-file", str(cfg)], input=WHATIF_INPUT)
         assert result.exit_code == 0
 
     def test_config_with_noise_threshold(
@@ -369,7 +350,5 @@ class TestConfigFileCLI:
         )
         cfg = tmp_path / "config.yaml"
         cfg.write_text("noise_threshold: 90\nformat: json\n")
-        result = runner.invoke(
-            main, ["--config-file", str(cfg)], input=WHATIF_INPUT
-        )
+        result = runner.invoke(main, ["--config-file", str(cfg)], input=WHATIF_INPUT)
         assert result.exit_code == 0
