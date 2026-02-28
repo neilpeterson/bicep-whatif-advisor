@@ -133,6 +133,19 @@ def _build_ci_system_prompt(
         bucket = RISK_BUCKETS[bucket_id]
         # Custom agents with table or list display get a findings array
         if bucket.custom and bucket.display in ("table", "list"):
+            # Use custom columns if defined, otherwise default columns
+            if bucket.columns:
+                cols = bucket.columns
+            else:
+                from .ci.agents import DEFAULT_FINDINGS_COLUMNS
+
+                cols = [
+                    {"key": c["name"].lower(), "description": c["description"]}
+                    for c in DEFAULT_FINDINGS_COLUMNS
+                ]
+            findings_fields = ",\n".join(
+                f'          "{c["key"]}": "string — {c["description"]}"' for c in cols
+            )
             risk_buckets_schema.append(f'''    "{bucket_id}": {{
       "risk_level": "low|medium|high",
       "concerns": ["array of specific concerns"],
@@ -140,9 +153,7 @@ def _build_ci_system_prompt(
       "reasoning": "explanation of risk assessment",
       "findings": [
         {{
-          "resource": "string — resource name from the What-If output",
-          "issue": "string — specific issue found",
-          "recommendation": "string — actionable recommendation"
+{findings_fields}
         }}
       ]
     }}''')
@@ -176,10 +187,19 @@ security or operational concerns. If no resources match the defined checks, retu
 risk_level "low" with an empty concerns array."""
         # Add findings instructions for custom agents with table/list display
         if bucket.custom and bucket.display in ("table", "list"):
+            if bucket.columns:
+                cols = bucket.columns
+            else:
+                from .ci.agents import DEFAULT_FINDINGS_COLUMNS
+
+                cols = [
+                    {"key": c["name"].lower(), "description": c["description"]}
+                    for c in DEFAULT_FINDINGS_COLUMNS
+                ]
+            col_descriptions = ", ".join(f'"{c["key"]}" ({c["description"]})' for c in cols)
             bucket_text += f"""
 For the "{bucket_id}" bucket, also populate the "findings" array with per-resource details.
-Each finding should have "resource" (the resource name from the What-If output),
-"issue" (specific issue found), and "recommendation" (actionable fix).
+Each finding should have {col_descriptions}.
 Include one finding per affected resource. If no issues found, return an empty array."""
         bucket_instructions_list.append(bucket_text)
 

@@ -111,6 +111,51 @@ class TestBuildSystemPrompt:
         finally:
             del RISK_BUCKETS["naming"]
 
+    def test_custom_columns_in_schema(self):
+        """Custom columns replace default resource/issue/recommendation in schema."""
+        from bicep_whatif_advisor.ci.buckets import RISK_BUCKETS, RiskBucket
+
+        RISK_BUCKETS["sfi"] = RiskBucket(
+            id="sfi",
+            display_name="Secure Infrastructure",
+            description="Custom agent",
+            prompt_instructions="Check SFI.",
+            custom=True,
+            display="table",
+            columns=[
+                {
+                    "name": "SFI ID and Name",
+                    "key": "sfi_id_and_name",
+                    "description": "from check title",
+                },
+                {
+                    "name": "Compliance Status",
+                    "key": "compliance_status",
+                    "description": "compliant or not",
+                },
+                {
+                    "name": "Applicable",
+                    "key": "applicable",
+                    "description": "true/false",
+                },
+            ],
+        )
+        try:
+            result = build_system_prompt(ci_mode=True, enabled_buckets=["sfi"])
+            # Custom column keys should appear
+            assert '"sfi_id_and_name"' in result
+            assert '"compliance_status"' in result
+            assert '"applicable"' in result
+            # Default columns should NOT appear
+            assert '"resource": "string' not in result
+            assert '"issue": "string' not in result
+            assert '"recommendation": "string' not in result
+            # Instructions should reference custom column keys
+            assert '"sfi_id_and_name" (from check title)' in result
+            assert '"compliance_status" (compliant or not)' in result
+        finally:
+            del RISK_BUCKETS["sfi"]
+
     def test_builtin_bucket_no_findings_in_schema(self):
         """Built-in buckets (drift) don't get findings in the schema."""
         result = build_system_prompt(ci_mode=True, enabled_buckets=["drift"])

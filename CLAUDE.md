@@ -84,7 +84,7 @@ bicep-whatif-advisor/             # Root directory
 │   │   ├── 09-PR-INTEGRATION.md
 │   │   ├── 10-GIT-DIFF.md
 │   │   ├── 11-TESTING-STRATEGY.md
-│   │   ├── 12-BACKLOG.md
+│   │   ├── 99-BACKLOG.md
 │   │   ├── 13-CUSTOM-AGENTS.md
 │   │   └── 14-AGENT-DISPLAY.md
 │   └── guides/             # User guides
@@ -272,7 +272,7 @@ Documentation is organized into two directories:
 - `09-PR-INTEGRATION.md` - GitHub & Azure DevOps PR comment posting
 - `10-GIT-DIFF.md` - Git diff collection for drift detection
 - `11-TESTING-STRATEGY.md` - Test architecture and fixtures
-- `12-BACKLOG.md` - Feature backlog and future enhancements
+- `99-BACKLOG.md` - Feature backlog and future enhancements
 - `13-CUSTOM-AGENTS.md` - Custom risk assessment agents
 - `14-AGENT-DISPLAY.md` - Per-agent collapsible detail sections
 

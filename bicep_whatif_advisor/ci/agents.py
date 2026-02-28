@@ -21,6 +21,29 @@ _VALID_ID_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
 _VALID_THRESHOLDS = {"low", "medium", "high"}
 _VALID_DISPLAY_MODES = {"summary", "table", "list"}
 
+# Default findings columns when no custom columns specified
+DEFAULT_FINDINGS_COLUMNS = [
+    {"name": "Resource", "description": "resource name from the What-If output"},
+    {"name": "Issue", "description": "specific issue found"},
+    {"name": "Recommendation", "description": "actionable recommendation"},
+]
+
+
+def _slugify(name: str) -> str:
+    """Convert a column display name to a JSON-safe key.
+
+    Lowercase, replace non-alphanumeric chars with underscores,
+    collapse consecutive underscores, strip leading/trailing underscores.
+
+    Examples:
+        "SFI ID and Name" → "sfi_id_and_name"
+        "Compliance Status" → "compliance_status"
+    """
+    key = name.lower()
+    key = re.sub(r"[^a-z0-9]", "_", key)
+    key = re.sub(r"_+", "_", key)
+    return key.strip("_")
+
 
 def _parse_frontmatter(content: str) -> Tuple[dict, str]:
     """Split markdown content into YAML frontmatter dict and body.
@@ -129,6 +152,44 @@ def parse_agent_file(file_path: Path) -> Optional[RiskBucket]:
 
     icon = str(metadata.get("icon", ""))
 
+    # Parse custom columns
+    columns = None
+    raw_columns = metadata.get("columns")
+    if raw_columns is not None:
+        if not isinstance(raw_columns, list):
+            raise ValueError(f"Agent file {file_path.name}: 'columns' must be a list of objects")
+        columns = []
+        seen_keys = set()
+        for i, entry in enumerate(raw_columns):
+            if not isinstance(entry, dict):
+                raise ValueError(
+                    f"Agent file {file_path.name}: columns[{i}] must be an object with 'name'"
+                )
+            col_name = entry.get("name")
+            if not col_name:
+                raise ValueError(
+                    f"Agent file {file_path.name}: columns[{i}] missing required 'name' field"
+                )
+            col_name = str(col_name)
+            col_key = _slugify(col_name)
+            if col_key in seen_keys:
+                raise ValueError(
+                    f"Agent file {file_path.name}: duplicate column key '{col_key}'"
+                    f" (from '{col_name}')"
+                )
+            seen_keys.add(col_key)
+            col_desc = str(entry.get("description", col_name))
+            columns.append({"name": col_name, "key": col_key, "description": col_desc})
+
+        if display not in ("table", "list") and columns:
+            import warnings
+
+            warnings.warn(
+                f"Agent '{agent_id}': 'columns' specified but display is '{display}'"
+                f" (columns only apply to table/list display)",
+                stacklevel=2,
+            )
+
     return RiskBucket(
         id=agent_id,
         display_name=str(display_name),
@@ -139,6 +200,7 @@ def parse_agent_file(file_path: Path) -> Optional[RiskBucket]:
         custom=True,
         display=display,
         icon=icon,
+        columns=columns,
     )
 
 

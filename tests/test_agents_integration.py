@@ -424,3 +424,103 @@ class TestAgentsCLIIntegration:
             input=WHATIF_INPUT,
         )
         assert result.exit_code == 1
+
+    def test_custom_columns_in_prompt_and_markdown(self, clean_env, monkeypatch, mocker, tmp_path):
+        """Custom columns from agent frontmatter appear in LLM prompt and markdown output."""
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+
+        agents_dir = tmp_path / "agents"
+        agents_dir.mkdir()
+        (agents_dir / "sfi.md").write_text(
+            "---\nid: sfi\n"
+            "display_name: Secure Infrastructure\n"
+            "default_threshold: high\n"
+            "display: table\n"
+            'icon: "\U0001f512"\n'
+            "columns:\n"
+            "  - name: SFI ID and Name\n"
+            "    description: taken from the title of each check\n"
+            "  - name: Compliance Status\n"
+            "    description: compliant or non-compliant\n"
+            "  - name: Applicable\n"
+            "    description: true / false\n"
+            "---\n"
+            "Check SFI compliance.\n"
+        )
+
+        response = {
+            "resources": [
+                {
+                    "resource_name": "storage1",
+                    "resource_type": "Storage/storageAccounts",
+                    "action": "Create",
+                    "summary": "Creates storage",
+                    "risk_level": "low",
+                    "risk_reason": None,
+                    "confidence_level": "high",
+                    "confidence_reason": "Real creation",
+                },
+            ],
+            "overall_summary": "1 create",
+            "risk_assessment": {
+                "drift": {
+                    "risk_level": "low",
+                    "concerns": [],
+                    "concern_summary": "None",
+                    "reasoning": "ok",
+                },
+                "sfi": {
+                    "risk_level": "medium",
+                    "concerns": ["non-compliant resource"],
+                    "concern_summary": "Storage account not compliant",
+                    "reasoning": "SFI issues found.",
+                    "findings": [
+                        {
+                            "sfi_id_and_name": "[SFI-ID4.2.1] Storage Accounts",
+                            "compliance_status": "non-compliant",
+                            "applicable": "true",
+                        }
+                    ],
+                },
+            },
+            "verdict": {
+                "safe": True,
+                "highest_risk_bucket": "sfi",
+                "overall_risk_level": "medium",
+                "reasoning": "SFI issues found but not blocking.",
+            },
+        }
+
+        provider = MockProvider(response)
+        mocker.patch(
+            "bicep_whatif_advisor.cli.get_provider",
+            return_value=provider,
+        )
+        mocker.patch(
+            "bicep_whatif_advisor.ci.diff.get_diff",
+            return_value="diff content",
+        )
+
+        result = _runner().invoke(
+            main,
+            [
+                "--ci",
+                "--format",
+                "markdown",
+                "--agents-dir",
+                str(agents_dir),
+            ],
+            input=WHATIF_INPUT,
+        )
+        assert result.exit_code == 0
+
+        # Verify custom columns in LLM prompt
+        system_prompt = provider.calls[0][0]
+        assert '"sfi_id_and_name"' in system_prompt
+        assert '"compliance_status"' in system_prompt
+        assert '"applicable"' in system_prompt
+
+        # Verify custom columns in rendered markdown
+        assert "| SFI ID and Name | Compliance Status | Applicable |" in result.output
+        assert "[SFI-ID4.2.1] Storage Accounts" in result.output
+        assert "non-compliant" in result.output
