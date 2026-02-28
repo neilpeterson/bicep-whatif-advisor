@@ -354,22 +354,48 @@ def _render_agent_detail_sections(data: dict, platform: str = None) -> list:
         findings = bucket_data.get("findings", [])
 
         if bucket.display == "table" and findings:
-            lines.append("| Resource | Issue | Recommendation |")
-            lines.append("|----------|-------|----------------|")
+            # Use custom columns if defined, otherwise defaults
+            if bucket.columns:
+                cols = bucket.columns
+            else:
+                from .ci.agents import DEFAULT_FINDINGS_COLUMNS
+
+                cols = [
+                    {"name": c["name"], "key": c["name"].lower()} for c in DEFAULT_FINDINGS_COLUMNS
+                ]
+            header = "| " + " | ".join(c["name"] for c in cols) + " |"
+            separator = "|" + "|".join("---" for _ in cols) + "|"
+            lines.append(header)
+            lines.append(separator)
             for finding in findings:
-                resource = finding.get("resource", "").replace("|", "\\|")
-                issue = finding.get("issue", "").replace("|", "\\|")
-                recommendation = finding.get("recommendation", "").replace("|", "\\|")
-                lines.append(f"| {resource} | {issue} | {recommendation} |")
+                cells = [finding.get(c["key"], "").replace("|", "\\|") for c in cols]
+                lines.append("| " + " | ".join(cells) + " |")
             lines.append("")
         elif bucket.display == "list" and findings:
+            # Use custom columns if defined, otherwise defaults
+            if bucket.columns:
+                cols = bucket.columns
+            else:
+                from .ci.agents import DEFAULT_FINDINGS_COLUMNS
+
+                cols = [
+                    {"name": c["name"], "key": c["name"].lower()} for c in DEFAULT_FINDINGS_COLUMNS
+                ]
             for finding in findings:
-                resource = finding.get("resource", "")
-                issue = finding.get("issue", "")
-                recommendation = finding.get("recommendation", "")
-                lines.append(f"- **{resource}**: {issue}")
-                if recommendation:
-                    lines.append(f"  - Recommendation: {recommendation}")
+                # First column is bold header, rest are sub-items
+                first_key = cols[0]["key"]
+                first_val = finding.get(first_key, "")
+                remaining = cols[1:]
+                if remaining:
+                    second_key = remaining[0]["key"]
+                    second_val = finding.get(second_key, "")
+                    lines.append(f"- **{first_val}**: {second_val}")
+                    for c in remaining[1:]:
+                        val = finding.get(c["key"], "")
+                        if val:
+                            lines.append(f"  - {c['name']}: {val}")
+                else:
+                    lines.append(f"- **{first_val}**")
             lines.append("")
         else:
             # summary mode, or table/list with empty findings — fall back to reasoning

@@ -4,6 +4,7 @@ import pytest
 
 from bicep_whatif_advisor.ci.agents import (
     _parse_frontmatter,
+    _slugify,
     get_custom_agent_ids,
     load_agents_from_directory,
     parse_agent_file,
@@ -345,3 +346,136 @@ class TestGetCustomAgentIds:
     def test_empty_when_no_custom(self):
         ids = get_custom_agent_ids()
         assert ids == []
+
+
+# -------------------------------------------------------------------
+# _slugify
+# -------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestSlugify:
+    def test_basic_name(self):
+        assert _slugify("Resource") == "resource"
+
+    def test_multi_word(self):
+        assert _slugify("SFI ID and Name") == "sfi_id_and_name"
+
+    def test_special_characters(self):
+        assert _slugify("Compliance Status") == "compliance_status"
+
+    def test_consecutive_specials_collapsed(self):
+        assert _slugify("a--b  c") == "a_b_c"
+
+    def test_leading_trailing_stripped(self):
+        assert _slugify(" foo ") == "foo"
+
+    def test_mixed_case(self):
+        assert _slugify("Applicable") == "applicable"
+
+    def test_numbers_preserved(self):
+        assert _slugify("SFI-ID4.2.2") == "sfi_id4_2_2"
+
+
+# -------------------------------------------------------------------
+# Column parsing in parse_agent_file
+# -------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestAgentColumns:
+    def test_columns_parsed(self, tmp_path):
+        agent_file = tmp_path / "test.md"
+        agent_file.write_text(
+            "---\nid: test\ndisplay_name: Test\ndisplay: table\n"
+            "columns:\n"
+            "  - name: SFI ID and Name\n"
+            "    description: taken from check title\n"
+            "  - name: Compliance Status\n"
+            "    description: compliant or non-compliant\n"
+            "---\nBody"
+        )
+        bucket = parse_agent_file(agent_file)
+        assert bucket.columns is not None
+        assert len(bucket.columns) == 2
+        assert bucket.columns[0]["name"] == "SFI ID and Name"
+        assert bucket.columns[0]["key"] == "sfi_id_and_name"
+        assert bucket.columns[0]["description"] == "taken from check title"
+        assert bucket.columns[1]["key"] == "compliance_status"
+
+    def test_columns_none_when_not_specified(self, tmp_path):
+        agent_file = tmp_path / "test.md"
+        agent_file.write_text("---\nid: test\ndisplay_name: Test\ndisplay: table\n---\nBody")
+        bucket = parse_agent_file(agent_file)
+        assert bucket.columns is None
+
+    def test_columns_description_defaults_to_name(self, tmp_path):
+        agent_file = tmp_path / "test.md"
+        agent_file.write_text(
+            "---\nid: test\ndisplay_name: Test\ndisplay: table\n"
+            "columns:\n"
+            "  - name: Resource\n"
+            "---\nBody"
+        )
+        bucket = parse_agent_file(agent_file)
+        assert bucket.columns[0]["description"] == "Resource"
+
+    def test_duplicate_column_key_raises(self, tmp_path):
+        agent_file = tmp_path / "test.md"
+        agent_file.write_text(
+            "---\nid: test\ndisplay_name: Test\ndisplay: table\n"
+            "columns:\n"
+            "  - name: Foo Bar\n"
+            "  - name: Foo-Bar\n"
+            "---\nBody"
+        )
+        with pytest.raises(ValueError, match="duplicate column key"):
+            parse_agent_file(agent_file)
+
+    def test_column_missing_name_raises(self, tmp_path):
+        agent_file = tmp_path / "test.md"
+        agent_file.write_text(
+            "---\nid: test\ndisplay_name: Test\ndisplay: table\n"
+            "columns:\n"
+            "  - description: no name here\n"
+            "---\nBody"
+        )
+        with pytest.raises(ValueError, match="missing required 'name'"):
+            parse_agent_file(agent_file)
+
+    def test_columns_not_a_list_raises(self, tmp_path):
+        agent_file = tmp_path / "test.md"
+        agent_file.write_text(
+            "---\nid: test\ndisplay_name: Test\ndisplay: table\ncolumns: not-a-list\n---\nBody"
+        )
+        with pytest.raises(ValueError, match="must be a list"):
+            parse_agent_file(agent_file)
+
+    def test_columns_with_summary_display_warns(self, tmp_path):
+        agent_file = tmp_path / "test.md"
+        agent_file.write_text(
+            "---\nid: test\ndisplay_name: Test\ndisplay: summary\n"
+            "columns:\n"
+            "  - name: Resource\n"
+            "---\nBody"
+        )
+        import warnings
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            bucket = parse_agent_file(agent_file)
+            assert bucket.columns is not None
+            assert len(w) == 1
+            assert "columns only apply to table/list" in str(w[0].message)
+
+    def test_sfi_infra_fixture_has_columns(self):
+        """The sfi-infra.md fixture should parse with custom columns."""
+        from pathlib import Path
+
+        fixture = Path(__file__).parent / "agents" / "sfi-infra.md"
+        bucket = parse_agent_file(fixture)
+        assert bucket.columns is not None
+        assert len(bucket.columns) == 3
+        assert bucket.columns[0]["key"] == "sfi_id_and_name"
+        assert bucket.columns[1]["key"] == "compliance_status"
+        assert bucket.columns[2]["key"] == "applicable"

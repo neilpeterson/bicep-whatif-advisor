@@ -390,6 +390,94 @@ class TestAgentDetailSections:
         assert "storageaccount1" in md
         assert "No CAF prefix" in md
 
+    def test_custom_columns_table_rendering(self):
+        """Custom columns should be used as table headers when defined."""
+        from bicep_whatif_advisor.ci.buckets import RISK_BUCKETS, RiskBucket
+
+        RISK_BUCKETS["sfi"] = RiskBucket(
+            id="sfi",
+            display_name="Secure Infrastructure",
+            description="Custom agent",
+            prompt_instructions="Check SFI.",
+            custom=True,
+            display="table",
+            icon="\U0001f512",
+            columns=[
+                {"name": "SFI ID and Name", "key": "sfi_id_and_name", "description": "check title"},
+                {"name": "Compliance Status", "key": "compliance_status", "description": "status"},
+                {"name": "Applicable", "key": "applicable", "description": "true/false"},
+            ],
+        )
+        try:
+            data = {
+                "_enabled_buckets": ["sfi"],
+                "risk_assessment": {
+                    "sfi": {
+                        "risk_level": "medium",
+                        "concerns": ["non-compliant resources"],
+                        "reasoning": "Issues found.",
+                        "findings": [
+                            {
+                                "sfi_id_and_name": "[SFI-ID4.2.2] SQL DB",
+                                "compliance_status": "non-compliant",
+                                "applicable": "true",
+                            }
+                        ],
+                    },
+                },
+            }
+            lines = _render_agent_detail_sections(data)
+            md = "\n".join(lines)
+            assert "| SFI ID and Name | Compliance Status | Applicable |" in md
+            assert "[SFI-ID4.2.2] SQL DB" in md
+            assert "non-compliant" in md
+            # Default column names should NOT appear
+            assert "| Resource | Issue | Recommendation |" not in md
+        finally:
+            del RISK_BUCKETS["sfi"]
+
+    def test_custom_columns_list_rendering(self):
+        """Custom columns should be used in list display mode."""
+        from bicep_whatif_advisor.ci.buckets import RISK_BUCKETS, RiskBucket
+
+        RISK_BUCKETS["sfi_list"] = RiskBucket(
+            id="sfi_list",
+            display_name="SFI List",
+            description="Custom agent",
+            prompt_instructions="Check SFI.",
+            custom=True,
+            display="list",
+            columns=[
+                {"name": "SFI ID and Name", "key": "sfi_id_and_name", "description": "check title"},
+                {"name": "Compliance Status", "key": "compliance_status", "description": "status"},
+                {"name": "Applicable", "key": "applicable", "description": "true/false"},
+            ],
+        )
+        try:
+            data = {
+                "_enabled_buckets": ["sfi_list"],
+                "risk_assessment": {
+                    "sfi_list": {
+                        "risk_level": "medium",
+                        "concerns": ["issues"],
+                        "reasoning": "Issues found.",
+                        "findings": [
+                            {
+                                "sfi_id_and_name": "[SFI-NS2.1] IP Allocations",
+                                "compliance_status": "non-compliant",
+                                "applicable": "true",
+                            }
+                        ],
+                    },
+                },
+            }
+            lines = _render_agent_detail_sections(data)
+            md = "\n".join(lines)
+            assert "- **[SFI-NS2.1] IP Allocations**: non-compliant" in md
+            assert "  - Applicable: true" in md
+        finally:
+            del RISK_BUCKETS["sfi_list"]
+
     def test_custom_agent_list_collapsible(self):
         from bicep_whatif_advisor.ci.buckets import RISK_BUCKETS, RiskBucket
 

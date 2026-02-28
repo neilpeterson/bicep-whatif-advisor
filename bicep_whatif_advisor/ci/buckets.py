@@ -17,6 +17,7 @@ class RiskBucket:
     custom: bool = False  # True for custom agents loaded from markdown files
     display: str = "summary"  # "summary", "table", or "list" — collapsible detail mode
     icon: str = ""  # Emoji for collapsible header (e.g., "💰")
+    columns: list = None  # Custom column definitions for table/list display
 
 
 # Central registry of all risk assessment buckets
