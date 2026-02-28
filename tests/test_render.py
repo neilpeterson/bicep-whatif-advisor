@@ -257,6 +257,68 @@ class TestRenderMarkdown:
         md = render_markdown(data, whatif_content=raw)
         assert "```\n" + raw + "\n```" in md
 
+    def test_agent_risk_table_separate_section(self):
+        """Custom agents should appear in a separate 'Agent Risk Assessments' section."""
+        from bicep_whatif_advisor.ci.buckets import RISK_BUCKETS, RiskBucket
+
+        RISK_BUCKETS["secure_infra"] = RiskBucket(
+            id="secure_infra",
+            display_name="Secure Infrastructure",
+            description="Custom agent",
+            prompt_instructions="Check security.",
+            custom=True,
+            display="summary",
+            icon="\U0001f512",
+        )
+        try:
+            data = {
+                "resources": [],
+                "overall_summary": "",
+                "_enabled_buckets": ["drift", "secure_infra"],
+                "risk_assessment": {
+                    "drift": {
+                        "risk_level": "low",
+                        "concerns": [],
+                        "reasoning": "ok",
+                        "concern_summary": "None",
+                    },
+                    "secure_infra": {
+                        "risk_level": "medium",
+                        "concerns": ["open ports"],
+                        "reasoning": "Issues found.",
+                        "concern_summary": "Open ports detected.",
+                    },
+                },
+                "verdict": {"safe": True, "reasoning": "ok"},
+            }
+            md = render_markdown(data, ci_mode=True)
+            # Built-in bucket in top table
+            assert "| Infrastructure Drift | Low | None |" in md
+            # Custom agent in separate section
+            assert "### Agent Risk Assessments" in md
+            assert "| Secure Infrastructure | Medium | Open ports detected. |" in md
+            # Custom agent should NOT be in the top table
+            top_table_end = md.index("**Summary:**") if "**Summary:**" in md else md.index("<details>")
+            top_section = md[:top_table_end]
+            assert "Secure Infrastructure" not in top_section
+        finally:
+            del RISK_BUCKETS["secure_infra"]
+
+    def test_no_agent_section_without_custom_agents(self):
+        """No 'Agent Risk Assessments' section when only built-in buckets exist."""
+        data = {
+            "resources": [],
+            "overall_summary": "",
+            "_enabled_buckets": ["drift", "intent"],
+            "risk_assessment": {
+                "drift": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
+                "intent": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
+            },
+            "verdict": {"safe": True, "reasoning": "ok"},
+        }
+        md = render_markdown(data, ci_mode=True)
+        assert "### Agent Risk Assessments" not in md
+
     def test_footer_in_ci_mode(self):
         data = {"resources": [], "overall_summary": "", "verdict": {}}
         md = render_markdown(data, ci_mode=True)

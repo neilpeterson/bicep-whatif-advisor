@@ -461,7 +461,7 @@ def render_markdown(
         lines.append(f"## {title}")
         lines.append("")
 
-        # Add risk bucket summary (without heading label)
+        # Add risk bucket summary - built-in buckets only (drift, intent)
         risk_assessment = data.get("risk_assessment", {})
         if risk_assessment:
             from .ci.buckets import RISK_BUCKETS
@@ -471,20 +471,27 @@ def render_markdown(
             if enabled_buckets is None:
                 enabled_buckets = list(risk_assessment.keys())
 
-            lines.append("| Risk Assessment | Risk Level | Key Concerns |")
-            lines.append("|-----------------|------------|--------------|")
+            # Only show built-in (non-custom) buckets in the top table
+            builtin_buckets = [
+                b for b in enabled_buckets if not RISK_BUCKETS[b].custom
+            ]
 
-            # Render enabled buckets dynamically
-            for bucket_id in enabled_buckets:
-                bucket = RISK_BUCKETS[bucket_id]
-                bucket_data = risk_assessment.get(bucket_id, {})
+            if builtin_buckets:
+                lines.append("| Risk Assessment | Risk Level | Key Concerns |")
+                lines.append("|-----------------|------------|--------------|")
 
-                if bucket_data:
-                    risk_level = bucket_data.get("risk_level", "low").capitalize()
-                    concern_text = bucket_data.get("concern_summary") or "None"
-                    lines.append(f"| {bucket.display_name} | {risk_level} | {concern_text} |")
+                for bucket_id in builtin_buckets:
+                    bucket = RISK_BUCKETS[bucket_id]
+                    bucket_data = risk_assessment.get(bucket_id, {})
 
-            lines.append("")
+                    if bucket_data:
+                        risk_level = bucket_data.get("risk_level", "low").capitalize()
+                        concern_text = bucket_data.get("concern_summary") or "None"
+                        lines.append(
+                            f"| {bucket.display_name} | {risk_level} | {concern_text} |"
+                        )
+
+                lines.append("")
 
     # Overall summary (after risk assessment table)
     overall_summary = data.get("overall_summary", "")
@@ -574,6 +581,36 @@ def render_markdown(
         if platform != "github":
             lines.append("<br>")
             lines.append("")
+
+    # Agent risk assessment section (custom agents only, CI mode)
+    if ci_mode:
+        risk_assessment = data.get("risk_assessment", {})
+        if risk_assessment:
+            from .ci.buckets import RISK_BUCKETS
+
+            enabled_buckets = data.get("_enabled_buckets") or list(risk_assessment.keys())
+            custom_buckets = [b for b in enabled_buckets if RISK_BUCKETS[b].custom]
+
+            if custom_buckets:
+                lines.append("---")
+                lines.append("")
+                lines.append("### Agent Risk Assessments")
+                lines.append("")
+                lines.append("| Agent | Risk Level | Key Concerns |")
+                lines.append("|-------|------------|--------------|")
+
+                for bucket_id in custom_buckets:
+                    bucket = RISK_BUCKETS[bucket_id]
+                    bucket_data = risk_assessment.get(bucket_id, {})
+
+                    if bucket_data:
+                        risk_level = bucket_data.get("risk_level", "low").capitalize()
+                        concern_text = bucket_data.get("concern_summary") or "None"
+                        lines.append(
+                            f"| {bucket.display_name} | {risk_level} | {concern_text} |"
+                        )
+
+                lines.append("")
 
     # Custom agent detail sections (collapsible)
     lines.extend(_render_agent_detail_sections(data, platform))
