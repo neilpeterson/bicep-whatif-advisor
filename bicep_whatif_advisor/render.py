@@ -406,9 +406,8 @@ def _render_agent_detail_sections(data: dict, platform: str = None) -> list:
 
         lines.append("</details>")
         lines.append("")
-        if platform != "github":
-            lines.append("<br>")
-            lines.append("")
+        lines.append("<br>")
+        lines.append("")
 
     return lines
 
@@ -491,6 +490,8 @@ def render_markdown(
     if overall_summary:
         lines.append(f"**Summary:** {overall_summary}")
         lines.append("")
+        lines.append("<br>")
+        lines.append("")
 
     # Collapsible section for resource changes with high confidence label and count
     resource_count = len(data.get("resources", []))
@@ -532,11 +533,8 @@ def render_markdown(
     lines.append("")
     lines.append("</details>")
     lines.append("")
-    # Azure DevOps needs an explicit <br> for spacing between collapsible sections;
-    # GitHub already adds sufficient spacing from the blank line alone.
-    if platform != "github":
-        lines.append("<br>")
-        lines.append("")
+    lines.append("<br>")
+    lines.append("")
 
     # Add collapsible noise section for low-confidence resources
     if low_confidence_data and low_confidence_data.get("resources"):
@@ -569,11 +567,8 @@ def render_markdown(
         lines.append("")
         lines.append("</details>")
         lines.append("")
-        # Azure DevOps needs an explicit <br> for spacing between
-        # collapsible sections; GitHub handles it with blank lines.
-        if platform != "github":
-            lines.append("<br>")
-            lines.append("")
+        lines.append("<br>")
+        lines.append("")
 
     # Custom agent detail sections (collapsible)
     lines.extend(_render_agent_detail_sections(data, platform))
@@ -588,6 +583,8 @@ def render_markdown(
         lines.append("```")
         lines.append("")
         lines.append("</details>")
+        lines.append("")
+        lines.append("<br>")
         lines.append("")
 
     # CI verdict

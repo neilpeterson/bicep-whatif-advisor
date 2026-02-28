@@ -184,8 +184,8 @@ class TestRenderMarkdown:
         assert "Infrastructure Drift" in md
         assert "PR Intent Alignment" in md
 
-    def test_github_no_br_between_details(self):
-        """GitHub platform should not include <br> between collapsible sections."""
+    def test_github_br_between_details(self):
+        """GitHub platform should include <br> between collapsible sections."""
         data = {"resources": [], "overall_summary": ""}
         low = {
             "resources": [
@@ -198,9 +198,8 @@ class TestRenderMarkdown:
             ]
         }
         md = render_markdown(data, low_confidence_data=low, platform="github")
-        # Should have both details sections but no <br> between them
         assert md.count("<details>") == 2
-        assert "<br>" not in md
+        assert "<br>" in md
 
     def test_azuredevops_br_between_details(self):
         """Azure DevOps platform should include <br> between collapsible sections."""
@@ -544,7 +543,8 @@ class TestAgentDetailSections:
         assert "All names follow CAF convention." in md
         assert "| Resource |" not in md
 
-    def test_github_no_br_in_agent_sections(self):
+    def test_github_br_in_agent_sections(self):
+        """GitHub platform should include <br> between agent collapsible sections."""
         data = {
             "_enabled_buckets": ["cost"],
             "risk_assessment": {
@@ -557,7 +557,7 @@ class TestAgentDetailSections:
         }
         lines = _render_agent_detail_sections(data, platform="github")
         md = "\n".join(lines)
-        assert "<br>" not in md
+        assert "<br>" in md
 
     def test_azuredevops_br_in_agent_sections(self):
         data = {
