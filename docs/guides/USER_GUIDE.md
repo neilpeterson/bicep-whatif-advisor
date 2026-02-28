@@ -11,6 +11,7 @@ Complete guide to using `bicep-whatif-advisor` for local development and underst
 - [Installation](#installation)
 - [Basic Usage](#basic-usage)
 - [Output Formats](#output-formats)
+- [Config File](#config-file)
 - [Noise Filtering](#noise-filtering)
 - [Custom Agents](#custom-agents)
 - [Operating Modes](#operating-modes)
@@ -181,6 +182,76 @@ az deployment group what-if ... | bicep-whatif-advisor --format markdown
 
 **Summary:** This deployment creates 1 new resource
 ```
+
+---
+
+## Config File
+
+Instead of passing many CLI flags, you can define settings in a YAML config file. CLI flags always take precedence over config file values.
+
+### Usage
+
+```bash
+# Use a config file
+az deployment group what-if ... | bicep-whatif-advisor --config-file config.yaml
+
+# CLI flags override config values
+az deployment group what-if ... | bicep-whatif-advisor --config-file config.yaml --provider anthropic
+```
+
+### Example Config File
+
+```yaml
+# Provider settings
+provider: azure-openai
+model: gpt-4
+
+# Output settings
+format: markdown
+verbose: true
+no_color: false
+
+# CI mode
+ci: true
+diff_ref: origin/main
+drift_threshold: medium
+intent_threshold: high
+skip_drift: false
+skip_intent: false
+
+# PR/Context
+pr_title: "Add monitoring resources"
+pr_description: "This PR adds diagnostics"
+bicep_dir: ./infrastructure
+
+# Comment/Output control
+post_comment: true
+no_block: false
+comment_title: "Deployment Safety Review"
+include_whatif: true
+
+# Custom agents
+agents_dir: ./agents
+agent_threshold:
+  - "compliance=medium"
+  - "cost-review=low"
+skip_agent:
+  - "naming-conventions"
+
+# Noise filtering
+noise_file: ./noise-patterns.txt
+noise_threshold: 85
+no_builtin_patterns: false
+```
+
+### Key Details
+
+- **Keys use underscores** matching Python parameter names (e.g., `drift_threshold`, not `drift-threshold`)
+- **CLI flags always win** — config values act as defaults
+- **Empty files** are silently ignored
+- **Unknown keys** produce a stderr warning but are not errors (forward compatibility)
+- **List values** (`agent_threshold`, `skip_agent`) use YAML list syntax
+- **Boolean flags** like `ci: true` enable CI mode; use a different config file to change
 
 ---
 
@@ -449,6 +520,7 @@ az deployment group what-if ... | bicep-whatif-advisor --ci --diff-ref origin/ma
 |------|-------------|---------|
 | `--version` | Show version and exit | - |
 | `--help` | Show help message | - |
+| `--config-file` | Path to YAML config file (CLI flags override config values) | - |
 | `--verbose`, `-v` | Show property-level changes for Modify actions | `false` |
 | `--no-color` | Disable colored output | `false` |
 

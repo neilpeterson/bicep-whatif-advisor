@@ -595,6 +595,41 @@ Deployment is blocked if **any** bucket (built-in or custom) exceeds its thresho
 
 ## Advanced Features
 
+### Config File
+
+Instead of long flag lists in pipeline YAML, define settings in a config file checked into your repo:
+
+**`whatif-config.yaml`:**
+```yaml
+ci: true
+drift_threshold: medium
+intent_threshold: high
+post_comment: true
+include_whatif: true
+agents_dir: ./agents
+agent_threshold:
+  - "compliance=medium"
+```
+
+**GitHub Actions:**
+```yaml
+- run: |
+    az deployment group what-if ... \
+      | bicep-whatif-advisor --config-file whatif-config.yaml
+```
+
+**Azure DevOps:**
+```yaml
+inlineScript: |
+  az deployment group what-if ... \
+    | bicep-whatif-advisor --config-file whatif-config.yaml
+```
+
+CLI flags still override config values, so you can use a shared config with per-environment overrides:
+```bash
+bicep-whatif-advisor --config-file whatif-config.yaml --comment-title "Production"
+```
+
 ### Multi-Environment Labeling (`--comment-title`)
 
 When running the tool against multiple environments in the same pipeline (dev, staging, production), use `--comment-title` to distinguish PR comments:

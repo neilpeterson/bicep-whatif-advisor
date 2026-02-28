@@ -133,6 +133,22 @@ pip install bicep-whatif-advisor[ollama]
 bicep-whatif-advisor --provider ollama --model llama3.1
 ```
 
+### Config File
+
+Define settings in a YAML file instead of passing many CLI flags. CLI flags always override config values:
+
+```yaml
+# whatif-config.yaml
+provider: azure-openai
+ci: true
+drift_threshold: medium
+agents_dir: ./agents
+```
+
+```bash
+bicep-whatif-advisor --config-file whatif-config.yaml
+```
+
 ### Additional Options
 
 ```bash

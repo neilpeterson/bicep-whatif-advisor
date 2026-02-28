@@ -1,0 +1,68 @@
+# bicep-whatif-advisor config file
+# Used by bicep-sample-pipeline.yml — CLI flags override these values.
+# Keys use underscores matching Python parameter names (e.g., drift_threshold).
+
+# ---------------------------------------------------------------------------
+# Provider settings
+# ---------------------------------------------------------------------------
+# provider: anthropic           # LLM provider: anthropic, azure-openai, ollama
+# model: claude-sonnet-4-20250514  # Override the default model for the provider
+
+# ---------------------------------------------------------------------------
+# Output settings
+# ---------------------------------------------------------------------------
+# format: table                 # Output format: table, json, markdown
+# verbose: false                # Include property-level change details
+# no_color: false               # Disable colored output
+
+# ---------------------------------------------------------------------------
+# CI mode
+# ---------------------------------------------------------------------------
+# ci: false                     # Enable CI mode with risk assessment
+# diff: null                    # Path to git diff file
+# diff_ref: HEAD~1              # Git reference to diff against
+
+# ---------------------------------------------------------------------------
+# Risk thresholds
+# ---------------------------------------------------------------------------
+# drift_threshold: high         # Fail if drift risk >= threshold: low, medium, high
+# intent_threshold: high        # Fail if intent risk >= threshold: low, medium, high
+# skip_drift: false             # Skip infrastructure drift risk assessment
+# skip_intent: false            # Skip PR intent alignment risk assessment
+
+# ---------------------------------------------------------------------------
+# PR integration
+# ---------------------------------------------------------------------------
+# post_comment: false           # Post summary as PR comment
+# pr_url: null                  # PR URL for posting comments (auto-detected)
+# pr_title: null                # PR title for intent analysis (auto-detected)
+# pr_description: null          # PR description for intent analysis (auto-detected)
+
+# ---------------------------------------------------------------------------
+# Output control
+# ---------------------------------------------------------------------------
+no_block: true
+comment_title: "What-If Summary"
+include_whatif: true
+
+# ---------------------------------------------------------------------------
+# Source context
+# ---------------------------------------------------------------------------
+bicep_dir: tests/sample-bicep-deployment/
+
+# ---------------------------------------------------------------------------
+# Custom agents
+# ---------------------------------------------------------------------------
+agents_dir: tests/agents/
+# agent_threshold:              # Per-agent threshold overrides (list of id=level)
+#   - "compliance=medium"
+#   - "cost-review=low"
+# skip_agent:                   # Skip specific custom agents by ID
+#   - "naming-conventions"
+
+# ---------------------------------------------------------------------------
+# Noise filtering
+# ---------------------------------------------------------------------------
+noise_file: tests/sample-bicep-deployment/.whatif-noise
+# noise_threshold: 80           # Similarity % for fuzzy: prefix patterns (0-100)
+# no_builtin_patterns: false    # Disable the bundled Azure What-If noise patterns
