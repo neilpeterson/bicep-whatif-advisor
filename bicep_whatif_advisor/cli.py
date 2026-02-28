@@ -6,6 +6,7 @@ import sys
 from typing import Optional
 
 import click
+import yaml
 
 from . import __version__
 from .ci.platform import detect_platform
@@ -20,6 +21,80 @@ from .noise_filter import (
 from .prompt import build_system_prompt, build_user_prompt
 from .providers import get_provider
 from .render import print_banner, render_json, render_markdown, render_table
+
+# Keys recognized in the config file (must match Click parameter names)
+_KNOWN_CONFIG_KEYS = {
+    "provider",
+    "model",
+    "format",
+    "verbose",
+    "no_color",
+    "ci",
+    "diff",
+    "diff_ref",
+    "drift_threshold",
+    "intent_threshold",
+    "post_comment",
+    "pr_url",
+    "bicep_dir",
+    "pr_title",
+    "pr_description",
+    "no_block",
+    "skip_drift",
+    "skip_intent",
+    "comment_title",
+    "noise_file",
+    "noise_threshold",
+    "no_builtin_patterns",
+    "include_whatif",
+    "agents_dir",
+    "agent_threshold",
+    "skip_agent",
+}
+
+
+def _load_config_file(ctx, param, value):
+    """Click callback that loads a YAML config file into ctx.default_map.
+
+    Runs eagerly (before other options are resolved) so that the
+    default_map is available when Click processes subsequent parameters.
+    CLI flags always take precedence over config file values.
+    """
+    if value is None:
+        return
+
+    try:
+        with open(value, "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+    except FileNotFoundError:
+        raise click.BadParameter(f"Config file not found: {value}")
+    except yaml.YAMLError as exc:
+        raise click.BadParameter(f"Invalid YAML in config file: {exc}")
+    except IOError as exc:
+        raise click.BadParameter(f"Could not read config file: {exc}")
+
+    # Empty file → safe_load returns None
+    if config is None:
+        return
+
+    if not isinstance(config, dict):
+        raise click.BadParameter(
+            "Config file must contain a YAML mapping (key: value), not a list or scalar"
+        )
+
+    # Warn about unknown keys (non-fatal for forward compatibility)
+    unknown = set(config.keys()) - _KNOWN_CONFIG_KEYS
+    if unknown:
+        sys.stderr.write(f"Warning: Unknown config keys ignored: {', '.join(sorted(unknown))}\n")
+        for key in unknown:
+            del config[key]
+
+    # Click multiple=True options expect tuples
+    for key in ("agent_threshold", "skip_agent"):
+        if key in config and isinstance(config[key], list):
+            config[key] = tuple(config[key])
+
+    ctx.default_map = config
 
 
 def extract_json(text: str) -> dict:
@@ -136,6 +211,15 @@ def filter_by_confidence(data: dict) -> tuple[dict, dict]:
 
 
 @click.command()
+@click.option(
+    "--config-file",
+    type=click.Path(exists=False),
+    default=None,
+    is_eager=True,
+    expose_value=False,
+    callback=_load_config_file,
+    help="Path to YAML config file. CLI flags override config file values.",
+)
 @click.option(
     "--provider",
     "-p",

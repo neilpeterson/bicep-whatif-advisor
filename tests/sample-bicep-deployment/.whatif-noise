@@ -119,11 +119,7 @@ fuzzy: Removing deleteRetentionPolicy properties
 fuzzy: Removes retention policy settings from Key Vault diagnostics
 fuzzy: Removes retention policy and capacity metrics from diagnostics
 
-# Patterns
-retention
-reference
-deleteRetentionPolicy
-Modifying diagnostic
-retention policy
-resolutionPolicy
-virtualNetworkLinks
+# resource: privateDnsZones/virtualNetworkLinks:Modify
+resource: Microsoft.Insights/diagnosticSettings:Modify
+# resource: Microsoft.Storage/storageAccounts/blobServices:Modify
+resource: Microsoft.Network/privateEndpoints:Modify

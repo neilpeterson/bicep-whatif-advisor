@@ -50,6 +50,52 @@ def main(
 
 ## Command-Line Options
 
+### Configuration File
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--config-file` | Path | `None` | Path to YAML config file. CLI flags override config values. |
+
+**Implementation:**
+```python
+@click.option(
+    "--config-file",
+    type=click.Path(exists=False),
+    default=None,
+    is_eager=True,
+    expose_value=False,
+    callback=_load_config_file,
+    help="Path to YAML config file. CLI flags override config file values.",
+)
+```
+
+**Usage:**
+```bash
+# Use a config file
+bicep-whatif-advisor --config-file config.yaml
+
+# CLI flags override config file values
+bicep-whatif-advisor --config-file config.yaml --provider anthropic
+```
+
+**Example config file (`config.yaml`):**
+```yaml
+provider: azure-openai
+model: gpt-4
+format: markdown
+ci: true
+drift_threshold: medium
+intent_threshold: high
+diff_ref: origin/main
+agents_dir: ./agents
+agent_threshold:
+  - "compliance=medium"
+skip_agent:
+  - "naming-conventions"
+```
+
+Keys use underscores matching Python parameter names (e.g., `drift_threshold`, not `drift-threshold`). The callback runs eagerly via `is_eager=True` and sets `ctx.default_map`, so Click's built-in precedence gives CLI flags priority over config values. Unknown keys produce a stderr warning but are otherwise ignored for forward compatibility.
+
 ### LLM Provider Configuration
 
 | Flag | Type | Default | Description |
@@ -734,9 +780,10 @@ from .ci.azdevops import post_azdevops_comment   # Azure DevOps API
 The CLI accepts configuration from multiple sources (in order of precedence):
 
 1. **Command-line flags** (highest priority)
-2. **Platform auto-detection** (smart defaults)
-3. **Environment variables** (API keys, CI metadata)
-4. **Hard-coded defaults** (lowest priority)
+2. **Config file** (`--config-file`, sets `ctx.default_map`)
+3. **Platform auto-detection** (smart defaults)
+4. **Environment variables** (API keys, CI metadata)
+5. **Hard-coded defaults** (lowest priority)
 
 ### Example Precedence
 

@@ -341,6 +341,14 @@ When implementing CI mode (`--ci` flag):
 - GitHub: `GITHUB_TOKEN`, `GITHUB_REPOSITORY`, `GITHUB_PR_NUMBER`
 - Azure DevOps: `SYSTEM_ACCESSTOKEN`, `SYSTEM_PULLREQUEST_PULLREQUESTID`
 
+**Config file support:**
+```bash
+# Use a YAML config file (CLI flags override config values)
+cat whatif-output.txt | bicep-whatif-advisor --config-file config.yaml
+```
+
+Keys use underscores matching Python parameter names (e.g., `drift_threshold`). The `--config-file` option is eager and uses Click's `ctx.default_map`.
+
 **Sample CI command:**
 ```bash
 cat whatif-output.txt | bicep-whatif-advisor \
