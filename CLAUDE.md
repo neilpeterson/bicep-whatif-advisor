@@ -65,6 +65,7 @@ bicep-whatif-advisor/             # Root directory
 │   ├── test_github.py      # GitHub PR comment tests
 │   ├── test_azdevops.py    # Azure DevOps PR comment tests
 │   ├── test_cli.py         # CLI entry point tests
+│   ├── test_config_file.py # Config file loading tests
 │   └── test_integration.py # End-to-end pipeline tests
 ├── .github/workflows/
 │   ├── test.yml            # CI test suite (Python 3.9/3.11/3.13)
@@ -391,7 +392,7 @@ cat whatif-output.txt | bicep-whatif-advisor --ci --skip-agent compliance
 
 ## Testing
 
-**Test suite:** 367 tests across 15 test files, ~82% coverage, runs in ~1.5s.
+**Test suite:** 406 tests across 16 test files, ~82% coverage, runs in ~1.5s.
 
 **Run tests:**
 ```bash
@@ -406,9 +407,6 @@ pytest --cov=bicep_whatif_advisor    # With coverage report
 **Test fixtures in `tests/fixtures/`:**
 - `create_only.txt` — Only create operations
 - `mixed_changes.txt` — Creates, modifies, and deletes
-- `deletes.txt` — Only deletion operations
-- `no_changes.txt` — All NoChange resources
-- `large_output.txt` — 50+ resources for truncation testing
 - `noisy_changes.txt` — Real changes mixed with known-noisy properties (etag, provisioningState, IPv6)
 
 All tests use `MockProvider` from `conftest.py` — no real API calls during testing.
@@ -424,7 +422,7 @@ All tests use `MockProvider` from `conftest.py` — no real API calls during tes
    - Currently supported via manual `--ci` flag
 
 2. **Test Coverage** ✅ **COMPLETED**
-   - 367 tests across 15 test files, ~82% coverage
+   - 406 tests across 16 test files, ~82% coverage
    - CI workflow on Python 3.9/3.11/3.13
 
 3. **Enhanced Noise Filtering** (pre-LLM property filtering ✅ implemented)

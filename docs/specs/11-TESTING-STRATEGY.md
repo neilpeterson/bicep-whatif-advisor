@@ -4,7 +4,7 @@
 
 This document outlines the testing approach for `bicep-whatif-advisor`, covering test fixtures, mocking strategies, and recommended test coverage for each module.
 
-**Current State:** ✅ Fully implemented — 230 tests (221 unit, 9 integration), ~82% coverage, CI workflow on Python 3.9/3.11/3.13.
+**Current State:** ✅ Fully implemented — 406 tests across 16 test files, ~82% coverage, CI workflow on Python 3.9/3.11/3.13.
 
 ## Test Fixtures
 
@@ -13,10 +13,7 @@ This document outlines the testing approach for `bicep-whatif-advisor`, covering
 ```
 tests/fixtures/
 ├── create_only.txt       # Only create operations
-├── deletes.txt           # Only deletion operations
-├── large_output.txt      # 50+ resources for truncation testing
 ├── mixed_changes.txt     # Creates, modifies, and deletes
-├── no_changes.txt        # All NoChange/Ignore resources
 └── noisy_changes.txt     # Real changes mixed with known-noisy properties
 ```
 
@@ -237,10 +234,10 @@ def test_mixed_changes_fixture():
     content = open('tests/fixtures/mixed_changes.txt').read()
     # Verify creates, modifies, and deletes all detected
 
-def test_large_output_fixture():
-    content = open('tests/fixtures/large_output.txt').read()
-    # Verify truncation handling
-    # Verify performance (< 10s end-to-end)
+def test_noisy_changes_fixture():
+    content = open('tests/fixtures/noisy_changes.txt').read()
+    # Verify noisy property filtering
+    # Verify high vs low confidence separation
 ```
 
 ### 4. Platform Integration Tests
@@ -380,10 +377,7 @@ tests/
 ├── conftest.py                  # Shared fixtures, MockProvider, sample responses
 ├── fixtures/                    # Test data (What-If output samples)
 │   ├── create_only.txt
-│   ├── deletes.txt
-│   ├── large_output.txt
 │   ├── mixed_changes.txt
-│   ├── no_changes.txt
 │   └── noisy_changes.txt
 ├── sample-bicep-deployment/     # Example Bicep templates
 │   ├── main.bicep

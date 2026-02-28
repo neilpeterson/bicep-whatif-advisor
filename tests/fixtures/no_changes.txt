@@ -1,4 +1,0 @@
-Note: The result may contain false positive predictions (noise).
-You can help us improve the accuracy by opening an issue here: https://aka.ms/WhatIfIssues
-
-Resource changes: no change.

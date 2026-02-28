@@ -99,7 +99,7 @@ az deployment group what-if ... | bicep-whatif-advisor --provider azure-openai
 az deployment group what-if ... | bicep-whatif-advisor --provider ollama
 
 # Override model
-az deployment group what-if ... | bicep-whatif-advisor --model claude-opus-4-20250514
+az deployment group what-if ... | bicep-whatif-advisor --model claude-sonnet-4-20250514
 ```
 
 ### Verbose Output
