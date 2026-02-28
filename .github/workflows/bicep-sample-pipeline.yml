@@ -66,8 +66,8 @@ jobs:
             --template-file "${{ env.BICEP_TEMPLATE }}" \
             --parameters "${{ env.BICEP_PARAMS }}" \
             --exclude-change-types NoChange Ignore \
-            | bicep-whatif-advisor \
-              --config-file .github/whatif-config.yaml
+            | bicep-whatif-advisor --config-file .github/whatif-config.yaml --format table
+
           # Equivalent to the following explicit flags:
           #   bicep-whatif-advisor \
           #     --no-block \
@@ -111,16 +111,8 @@ jobs:
             --template-file "${{ env.BICEP_TEMPLATE }}" \
             --parameters "${{ env.BICEP_PARAMS }}" \
             --exclude-change-types NoChange Ignore \
-            | bicep-whatif-advisor \
-              --config-file .github/whatif-config.yaml \
-              --format markdown \
+            | bicep-whatif-advisor --config-file .github/whatif-config.yaml \
               >> $GITHUB_STEP_SUMMARY
-          # Equivalent to the following explicit flags:
-          #   bicep-whatif-advisor \
-          #     --format markdown \
-          #     --noise-file tests/sample-bicep-deployment/.whatif-noise \
-          #     --agents-dir tests/agents/ \
-          #     >> $GITHUB_STEP_SUMMARY
 
   deploy:
     needs: validate

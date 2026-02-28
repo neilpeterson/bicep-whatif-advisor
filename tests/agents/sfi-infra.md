@@ -3,7 +3,7 @@ id: sfi-infra
 display_name: Secure Infrastructure
 default_threshold: high
 display: table
-enabled: true
+enabled: False
 icon: "🔒"
 ---
 
