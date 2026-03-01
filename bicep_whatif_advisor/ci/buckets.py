@@ -28,14 +28,32 @@ RISK_BUCKETS: Dict[str, RiskBucket] = {
         description="Compares What-If output to code diff to detect out-of-band changes",
         prompt_instructions="""
 **Infrastructure Drift Risk:**
-Compare the What-If output to the code diff. If the What-If shows
-changes that aren't in the diff, this indicates infrastructure drift
-(manual changes in Azure).
+Detect infrastructure drift — cases where live Azure resources have
+been manually changed outside of the Bicep/ARM deployment process.
+
+How to detect drift:
+1. Look at each Modify (~) action in the What-If output.
+2. Check whether the CODE DIFF changes that specific resource or property.
+3. If the code diff does NOT change that resource but What-If shows it
+   being modified, this is DRIFT. It means someone changed the live
+   resource manually (e.g., in the Azure portal) and the deployment
+   will revert those manual changes back to what the code defines.
+4. Pay special attention to property reversions — when What-If shows
+   a value changing (e.g., "Enabled" => "Disabled") on a resource that
+   the code diff did not touch, the live value was manually changed
+   and the deployment will overwrite it.
+
+Key principle: If a resource appears as Modify in What-If but was NOT
+modified in the code diff, the Modify is caused by out-of-band changes
+to the live resource. This IS drift, even though the deployment will
+"fix" it — operators need to know manual changes will be reverted.
 
 Risk levels for drift:
-- high: Critical resources drifting (security, identity, stateful
-  resources like databases/storage), broad scope drift (many
-  resources), drift that could cause data loss or security issues
+- high: Critical resources drifting (security, identity, network access,
+  stateful resources like databases/storage), broad scope drift (many
+  resources), drift that could cause data loss or security exposure,
+  security controls being reverted (e.g., publicNetworkAccess, firewall
+  rules, RBAC settings)
 - medium: Multiple resources drifting, configuration drift on
   important resources, drift that could affect application behavior
 - low: Minor drift (tags, display names, non-critical metadata),
