@@ -621,8 +621,24 @@ class TestBlockLevelSuppression:
         result, count, _, _ = filter_whatif_text(text, patterns)
         assert "Resource and property changes" in result
 
-    def test_epilogue_preserved(self):
-        """Epilogue lines after the last resource block should always be preserved."""
+    def test_epilogue_preserved_when_no_blocks_removed(self):
+        """Epilogue is preserved when property lines are filtered but blocks survive."""
+        text = (
+            "  ~ Microsoft.Network/virtualNetworks/myvnet [2022-07-01]\n"
+            '      ~ properties.etag: "old" => "new"\n'
+            "      ~ properties.addressSpace: 10.0.0.0/16 => 10.1.0.0/16\n"
+            "\n"
+            "Resource changes: 1 to modify.\n"
+        )
+        patterns = [
+            ParsedPattern(raw="etag", pattern_type="keyword", value="etag"),
+        ]
+        result, count, blocks_removed, _ = filter_whatif_text(text, patterns)
+        assert blocks_removed == 0
+        assert "Resource changes:" in result
+
+    def test_epilogue_stripped_when_hollow_block_suppressed(self):
+        """Epilogue is stripped when a hollow Modify block is suppressed."""
         text = (
             "  ~ Microsoft.Network/virtualNetworks/myvnet [2022-07-01]\n"
             '      ~ properties.etag: "old" => "new"\n'
@@ -632,8 +648,9 @@ class TestBlockLevelSuppression:
         patterns = [
             ParsedPattern(raw="etag", pattern_type="keyword", value="etag"),
         ]
-        result, count, _, _ = filter_whatif_text(text, patterns)
-        assert "Resource changes:" in result
+        result, count, blocks_removed, _ = filter_whatif_text(text, patterns)
+        assert blocks_removed == 1
+        assert "Resource changes:" not in result
 
     def test_multiple_blocks_independent_filtering(self):
         """Each block is filtered independently; fully-filtered Modify blocks suppressed."""
@@ -814,8 +831,8 @@ class TestResourcePatternFiltering:
         assert "virtualNetworks" in result
         assert "addressSpace" in result
 
-    def test_preamble_and_epilogue_preserved_when_blocks_removed(self):
-        """Preamble and epilogue survive even when resource blocks are removed."""
+    def test_preamble_preserved_and_epilogue_stripped_when_blocks_removed(self):
+        """Preamble survives but epilogue is stripped when resource blocks are removed."""
         text = (
             "Resource and property changes are indicated with these symbols:\n"
             "  ~ Modify\n"
@@ -835,11 +852,11 @@ class TestResourcePatternFiltering:
         result, _, blocks, removed_info = filter_whatif_text(text, patterns)
         assert blocks == 1
         assert "Resource and property changes" in result
-        assert "Resource changes:" in result
+        assert "Resource changes:" not in result
         assert "diagnosticSettings" not in result
 
-    def test_all_blocks_removed_leaves_preamble_epilogue(self):
-        """When all blocks are removed, only preamble/epilogue remain."""
+    def test_all_blocks_removed_leaves_preamble_strips_epilogue(self):
+        """When all blocks are removed, preamble remains but epilogue is stripped."""
         text = (
             "Resource and property changes are indicated with these symbols:\n"
             "  ~ Modify\n"
@@ -869,7 +886,7 @@ class TestResourcePatternFiltering:
         assert blocks == 2
         assert lines == 0
         assert "Resource and property changes" in result
-        assert "Resource changes:" in result
+        assert "Resource changes:" not in result
         assert "diagnosticSettings" not in result
         assert "privateDnsZones" not in result
 
