@@ -531,20 +531,24 @@ def main(
                 sys.stderr.write(f"Error reading noise file: {e}\n")
                 sys.exit(2)
 
-        # Separate resource patterns (applied post-LLM) from property patterns (pre-LLM)
-        resource_noise_patterns, property_noise_patterns = extract_resource_patterns(noise_patterns)
+        # Separate resource patterns for post-LLM fallback reclassification
+        resource_noise_patterns, _ = extract_resource_patterns(noise_patterns)
 
         # Preserve original What-If content for --include-whatif (before noise filtering)
         original_whatif_content = whatif_content
 
-        if property_noise_patterns:
+        if noise_patterns:
             fuzzy_threshold = noise_threshold / 100.0
-            whatif_content, num_filtered = filter_whatif_text(
-                whatif_content, property_noise_patterns, fuzzy_threshold
+            whatif_content, num_lines, num_blocks = filter_whatif_text(
+                whatif_content, noise_patterns, fuzzy_threshold
             )
-            if num_filtered > 0:
+            if num_blocks > 0:
                 sys.stderr.write(
-                    f"🔕 Pre-filtered {num_filtered} known-noisy line(s) from What-If output\n"
+                    f"🔕 Pre-filtered {num_blocks} noisy resource block(s) from What-If output\n"
+                )
+            if num_lines > 0:
+                sys.stderr.write(
+                    f"🔕 Pre-filtered {num_lines} known-noisy line(s) from What-If output\n"
                 )
 
         # Get provider

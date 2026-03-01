@@ -445,9 +445,10 @@ class TestParseResourceBlocks:
 class TestFilterWhatifText:
     def test_no_patterns_returns_unchanged(self):
         text = "some text\nmore lines\n"
-        result, count = filter_whatif_text(text, [])
+        result, count, blocks = filter_whatif_text(text, [])
         assert result == text
         assert count == 0
+        assert blocks == 0
 
     def test_filters_matching_property_lines(self):
         text = (
@@ -456,7 +457,7 @@ class TestFilterWhatifText:
             "      ~ properties.name: myresource\n"
         )
         patterns = [ParsedPattern(raw="etag", pattern_type="keyword", value="etag")]
-        result, count = filter_whatif_text(text, patterns)
+        result, count, _ = filter_whatif_text(text, patterns)
         assert count == 1
         assert "etag" not in result
         assert "name: myresource" in result
@@ -465,7 +466,7 @@ class TestFilterWhatifText:
         """Resource header lines should never be filtered."""
         text = "  + Microsoft.Storage/storageAccounts/etag-test\n"
         patterns = [ParsedPattern(raw="etag", pattern_type="keyword", value="etag")]
-        result, count = filter_whatif_text(text, patterns)
+        result, count, _ = filter_whatif_text(text, patterns)
         assert count == 0
         assert "etag-test" in result
 
@@ -482,14 +483,14 @@ class TestFilterWhatifText:
                 raw="provisioningState", pattern_type="keyword", value="provisioningState"
             ),
         ]
-        result, count = filter_whatif_text(text, patterns)
+        result, count, _ = filter_whatif_text(text, patterns)
         assert count == 2
         assert "name: real" in result
 
     def test_filters_from_noisy_fixture(self, noisy_changes_fixture):
         """Sanity check: builtin patterns filter lines from noisy fixture."""
         patterns = load_builtin_patterns()
-        _, count = filter_whatif_text(noisy_changes_fixture, patterns)
+        _, count, _ = filter_whatif_text(noisy_changes_fixture, patterns)
         assert count > 0  # Should filter at least some noisy lines
 
     def test_no_resource_headers_falls_back_to_line_filter(self):
@@ -500,8 +501,9 @@ class TestFilterWhatifText:
             "      ~ properties.name: real\n"
         )
         patterns = [ParsedPattern(raw="etag", pattern_type="keyword", value="etag")]
-        result, count = filter_whatif_text(text, patterns)
+        result, count, blocks = filter_whatif_text(text, patterns)
         assert count == 1
+        assert blocks == 0
         assert "etag" not in result
         assert "name: real" in result
 
@@ -529,7 +531,7 @@ class TestBlockLevelSuppression:
                 raw="provisioningState", pattern_type="keyword", value="provisioningState"
             ),
         ]
-        result, count = filter_whatif_text(text, patterns)
+        result, count, _ = filter_whatif_text(text, patterns)
         # Only the 2 property lines should be removed, block header preserved
         assert count == 2
         assert "virtualNetworks" in result
@@ -549,7 +551,7 @@ class TestBlockLevelSuppression:
         patterns = [
             ParsedPattern(raw="etag", pattern_type="keyword", value="etag"),
         ]
-        result, count = filter_whatif_text(text, patterns)
+        result, count, _ = filter_whatif_text(text, patterns)
         assert count == 1
         assert "virtualNetworks" in result  # Header preserved
         assert "addressSpace" in result  # Surviving property preserved
@@ -565,7 +567,7 @@ class TestBlockLevelSuppression:
         patterns = [
             ParsedPattern(raw="etag", pattern_type="keyword", value="etag"),
         ]
-        result, count = filter_whatif_text(text, patterns)
+        result, count, _ = filter_whatif_text(text, patterns)
         assert count == 1  # Only the property line removed, not the whole block
         assert "storageAccounts" in result  # Header preserved
 
@@ -579,7 +581,7 @@ class TestBlockLevelSuppression:
         patterns = [
             ParsedPattern(raw="etag", pattern_type="keyword", value="etag"),
         ]
-        result, count = filter_whatif_text(text, patterns)
+        result, count, _ = filter_whatif_text(text, patterns)
         assert count == 1
         assert "Sql/servers" in result  # Header preserved
 
@@ -593,7 +595,7 @@ class TestBlockLevelSuppression:
         patterns = [
             ParsedPattern(raw="etag", pattern_type="keyword", value="etag"),
         ]
-        result, count = filter_whatif_text(text, patterns)
+        result, count, _ = filter_whatif_text(text, patterns)
         assert count == 0
         assert "virtualNetworks" in result
 
@@ -610,7 +612,7 @@ class TestBlockLevelSuppression:
         patterns = [
             ParsedPattern(raw="etag", pattern_type="keyword", value="etag"),
         ]
-        result, count = filter_whatif_text(text, patterns)
+        result, count, _ = filter_whatif_text(text, patterns)
         assert "Resource and property changes" in result
 
     def test_epilogue_preserved(self):
@@ -624,7 +626,7 @@ class TestBlockLevelSuppression:
         patterns = [
             ParsedPattern(raw="etag", pattern_type="keyword", value="etag"),
         ]
-        result, count = filter_whatif_text(text, patterns)
+        result, count, _ = filter_whatif_text(text, patterns)
         assert "Resource changes:" in result
 
     def test_multiple_blocks_independent_filtering(self):
@@ -640,7 +642,7 @@ class TestBlockLevelSuppression:
         patterns = [
             ParsedPattern(raw="etag", pattern_type="keyword", value="etag"),
         ]
-        result, count = filter_whatif_text(text, patterns)
+        result, count, _ = filter_whatif_text(text, patterns)
         # Both etag property lines removed, but headers preserved
         assert count == 2
         assert "virtualNetworks" in result  # Header preserved
@@ -656,10 +658,10 @@ class TestBlockLevelSuppression:
 
 @pytest.mark.unit
 class TestResourcePatternFiltering:
-    """Resource patterns are ignored by filter_whatif_text (handled post-LLM)."""
+    """Resource patterns remove entire matching blocks pre-LLM."""
 
-    def test_resource_pattern_ignored_by_filter(self):
-        """filter_whatif_text should ignore resource: patterns entirely."""
+    def test_resource_pattern_removes_matching_block(self):
+        """filter_whatif_text should remove blocks matching resource: patterns."""
         text = (
             "  ~ Microsoft.Network/privateDnsZones/virtualNetworkLinks/link1 [2022-07-01]\n"
             '      id:   "/subscriptions/123"\n'
@@ -672,14 +674,14 @@ class TestResourcePatternFiltering:
                 value="privateDnsZones/virtualNetworkLinks",
             ),
         ]
-        result, count = filter_whatif_text(text, patterns)
-        # Resource pattern ignored — block fully preserved
-        assert count == 0
-        assert "privateDnsZones" in result
-        assert "registrationEnabled" in result
+        result, lines, blocks = filter_whatif_text(text, patterns)
+        assert blocks == 1
+        assert lines == 0
+        assert "privateDnsZones" not in result
+        assert "registrationEnabled" not in result
 
-    def test_resource_only_patterns_no_filtering(self):
-        """When only resource patterns exist, nothing should be filtered."""
+    def test_resource_only_patterns_removes_block(self):
+        """When only resource patterns exist, matching blocks are removed."""
         text = (
             "  ~ Microsoft.Insights/diagnosticSettings/diag1 [2021-05-01]\n"
             '      ~ properties.logAnalyticsDestinationType: "Dedicated" => ""\n'
@@ -691,12 +693,13 @@ class TestResourcePatternFiltering:
                 value="diagnosticSettings",
             ),
         ]
-        result, count = filter_whatif_text(text, patterns)
-        assert count == 0
-        assert "diagnosticSettings" in result
+        result, lines, blocks = filter_whatif_text(text, patterns)
+        assert blocks == 1
+        assert lines == 0
+        assert "diagnosticSettings" not in result
 
     def test_mixed_resource_and_property_patterns(self):
-        """Resource patterns are skipped; only property patterns apply."""
+        """Resource pattern removes its block; property pattern filters survivors."""
         text = (
             "  ~ Microsoft.Network/privateDnsZones/virtualNetworkLinks/link1 [2022-07-01]\n"
             "      ~ properties.registrationEnabled: true => false\n"
@@ -713,14 +716,179 @@ class TestResourcePatternFiltering:
             ),
             ParsedPattern(raw="etag", pattern_type="keyword", value="etag"),
         ]
-        result, count = filter_whatif_text(text, patterns)
-        # Resource pattern ignored — first block preserved
-        assert "privateDnsZones" in result
-        assert "registrationEnabled" in result
-        # Property pattern applied — etag line removed
-        assert count == 1
+        result, lines, blocks = filter_whatif_text(text, patterns)
+        # Resource pattern removed first block entirely
+        assert blocks == 1
+        assert "privateDnsZones" not in result
+        assert "registrationEnabled" not in result
+        # Property pattern applied on surviving block — etag line removed
+        assert lines == 1
         assert "addressSpace" in result
         assert "etag" not in result
+
+    def test_resource_pattern_removes_create_block(self):
+        """Resource patterns can remove Create blocks."""
+        text = (
+            "  + Microsoft.Insights/diagnosticSettings/diag1 [2021-05-01]\n"
+            '      id:   "/subscriptions/123"\n'
+            '      + properties.logAnalyticsDestinationType: "Dedicated"\n'
+        )
+        patterns = [
+            ParsedPattern(
+                raw="resource: diagnosticSettings",
+                pattern_type="resource",
+                value="diagnosticSettings",
+            ),
+        ]
+        result, lines, blocks = filter_whatif_text(text, patterns)
+        assert blocks == 1
+        assert "diagnosticSettings" not in result
+
+    def test_resource_pattern_removes_delete_block(self):
+        """Resource patterns can remove Delete blocks."""
+        text = (
+            "  - Microsoft.Insights/diagnosticSettings/diag1 [2021-05-01]\n"
+            '      id:   "/subscriptions/123"\n'
+        )
+        patterns = [
+            ParsedPattern(
+                raw="resource: diagnosticSettings",
+                pattern_type="resource",
+                value="diagnosticSettings",
+            ),
+        ]
+        result, lines, blocks = filter_whatif_text(text, patterns)
+        assert blocks == 1
+        assert "diagnosticSettings" not in result
+
+    def test_operation_specific_pattern_only_removes_matching_op(self):
+        """A resource:type:Modify pattern should not remove a Create block."""
+        text = (
+            "  + Microsoft.Insights/diagnosticSettings/diag1 [2021-05-01]\n"
+            '      id:   "/subscriptions/123"\n'
+        )
+        patterns = [
+            ParsedPattern(
+                raw="resource: diagnosticSettings:Modify",
+                pattern_type="resource",
+                value="diagnosticSettings:Modify",
+            ),
+        ]
+        result, _, blocks = filter_whatif_text(text, patterns)
+        assert blocks == 0
+        assert "diagnosticSettings" in result
+
+    def test_non_matching_blocks_preserved(self):
+        """Blocks that don't match any resource pattern remain untouched."""
+        text = (
+            "  ~ Microsoft.Network/virtualNetworks/myvnet [2022-07-01]\n"
+            '      ~ properties.addressSpace: "10.0.0.0/16" => "10.0.0.0/8"\n'
+        )
+        patterns = [
+            ParsedPattern(
+                raw="resource: diagnosticSettings",
+                pattern_type="resource",
+                value="diagnosticSettings",
+            ),
+        ]
+        result, lines, blocks = filter_whatif_text(text, patterns)
+        assert blocks == 0
+        assert lines == 0
+        assert "virtualNetworks" in result
+        assert "addressSpace" in result
+
+    def test_preamble_and_epilogue_preserved_when_blocks_removed(self):
+        """Preamble and epilogue survive even when resource blocks are removed."""
+        text = (
+            "Resource and property changes are indicated with these symbols:\n"
+            "  ~ Modify\n"
+            "\n"
+            "  ~ Microsoft.Insights/diagnosticSettings/diag1 [2021-05-01]\n"
+            '      ~ properties.logAnalyticsDestinationType: "Dedicated" => ""\n'
+            "\n"
+            "Resource changes: 1 to modify.\n"
+        )
+        patterns = [
+            ParsedPattern(
+                raw="resource: diagnosticSettings",
+                pattern_type="resource",
+                value="diagnosticSettings",
+            ),
+        ]
+        result, _, blocks = filter_whatif_text(text, patterns)
+        assert blocks == 1
+        assert "Resource and property changes" in result
+        assert "Resource changes:" in result
+        assert "diagnosticSettings" not in result
+
+    def test_all_blocks_removed_leaves_preamble_epilogue(self):
+        """When all blocks are removed, only preamble/epilogue remain."""
+        text = (
+            "Resource and property changes are indicated with these symbols:\n"
+            "  ~ Modify\n"
+            "\n"
+            "  ~ Microsoft.Insights/diagnosticSettings/diag1 [2021-05-01]\n"
+            '      ~ properties.logAnalyticsDestinationType: "Dedicated" => ""\n'
+            "\n"
+            "  ~ Microsoft.Network/privateDnsZones/privatelink/virtualNetworkLinks/link1"
+            " [2022-07-01]\n"
+            "      ~ properties.registrationEnabled: true => false\n"
+            "\n"
+            "Resource changes: 2 to modify.\n"
+        )
+        patterns = [
+            ParsedPattern(
+                raw="resource: diagnosticSettings",
+                pattern_type="resource",
+                value="diagnosticSettings",
+            ),
+            ParsedPattern(
+                raw="resource: privateDnsZones/virtualNetworkLinks",
+                pattern_type="resource",
+                value="privateDnsZones/virtualNetworkLinks",
+            ),
+        ]
+        result, lines, blocks = filter_whatif_text(text, patterns)
+        assert blocks == 2
+        assert lines == 0
+        assert "Resource and property changes" in result
+        assert "Resource changes:" in result
+        assert "diagnosticSettings" not in result
+        assert "privateDnsZones" not in result
+
+    def test_multiple_resource_patterns_remove_multiple_blocks(self):
+        """Multiple resource patterns each remove their matching blocks."""
+        text = (
+            "  ~ Microsoft.Insights/diagnosticSettings/diag1 [2021-05-01]\n"
+            '      ~ properties.logAnalyticsDestinationType: "Dedicated" => ""\n'
+            "\n"
+            "  ~ Microsoft.Network/virtualNetworks/myvnet [2022-07-01]\n"
+            '      ~ properties.addressSpace: "10.0.0.0/16" => "10.0.0.0/8"\n'
+            "\n"
+            "  ~ Microsoft.Network/privateDnsZones/privatelink/virtualNetworkLinks/link1"
+            " [2022-07-01]\n"
+            "      ~ properties.registrationEnabled: true => false\n"
+        )
+        patterns = [
+            ParsedPattern(
+                raw="resource: diagnosticSettings",
+                pattern_type="resource",
+                value="diagnosticSettings",
+            ),
+            ParsedPattern(
+                raw="resource: privateDnsZones/virtualNetworkLinks",
+                pattern_type="resource",
+                value="privateDnsZones/virtualNetworkLinks",
+            ),
+        ]
+        result, lines, blocks = filter_whatif_text(text, patterns)
+        assert blocks == 2
+        assert lines == 0
+        # Only the virtualNetworks block should survive
+        assert "virtualNetworks" in result
+        assert "addressSpace" in result
+        assert "diagnosticSettings" not in result
+        assert "privateDnsZones" not in result
 
 
 # ---------------------------------------------------------------------------

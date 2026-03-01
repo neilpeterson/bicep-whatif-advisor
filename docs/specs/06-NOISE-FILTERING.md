@@ -125,7 +125,7 @@ resource: privateDnsZones/virtualNetworkLinks:Modify
 | *(none)* | `keyword in line.lower()` | Property lines | Simple property name keywords — most common |
 | `regex:` | `re.search(pattern, line, IGNORECASE)` | Property lines | Complex property paths, wildcards |
 | `fuzzy:` | `SequenceMatcher.ratio() >= threshold` | Property lines | Patterns that resemble raw What-If line text |
-| `resource:` | Type substring + optional operation | Entire block | Remove all changes for a resource type |
+| `resource:` | Type substring + optional operation | Entire block (pre-LLM) | Remove matching resource blocks before LLM analysis |
 
 ### Resource Pattern Syntax
 
@@ -220,7 +220,7 @@ What-If noise because these properties are cross-cutting — not resource-type-s
 
 ## CLI Integration
 
-### Pattern Loading (cli.py lines ~380-410)
+### Pattern Loading & Filtering (cli.py)
 
 ```python
 noise_patterns = []
@@ -231,17 +231,25 @@ if noise_file:
 
 if noise_patterns:
     fuzzy_threshold = noise_threshold / 100.0
-    whatif_content, num_filtered = filter_whatif_text(
+    whatif_content, num_lines, num_blocks = filter_whatif_text(
         whatif_content, noise_patterns, fuzzy_threshold
     )
-    if num_filtered > 0:
+    if num_blocks > 0:
         sys.stderr.write(
-            f"🔕 Pre-filtered {num_filtered} known-noisy "
+            f"🔕 Pre-filtered {num_blocks} noisy resource "
+            f"block(s) from What-If output\n"
+        )
+    if num_lines > 0:
+        sys.stderr.write(
+            f"🔕 Pre-filtered {num_lines} known-noisy "
             f"line(s) from What-If output\n"
         )
 ```
 
-This runs **before** `build_user_prompt()` — the LLM receives already-cleaned input.
+Both resource-level and property-level patterns are passed together.
+`filter_whatif_text()` handles separation internally (Phase 1: resource blocks,
+Phase 2: property lines). This runs **before** `build_user_prompt()` — the LLM
+receives already-cleaned input.
 
 ### CLI Options
 

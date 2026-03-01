@@ -1,30 +1,37 @@
 """Pre-LLM noise filtering and post-LLM resource reclassification.
 
-**Property-level filtering (pre-LLM):**
+**Phase 1 — Resource-level filtering (pre-LLM):**
 
-Filters known noisy property lines from raw What-If text before the content is
-sent to the LLM for analysis. This is more reliable than post-LLM summary
-matching because:
+Resource patterns (``resource:``) remove entire resource blocks from raw What-If
+text before the LLM sees them. The raw What-If text contains deterministic ARM
+resource types (e.g., ``Microsoft.Insights/diagnosticSettings``) that are
+consistent across runs, making pre-LLM matching reliable. Matching blocks
+(header + attributes + property lines) are completely removed.
+
+**Phase 2 — Property-level filtering (pre-LLM):**
+
+Filters known noisy property lines from surviving resource blocks. This is more
+reliable than post-LLM summary matching because:
 
   1. Property names in What-If output are deterministic, not LLM-generated.
   2. Short keywords match broadly across all resource types without needing to
      anticipate the LLM's exact phrasing.
   3. The LLM never sees the noise, so it cannot misreport it as a real change.
 
-**Resource-level reclassification (post-LLM):**
+**Post-LLM resource reclassification (fallback):**
 
-Resource patterns (resource:) are applied *after* the LLM has analyzed the
-What-If text. Matching resources are demoted to ``confidence_level = "low"``
-so they appear in the low-confidence "Potential Azure What-If Noise" section
-rather than being silently removed. This ensures all resources remain visible
-in the output.
+Resource patterns are also applied *after* the LLM has analyzed the What-If
+text as a fallback. Any matching resources that survived pre-LLM filtering
+(e.g., due to slightly different type strings) are demoted to
+``confidence_level = "low"`` so they appear in the "Potential Azure What-If
+Noise" section.
 
 Pattern file format (one pattern per line, # for comments):
 
   Plain text (default)  — case-insensitive substring anywhere in the line
   regex: <pattern>      — Python re.search(), case-insensitive
   fuzzy: <pattern>      — legacy fuzzy similarity (SequenceMatcher)
-  resource: <type>[:op] — demote matching resources to low confidence (post-LLM)
+  resource: <type>[:op] — remove matching resource blocks pre-LLM; also demote post-LLM
 
 Property-level patterns (keyword/regex/fuzzy) only match property-change lines
 (indented 4+ spaces with a ~ / + / - change symbol). Resource-level header lines
@@ -369,27 +376,29 @@ def filter_whatif_text(
     patterns: list,
     fuzzy_threshold: float = 0.80,
 ) -> tuple:
-    """Filter noisy property lines from raw What-If text.
+    """Filter noisy resource blocks and property lines from raw What-If text.
 
-    Uses a block-aware approach: parses What-If text into structured resource
-    blocks and removes matching property-change lines. Resource-level patterns
-    (``resource:``) are ignored here — they are handled post-LLM by
-    :func:`reclassify_resource_noise`.
+    Uses a two-phase, block-aware approach:
+
+    - **Phase 1 — Resource block removal:** ``resource:`` patterns remove entire
+      matching blocks (header + attributes + properties) from the text.
+    - **Phase 2 — Property line removal:** keyword/regex/fuzzy patterns remove
+      individual property-change lines from surviving blocks.
 
     Args:
         whatif_content: Raw What-If output text
-        patterns: List of ParsedPattern objects to match against (resource
-            patterns are silently skipped)
+        patterns: List of ParsedPattern objects (both resource and property
+            patterns are accepted)
         fuzzy_threshold: Similarity threshold for fuzzy patterns (0.0-1.0)
 
     Returns:
-        Tuple of (filtered_text, num_lines_removed)
+        Tuple of (filtered_text, num_property_lines_removed, num_resource_blocks_removed)
     """
-    # Only use property-level patterns; resource patterns are handled post-LLM
+    resource_patterns = [p for p in patterns if p.pattern_type == "resource"]
     property_patterns = [p for p in patterns if p.pattern_type != "resource"]
 
-    if not property_patterns:
-        return whatif_content, 0
+    if not resource_patterns and not property_patterns:
+        return whatif_content, 0, 0
 
     lines = whatif_content.splitlines(keepends=True)
     preamble, blocks, epilogue = _parse_resource_blocks(lines)
@@ -397,6 +406,8 @@ def filter_whatif_text(
     # If there are no blocks (e.g., text has no resource headers), fall back
     # to simple line-by-line filtering for backward compatibility
     if not blocks:
+        if not property_patterns:
+            return whatif_content, 0, 0
         filtered_lines = []
         removed = 0
         for line in lines:
@@ -405,11 +416,22 @@ def filter_whatif_text(
                     removed += 1
                     continue
             filtered_lines.append(line)
-        return "".join(filtered_lines), removed
+        return "".join(filtered_lines), removed, 0
 
-    # Property-level filtering only (no block suppression)
+    # Phase 1: Resource-level filtering — remove entire matching blocks
+    blocks_removed = 0
+    if resource_patterns:
+        surviving_blocks = []
+        for block in blocks:
+            if any(_matches_resource_pattern(block, p) for p in resource_patterns):
+                blocks_removed += 1
+            else:
+                surviving_blocks.append(block)
+        blocks = surviving_blocks
+
+    # Phase 2: Property-level filtering on surviving blocks
     result_lines = list(preamble)
-    total_removed = 0
+    total_property_removed = 0
 
     for block in blocks:
         # Apply property-level patterns within this block
@@ -424,7 +446,7 @@ def filter_whatif_text(
                 # Keep the block but remove matched property lines
                 for i, line in enumerate(block.lines):
                     if i in filtered_indices:
-                        total_removed += 1
+                        total_property_removed += 1
                     else:
                         result_lines.append(line)
                 continue
@@ -433,7 +455,7 @@ def filter_whatif_text(
         result_lines.extend(block.lines)
 
     result_lines.extend(epilogue)
-    return "".join(result_lines), total_removed
+    return "".join(result_lines), total_property_removed, blocks_removed
 
 
 # ---------------------------------------------------------------------------

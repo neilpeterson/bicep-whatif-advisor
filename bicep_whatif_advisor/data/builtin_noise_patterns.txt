@@ -2,23 +2,24 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # These patterns handle known Azure What-If false positives in two phases:
 #
-# 1. Property patterns (pre-LLM): Strip noisy property lines from raw What-If
+# 1. Resource patterns (pre-LLM): Remove entire matching resource blocks from
+#    raw What-If text BEFORE it is sent to the LLM. Also applied post-LLM as
+#    a fallback to demote any surviving matches to low confidence.
+# 2. Property patterns (pre-LLM): Strip noisy property lines from raw What-If
 #    text BEFORE it is sent to the LLM for analysis.
-# 2. Resource patterns (post-LLM): Demote matching resources to low confidence
-#    AFTER LLM analysis, so they appear in the "Potential Azure What-If Noise"
-#    section rather than being removed entirely.
 #
 # Pattern types:
 #   Plain text           — case-insensitive substring: keyword anywhere in line (pre-LLM)
 #   regex: <pattern>     — Python re.search(), case-insensitive (pre-LLM)
 #   fuzzy: <pattern>     — legacy fuzzy similarity (SequenceMatcher) (pre-LLM)
-#   resource: <type>     — demote to low confidence by ARM type substring (post-LLM)
-#   resource: <type>:Op  — demote only when operation matches (Modify, Create, etc.)
+#   resource: <type>     — remove block pre-LLM; also demote post-LLM fallback
+#   resource: <type>:Op  — remove/demote only when operation matches (Modify, Create, etc.)
 #
 # Plain-text, regex, and fuzzy patterns only apply to property-change lines
 # (indented 4+ spaces with a ~ / + / - change symbol).
 #
-# Resource patterns match the resource_type field from the LLM response.
+# Resource patterns match the ARM resource type in What-If block headers (pre-LLM)
+# and the resource_type field from the LLM response (post-LLM fallback).
 # Type matching is case-insensitive substring.
 #
 # To disable these built-ins: --no-builtin-patterns
