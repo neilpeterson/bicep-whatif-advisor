@@ -537,9 +537,12 @@ def main(
         # Preserve original What-If content for --include-whatif (before noise filtering)
         original_whatif_content = whatif_content
 
+        # Tracks resource blocks removed pre-LLM so we can show them as noise
+        pre_filtered_resources = []
+
         if noise_patterns:
             fuzzy_threshold = noise_threshold / 100.0
-            whatif_content, num_lines, num_blocks = filter_whatif_text(
+            whatif_content, num_lines, num_blocks, pre_filtered_resources = filter_whatif_text(
                 whatif_content, noise_patterns, fuzzy_threshold
             )
             if num_blocks > 0:
@@ -609,6 +612,29 @@ def main(
             if num_reclassified > 0:
                 sys.stderr.write(
                     f"🔕 Reclassified {num_reclassified} resource(s) as low-confidence noise\n"
+                )
+
+        # Inject synthetic low-confidence entries for pre-LLM filtered resource blocks
+        # so they still appear in the "Potential Noise" section
+        if pre_filtered_resources:
+            action_map = {
+                "Create": "Create",
+                "Modify": "Modify",
+                "Delete": "Delete",
+                "Deploy": "Deploy",
+                "NoChange": "NoChange",
+                "Ignore": "Ignore",
+            }
+            for removed in pre_filtered_resources:
+                data["resources"].append(
+                    {
+                        "resource_name": removed["resource_name"],
+                        "resource_type": removed["resource_type"],
+                        "action": action_map.get(removed["operation"], removed["operation"]),
+                        "summary": "Removed by resource noise pattern",
+                        "confidence_level": "low",
+                        "confidence_reason": "Matched resource noise pattern (pre-LLM filtered)",
+                    }
                 )
 
         # Filter by confidence (always-on behavior)

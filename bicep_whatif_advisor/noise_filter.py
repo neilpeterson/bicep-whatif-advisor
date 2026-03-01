@@ -392,13 +392,17 @@ def filter_whatif_text(
         fuzzy_threshold: Similarity threshold for fuzzy patterns (0.0-1.0)
 
     Returns:
-        Tuple of (filtered_text, num_property_lines_removed, num_resource_blocks_removed)
+        Tuple of (filtered_text, num_property_lines_removed,
+        num_resource_blocks_removed, removed_resources) where
+        removed_resources is a list of dicts with keys
+        ``resource_type``, ``resource_name``, and ``operation`` for
+        each block removed in Phase 1.
     """
     resource_patterns = [p for p in patterns if p.pattern_type == "resource"]
     property_patterns = [p for p in patterns if p.pattern_type != "resource"]
 
     if not resource_patterns and not property_patterns:
-        return whatif_content, 0, 0
+        return whatif_content, 0, 0, []
 
     lines = whatif_content.splitlines(keepends=True)
     preamble, blocks, epilogue = _parse_resource_blocks(lines)
@@ -407,7 +411,7 @@ def filter_whatif_text(
     # to simple line-by-line filtering for backward compatibility
     if not blocks:
         if not property_patterns:
-            return whatif_content, 0, 0
+            return whatif_content, 0, 0, []
         filtered_lines = []
         removed = 0
         for line in lines:
@@ -416,15 +420,26 @@ def filter_whatif_text(
                     removed += 1
                     continue
             filtered_lines.append(line)
-        return "".join(filtered_lines), removed, 0
+        return "".join(filtered_lines), removed, 0, []
 
     # Phase 1: Resource-level filtering — remove entire matching blocks
     blocks_removed = 0
+    removed_resources = []  # type: List[dict]
     if resource_patterns:
         surviving_blocks = []
         for block in blocks:
             if any(_matches_resource_pattern(block, p) for p in resource_patterns):
                 blocks_removed += 1
+                # Extract resource name (last path segment) for display
+                parts = block.resource_type.split("/")
+                resource_name = parts[-1] if parts else block.resource_type
+                removed_resources.append(
+                    {
+                        "resource_type": _extract_arm_type(block.resource_type),
+                        "resource_name": resource_name,
+                        "operation": block.operation,
+                    }
+                )
             else:
                 surviving_blocks.append(block)
         blocks = surviving_blocks
@@ -455,7 +470,7 @@ def filter_whatif_text(
         result_lines.extend(block.lines)
 
     result_lines.extend(epilogue)
-    return "".join(result_lines), total_property_removed, blocks_removed
+    return "".join(result_lines), total_property_removed, blocks_removed, removed_resources
 
 
 # ---------------------------------------------------------------------------
