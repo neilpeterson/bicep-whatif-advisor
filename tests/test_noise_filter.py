@@ -516,8 +516,8 @@ class TestFilterWhatifText:
 
 @pytest.mark.unit
 class TestBlockLevelSuppression:
-    def test_modify_block_all_filtered_keeps_header(self):
-        """When ALL property lines in a Modify block are filtered, keep block header."""
+    def test_modify_block_all_filtered_suppressed(self):
+        """When ALL property lines in a Modify block are filtered, suppress entire block."""
         text = (
             "  ~ Microsoft.Network/virtualNetworks/myvnet [2022-07-01]\n"
             '      id:   "/subscriptions/123"\n'
@@ -532,13 +532,18 @@ class TestBlockLevelSuppression:
                 raw="provisioningState", pattern_type="keyword", value="provisioningState"
             ),
         ]
-        result, count, _, _ = filter_whatif_text(text, patterns)
-        # Only the 2 property lines should be removed, block header preserved
+        result, count, blocks_removed, removed = filter_whatif_text(text, patterns)
+        # Both property lines removed and entire block suppressed
         assert count == 2
-        assert "virtualNetworks" in result
-        assert "myvnet" in result
+        assert blocks_removed == 1
+        assert "virtualNetworks" not in result
+        assert "myvnet" not in result
         assert "etag" not in result
         assert "provisioningState" not in result
+        # Removed resource tracked for noise section
+        assert len(removed) == 1
+        assert removed[0]["resource_name"] == "myvnet"
+        assert removed[0]["operation"] == "Modify"
 
     def test_modify_block_some_survive_kept(self):
         """When only some property lines in a Modify block are filtered, keep the block."""
@@ -631,7 +636,7 @@ class TestBlockLevelSuppression:
         assert "Resource changes:" in result
 
     def test_multiple_blocks_independent_filtering(self):
-        """Each block is filtered independently; headers always preserved."""
+        """Each block is filtered independently; fully-filtered Modify blocks suppressed."""
         text = (
             "  ~ Microsoft.Network/virtualNetworks/myvnet [2022-07-01]\n"
             '      ~ properties.etag: "old" => "new"\n'
@@ -643,10 +648,15 @@ class TestBlockLevelSuppression:
         patterns = [
             ParsedPattern(raw="etag", pattern_type="keyword", value="etag"),
         ]
-        result, count, _, _ = filter_whatif_text(text, patterns)
-        # Both etag property lines removed, but headers preserved
+        result, count, blocks_removed, removed = filter_whatif_text(text, patterns)
+        # Both etag property lines removed
         assert count == 2
-        assert "virtualNetworks" in result  # Header preserved
+        # First block (all properties filtered) is suppressed
+        assert "virtualNetworks" not in result
+        assert blocks_removed == 1
+        assert len(removed) == 1
+        assert removed[0]["resource_name"] == "myvnet"
+        # Second block (has surviving property) is kept
         assert "Insights/components" in result
         assert "RetentionInDays" in result
         assert "etag" not in result
