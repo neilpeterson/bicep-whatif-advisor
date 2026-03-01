@@ -458,6 +458,29 @@ def filter_whatif_text(
                     filtered_indices.add(idx)
 
             if filtered_indices:
+                # If ALL property-change lines in a Modify block are
+                # filtered, suppress the entire block so the LLM never sees
+                # a "hollow" resource header with no actual changes.  Treat
+                # it like a Phase 1 removal so it appears in the noise
+                # section.  Create/Delete operations are inherently
+                # significant, so their headers are always preserved.
+                if (
+                    block.operation == "Modify"
+                    and filtered_indices == set(block.property_change_indices)
+                ):
+                    total_property_removed += len(filtered_indices)
+                    blocks_removed += 1
+                    parts = block.resource_type.split("/")
+                    resource_name = parts[-1] if parts else block.resource_type
+                    removed_resources.append(
+                        {
+                            "resource_type": _extract_arm_type(block.resource_type),
+                            "resource_name": resource_name,
+                            "operation": block.operation,
+                        }
+                    )
+                    continue
+
                 # Keep the block but remove matched property lines
                 for i, line in enumerate(block.lines):
                     if i in filtered_indices:

@@ -118,8 +118,14 @@ fuzzy: Removing retention policy settings and capacity metrics from storage acco
 fuzzy: Removing deleteRetentionPolicy properties
 fuzzy: Removes retention policy settings from Key Vault diagnostics
 fuzzy: Removes retention policy and capacity metrics from diagnostics
+fuzzy: Removing blob delete retention policy configuration
 
-# resource: privateDnsZones/virtualNetworkLinks:Modify
+regex: retention\s*polic
+regex: private\s*dns\s*zone\s*config 
+
+resource: privateDnsZones/virtualNetworkLinks:Modify
 resource: Microsoft.Insights/diagnosticSettings:Modify
-# resource: Microsoft.Storage/storageAccounts/blobServices:Modify
+resource: Microsoft.Storage/storageAccounts/blobServices:Modify
 resource: Microsoft.Network/privateEndpoints:Modify
+resource: Microsoft.Network/privateEndpoints/privateDnsZoneGroups:Modify
+
