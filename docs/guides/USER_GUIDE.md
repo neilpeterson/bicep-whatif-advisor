@@ -549,6 +549,7 @@ az deployment group what-if ... | bicep-whatif-advisor --ci --diff-ref origin/ma
 | `--ci` | Enable CI mode (auto-detected in GitHub Actions/Azure DevOps) | `false` |
 | `--diff` | Path to git diff file | - |
 | `--diff-ref` | Git reference for diff (e.g., `origin/main`, `HEAD~1`) | `HEAD~1` |
+| `--bicep-dir` | Path to Bicep source files for context (CI mode only) | `.` |
 | `--pr-title` | PR title for intent validation (auto-detected in pipelines) | - |
 | `--pr-description` | PR description for intent validation (auto-detected) | - |
 | `--pr-url` | PR URL for comment posting (auto-detected) | - |

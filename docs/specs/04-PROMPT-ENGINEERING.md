@@ -4,7 +4,7 @@
 
 The `prompt.py` module constructs system and user prompts for LLM analysis. It implements dynamic schema generation based on operating mode (standard vs. CI) and available metadata (PR title/description), ensuring the LLM receives appropriate instructions and context.
 
-**File:** `bicep_whatif_advisor/prompt.py` (315 lines)
+**File:** `bicep_whatif_advisor/prompt.py` (326 lines)
 
 ## Module Overview
 
@@ -15,7 +15,8 @@ def build_system_prompt(
     verbose: bool = False,
     ci_mode: bool = False,
     pr_title: str = None,
-    pr_description: str = None
+    pr_description: str = None,
+    enabled_buckets: list = None,
 ) -> str
 
 def build_user_prompt(
@@ -36,14 +37,15 @@ def _build_ci_system_prompt(pr_title: str = None, pr_description: str = None) ->
 
 ## System Prompt Construction
 
-### Entry Point (lines 4-24)
+### Entry Point (lines 4-27)
 
 ```python
 def build_system_prompt(
     verbose: bool = False,
     ci_mode: bool = False,
     pr_title: str = None,
-    pr_description: str = None
+    pr_description: str = None,
+    enabled_buckets: list = None,
 ) -> str:
     """Build the system prompt for the LLM.
 

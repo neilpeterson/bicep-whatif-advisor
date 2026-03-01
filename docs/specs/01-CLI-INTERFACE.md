@@ -4,7 +4,7 @@
 
 The `cli.py` module serves as the main entry point and orchestrates the entire analysis pipeline. It handles command-line argument parsing, smart defaults, platform auto-detection, LLM invocation, confidence filtering, CI mode logic, and exit code handling.
 
-**File:** `bicep_whatif_advisor/cli.py` (634 lines)
+**File:** `bicep_whatif_advisor/cli.py` (968 lines)
 
 ## Implementation Overview
 
@@ -21,7 +21,7 @@ This maps to the `main()` function decorated with `@click.command()`.
 
 ```python
 @click.command()
-@click.option(...)  # 22 options total
+@click.option(...)  # 27 options total
 @click.version_option(version=__version__)
 def main(
     provider: str,
@@ -40,10 +40,16 @@ def main(
     pr_title: str,
     pr_description: str,
     no_block: bool,
+    skip_drift: bool,
+    skip_intent: bool,
     comment_title: str,
     noise_file: str,
     noise_threshold: int,
-    no_builtin_patterns: bool
+    no_builtin_patterns: bool,
+    include_whatif: bool,
+    agents_dir: str,
+    agent_threshold: tuple,
+    skip_agent: tuple,
 ):
     """Analyze Azure What-If deployment output using LLMs."""
 ```

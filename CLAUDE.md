@@ -223,11 +223,13 @@ Multi-bucket risk assessment:
     "drift": {
       "risk_level": "low|medium|high",
       "concerns": ["..."],
+      "concern_summary": "string",
       "reasoning": "..."
     },
     "intent": {
       "risk_level": "low|medium|high",
       "concerns": ["..."],
+      "concern_summary": "string",
       "reasoning": "..."
     }
   },
@@ -392,7 +394,7 @@ cat whatif-output.txt | bicep-whatif-advisor --ci --skip-agent compliance
 
 ## Testing
 
-**Test suite:** 406 tests across 16 test files, ~82% coverage, runs in ~1.5s.
+**Test suite:** 413 tests across 16 test files, ~82% coverage, runs in ~1.5s.
 
 **Run tests:**
 ```bash
@@ -422,7 +424,7 @@ All tests use `MockProvider` from `conftest.py` — no real API calls during tes
    - Currently supported via manual `--ci` flag
 
 2. **Test Coverage** ✅ **COMPLETED**
-   - 406 tests across 16 test files, ~82% coverage
+   - 413 tests across 16 test files, ~82% coverage
    - CI workflow on Python 3.9/3.11/3.13
 
 3. **Enhanced Noise Filtering** (pre-LLM property filtering ✅ implemented)

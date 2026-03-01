@@ -464,9 +464,8 @@ def filter_whatif_text(
                 # it like a Phase 1 removal so it appears in the noise
                 # section.  Create/Delete operations are inherently
                 # significant, so their headers are always preserved.
-                if (
-                    block.operation == "Modify"
-                    and filtered_indices == set(block.property_change_indices)
+                if block.operation == "Modify" and filtered_indices == set(
+                    block.property_change_indices
                 ):
                     total_property_removed += len(filtered_indices)
                     blocks_removed += 1
@@ -602,41 +601,16 @@ def reclassify_resource_noise(resources: list, resource_patterns: list) -> int:
 # ---------------------------------------------------------------------------
 
 
-def load_noise_patterns(file_path: str) -> list:
-    """Load raw pattern strings from a file (legacy helper).
-
-    Returns list of plain string values, comments and blank lines removed.
-    """
-    patterns = load_user_patterns(file_path)
-    return [p.value for p in patterns]
-
-
 def calculate_similarity(text1: str, text2: str) -> float:
-    """Calculate similarity ratio between two strings (legacy helper)."""
+    """Calculate similarity ratio between two strings."""
     return SequenceMatcher(None, text1.lower(), text2.lower()).ratio()
 
 
 def match_noise_pattern(summary: str, patterns: list, threshold: float = 0.80) -> bool:
-    """Check if a summary matches any pattern using fuzzy matching (legacy helper)."""
+    """Check if a summary matches any pattern using fuzzy matching."""
     if not summary or not patterns:
         return False
     for pattern in patterns:
         if calculate_similarity(summary, pattern) >= threshold:
             return True
     return False
-
-
-def apply_noise_filtering(data: dict, noise_file: str, threshold: float = 0.80) -> dict:
-    """Apply post-LLM summary-based noise filtering (legacy).
-
-    This approach is superseded by filter_whatif_text(), which filters property
-    lines before LLM analysis. Kept for backwards compatibility only.
-    """
-    raw_patterns = load_noise_patterns(noise_file)
-    if not raw_patterns:
-        return data
-    for resource in data.get("resources", []):
-        summary = resource.get("summary", "")
-        if match_noise_pattern(summary, raw_patterns, threshold):
-            resource["confidence_level"] = "noise"
-    return data
