@@ -491,7 +491,12 @@ def filter_whatif_text(
         # No filtering needed — keep entire block
         result_lines.extend(block.lines)
 
-    result_lines.extend(epilogue)
+    # Only preserve the epilogue when no resource blocks were removed.
+    # The epilogue contains a summary like "Resource changes: 10 to modify."
+    # which becomes misleading when blocks have been stripped — the LLM sees
+    # the count mismatch and produces summary rows instead of individual resources.
+    if blocks_removed == 0:
+        result_lines.extend(epilogue)
     return "".join(result_lines), total_property_removed, blocks_removed, removed_resources
 
 

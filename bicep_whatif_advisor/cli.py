@@ -689,25 +689,9 @@ def main(
                     ),
                 }
             else:
-                # Build a filtered What-If output containing only high-confidence resources
-                # We'll reconstruct a minimal What-If output from the high-confidence resources
-                # and re-prompt the LLM for accurate risk assessment
-                filtered_whatif_lines = ["Resource changes:"]
-                for resource in high_confidence_data.get("resources", []):
-                    # Reconstruct What-If format: "~ ResourceName"
-                    action_symbol = {
-                        "create": "+",
-                        "modify": "~",
-                        "delete": "-",
-                        "deploy": "=",
-                        "nochange": "*",
-                        "ignore": "x",
-                    }.get(resource.get("action", "").lower(), "~")
-
-                    filtered_whatif_lines.append(f"{action_symbol} {resource['resource_name']}")
-                    filtered_whatif_lines.append(f"  Summary: {resource['summary']}")
-
-                filtered_whatif_content = "\n".join(filtered_whatif_lines)
+                # Re-prompt the LLM with the already noise-filtered What-If
+                # content (real format, blocks already stripped) for accurate
+                # risk assessment based on high-confidence resources only.
 
                 # Re-build prompts with filtered data
                 filtered_system_prompt = build_system_prompt(
@@ -718,7 +702,7 @@ def main(
                     enabled_buckets=enabled_buckets,
                 )
                 filtered_user_prompt = build_user_prompt(
-                    whatif_content=filtered_whatif_content,
+                    whatif_content=whatif_content,
                     diff_content=diff_content,
                     bicep_content=bicep_content,
                     pr_title=pr_title,
