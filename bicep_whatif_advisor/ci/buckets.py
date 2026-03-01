@@ -31,20 +31,30 @@ RISK_BUCKETS: Dict[str, RiskBucket] = {
 Detect infrastructure drift — cases where live Azure resources have
 been manually changed outside of the Bicep/ARM deployment process.
 
+IMPORTANT distinction between the inputs you receive:
+- <code_diff> = ONLY the lines changed in THIS pull request
+- <bicep_source> = the FULL Bicep/ARM codebase (for context only)
+- For drift detection, you MUST use <code_diff> to determine what
+  changed in this PR. Do NOT use <bicep_source> for drift analysis.
+  A resource being defined in <bicep_source> does NOT mean it was
+  changed in this PR.
+
 How to detect drift:
 1. Look at each Modify (~) action in the What-If output.
-2. Check whether the CODE DIFF changes that specific resource or property.
-3. If the code diff does NOT change that resource but What-If shows it
-   being modified, this is DRIFT. It means someone changed the live
+2. Check whether the <code_diff> changes that specific resource or
+   property. The resource name or its properties must appear as added
+   or modified lines in the diff.
+3. If the <code_diff> does NOT change that resource but What-If shows
+   it being modified, this is DRIFT. It means someone changed the live
    resource manually (e.g., in the Azure portal) and the deployment
    will revert those manual changes back to what the code defines.
 4. Pay special attention to property reversions — when What-If shows
    a value changing (e.g., "Enabled" => "Disabled") on a resource that
-   the code diff did not touch, the live value was manually changed
+   the <code_diff> did not touch, the live value was manually changed
    and the deployment will overwrite it.
 
 Key principle: If a resource appears as Modify in What-If but was NOT
-modified in the code diff, the Modify is caused by out-of-band changes
+modified in the <code_diff>, the Modify is caused by out-of-band changes
 to the live resource. This IS drift, even though the deployment will
 "fix" it — operators need to know manual changes will be reverted.
 
