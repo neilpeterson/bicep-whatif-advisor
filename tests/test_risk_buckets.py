@@ -91,7 +91,11 @@ class TestEvaluateRiskBuckets:
             }
         }
         is_safe, failed, ra = evaluate_risk_buckets(
-            data, ["drift", "compliance"], "medium", "high", custom_thresholds={"compliance": "high"}
+            data,
+            ["drift", "compliance"],
+            "medium",
+            "high",
+            custom_thresholds={"compliance": "high"},
         )
         assert is_safe is False
         assert "drift" in failed

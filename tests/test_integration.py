@@ -278,7 +278,15 @@ class TestCustomAgentBackfill:
 
         result = _runner().invoke(
             main,
-            ["--ci", "--format", "json", "--agents-dir", str(tmp_path), "--drift-threshold", "high"],
+            [
+                "--ci",
+                "--format",
+                "json",
+                "--agents-dir",
+                str(tmp_path),
+                "--drift-threshold",
+                "high",
+            ],
             input=create_only_fixture,
         )
         assert result.exit_code == 0
