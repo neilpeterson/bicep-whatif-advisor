@@ -392,6 +392,125 @@ class TestCLIMain:
         assert low_resources[0]["resource_name"] == "link1"
         assert low_resources[0]["confidence_level"] == "low"
 
+    def test_hide_noise_json_omits_low_confidence(
+        self, clean_env, monkeypatch, mocker
+    ):
+        """--hide-noise should omit low_confidence key from JSON output."""
+        runner = self._make_runner()
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+        response = {
+            "resources": [
+                {
+                    "resource_name": "real-resource",
+                    "resource_type": "Microsoft.Storage/storageAccounts",
+                    "action": "Create",
+                    "summary": "New storage account",
+                    "confidence_level": "high",
+                    "confidence_reason": "Real change",
+                },
+                {
+                    "resource_name": "noisy-resource",
+                    "resource_type": "Microsoft.Network/virtualNetworks",
+                    "action": "Modify",
+                    "summary": "Etag update",
+                    "confidence_level": "low",
+                    "confidence_reason": "Likely noise",
+                },
+            ],
+            "overall_summary": "One real, one noisy.",
+        }
+        mocker.patch(
+            "bicep_whatif_advisor.cli.get_provider",
+            return_value=_mock_provider(response),
+        )
+        whatif_input = "Resource changes: 2\n+ Microsoft.Storage/test\n~ Microsoft.Network/test"
+        result = runner.invoke(
+            main, ["--format", "json", "--hide-noise"], input=whatif_input
+        )
+        assert result.exit_code == 0
+        parsed = json.loads(result.output)
+        assert "low_confidence" not in parsed
+        assert "high_confidence" in parsed
+
+    def test_no_hide_noise_json_includes_low_confidence(
+        self, clean_env, monkeypatch, mocker
+    ):
+        """Without --hide-noise, low_confidence should appear in JSON output."""
+        runner = self._make_runner()
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+        response = {
+            "resources": [
+                {
+                    "resource_name": "real-resource",
+                    "resource_type": "Microsoft.Storage/storageAccounts",
+                    "action": "Create",
+                    "summary": "New storage account",
+                    "confidence_level": "high",
+                    "confidence_reason": "Real change",
+                },
+                {
+                    "resource_name": "noisy-resource",
+                    "resource_type": "Microsoft.Network/virtualNetworks",
+                    "action": "Modify",
+                    "summary": "Etag update",
+                    "confidence_level": "low",
+                    "confidence_reason": "Likely noise",
+                },
+            ],
+            "overall_summary": "One real, one noisy.",
+        }
+        mocker.patch(
+            "bicep_whatif_advisor.cli.get_provider",
+            return_value=_mock_provider(response),
+        )
+        whatif_input = "Resource changes: 2\n+ Microsoft.Storage/test\n~ Microsoft.Network/test"
+        result = runner.invoke(
+            main, ["--format", "json"], input=whatif_input
+        )
+        assert result.exit_code == 0
+        parsed = json.loads(result.output)
+        assert "low_confidence" in parsed
+        assert len(parsed["low_confidence"]["resources"]) == 1
+
+    def test_hide_noise_markdown_omits_noise_section(
+        self, clean_env, monkeypatch, mocker
+    ):
+        """--hide-noise should omit the noise section from markdown output."""
+        runner = self._make_runner()
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+        response = {
+            "resources": [
+                {
+                    "resource_name": "real-resource",
+                    "resource_type": "Microsoft.Storage/storageAccounts",
+                    "action": "Create",
+                    "summary": "New storage account",
+                    "confidence_level": "high",
+                    "confidence_reason": "Real change",
+                },
+                {
+                    "resource_name": "noisy-resource",
+                    "resource_type": "Microsoft.Network/virtualNetworks",
+                    "action": "Modify",
+                    "summary": "Etag update",
+                    "confidence_level": "low",
+                    "confidence_reason": "Likely noise",
+                },
+            ],
+            "overall_summary": "One real, one noisy.",
+        }
+        mocker.patch(
+            "bicep_whatif_advisor.cli.get_provider",
+            return_value=_mock_provider(response),
+        )
+        whatif_input = "Resource changes: 2\n+ Microsoft.Storage/test\n~ Microsoft.Network/test"
+        result = runner.invoke(
+            main, ["--format", "markdown", "--hide-noise"], input=whatif_input
+        )
+        assert result.exit_code == 0
+        assert "Potential Azure What-If Noise" not in result.output
+        assert "Low Confidence" not in result.output
+
     def test_provider_flag(self, clean_env, monkeypatch, mocker, sample_standard_response):
         runner = self._make_runner()
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")

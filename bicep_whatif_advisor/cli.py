@@ -47,6 +47,7 @@ _KNOWN_CONFIG_KEYS = {
     "noise_threshold",
     "no_builtin_patterns",
     "include_whatif",
+    "hide_noise",
     "agents_dir",
     "agent_threshold",
     "skip_agent",
@@ -326,6 +327,11 @@ def filter_by_confidence(data: dict) -> tuple[dict, dict]:
     help="Include raw What-If output in PR comment as collapsible section",
 )
 @click.option(
+    "--hide-noise",
+    is_flag=True,
+    help="Hide low-confidence resources (potential noise) from output",
+)
+@click.option(
     "--agents-dir",
     type=str,
     default=None,
@@ -371,6 +377,7 @@ def main(
     noise_threshold: int,
     no_builtin_patterns: bool,
     include_whatif: bool,
+    hide_noise: bool,
     agents_dir: str,
     agent_threshold: tuple,
     skip_agent: tuple,
@@ -640,6 +647,9 @@ def main(
         # Filter by confidence (always-on behavior)
         high_confidence_data, low_confidence_data = filter_by_confidence(data)
 
+        # Suppress noise display if --hide-noise is set
+        display_noise_data = None if hide_noise else low_confidence_data
+
         # CRITICAL FIX: If noise filtering removed resources in CI mode, the LLM's
         # risk_assessment is stale (generated before filtering). Re-prompt the LLM
         # with only high-confidence resources to get an accurate risk assessment.
@@ -799,10 +809,10 @@ def main(
                 verbose=verbose,
                 no_color=no_color,
                 ci_mode=ci,
-                low_confidence_data=low_confidence_data,
+                low_confidence_data=display_noise_data,
             )
         elif format == "json":
-            render_json(high_confidence_data, low_confidence_data=low_confidence_data)
+            render_json(high_confidence_data, low_confidence_data=display_noise_data)
         elif format == "markdown":
             raw_whatif = original_whatif_content if include_whatif else None
             markdown = render_markdown(
@@ -810,7 +820,7 @@ def main(
                 ci_mode=ci,
                 custom_title=comment_title,
                 no_block=no_block,
-                low_confidence_data=low_confidence_data,
+                low_confidence_data=display_noise_data,
                 platform=platform_ctx.platform,
                 whatif_content=raw_whatif,
             )
@@ -826,7 +836,7 @@ def main(
                     ci_mode=True,
                     custom_title=comment_title,
                     no_block=no_block,
-                    low_confidence_data=low_confidence_data,
+                    low_confidence_data=display_noise_data,
                     platform=platform_ctx.platform,
                     whatif_content=raw_whatif,
                 )
