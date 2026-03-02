@@ -252,14 +252,14 @@ def filter_by_confidence(data: dict) -> tuple[dict, dict]:
 @click.option(
     "--drift-threshold",
     type=click.Choice(["low", "medium", "high"], case_sensitive=False),
-    default="low",
+    default="medium",
     help="Fail pipeline if drift risk meets or exceeds this level"
     " (only applies if drift bucket enabled)",
 )
 @click.option(
     "--intent-threshold",
     type=click.Choice(["low", "medium", "high"], case_sensitive=False),
-    default="low",
+    default="medium",
     help="Fail pipeline if intent alignment risk meets or exceeds"
     " this level (only applies if intent bucket enabled)",
 )

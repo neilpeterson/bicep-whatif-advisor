@@ -120,7 +120,7 @@ class TestRiskBucketFields:
             description="",
             prompt_instructions="",
         )
-        assert bucket.default_threshold == "low"
+        assert bucket.default_threshold == "medium"
 
     def test_custom_defaults_to_false(self):
         bucket = RiskBucket(

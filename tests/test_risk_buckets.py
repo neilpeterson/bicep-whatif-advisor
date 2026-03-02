@@ -205,8 +205,8 @@ class TestEvaluateRiskBuckets:
         assert is_safe is True
         assert failed == []
 
-    def test_custom_bucket_falls_back_to_default_high(self):
-        """Custom bucket without explicit threshold defaults to 'low'."""
+    def test_custom_bucket_falls_back_to_default_medium(self):
+        """Custom bucket without explicit threshold defaults to 'medium'."""
         data = {
             "risk_assessment": {
                 "custom_bucket": {
@@ -217,8 +217,8 @@ class TestEvaluateRiskBuckets:
             }
         }
         # No custom_thresholds provided, bucket not in built-in map
-        # Falls back to "low" default — medium exceeds low
-        is_safe, failed, ra = evaluate_risk_buckets(data, ["custom_bucket"], "low", "low")
+        # Falls back to "medium" default — medium meets medium threshold
+        is_safe, failed, ra = evaluate_risk_buckets(data, ["custom_bucket"], "medium", "medium")
         assert is_safe is False
         assert failed == ["custom_bucket"]
 

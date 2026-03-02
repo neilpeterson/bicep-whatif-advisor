@@ -131,7 +131,7 @@ def parse_agent_file(file_path: Path) -> Optional[RiskBucket]:
         )
 
     # Validate optional fields
-    default_threshold = str(metadata.get("default_threshold", "low")).lower()
+    default_threshold = str(metadata.get("default_threshold", "medium")).lower()
     if default_threshold not in _VALID_THRESHOLDS:
         raise ValueError(
             f"Agent file {file_path.name}: invalid"
