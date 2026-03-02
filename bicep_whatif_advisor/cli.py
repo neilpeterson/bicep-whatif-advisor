@@ -760,6 +760,38 @@ def main(
         if ci and enabled_buckets:
             high_confidence_data["_enabled_buckets"] = enabled_buckets
 
+        # CI mode: evaluate thresholds and override LLM verdict before rendering
+        is_safe = True
+        failed_buckets = []
+        if ci:
+            from .ci.risk_buckets import evaluate_risk_buckets
+
+            is_safe, failed_buckets, risk_assessment = evaluate_risk_buckets(
+                high_confidence_data,
+                enabled_buckets,
+                drift_threshold,
+                intent_threshold,
+                custom_thresholds=custom_thresholds,
+            )
+
+            # Override LLM verdict with threshold evaluation result
+            highest_bucket = failed_buckets[0] if failed_buckets else "none"
+            ra = high_confidence_data.get("risk_assessment", {})
+            highest_level = "low"
+            for bucket_id in enabled_buckets:
+                bucket_data = ra.get(bucket_id, {})
+                level = bucket_data.get("risk_level", "low")
+                level_idx = ["low", "medium", "high"].index(level)
+                if level_idx > ["low", "medium", "high"].index(highest_level):
+                    highest_level = level
+            existing_verdict = high_confidence_data.get("verdict", {})
+            high_confidence_data["verdict"] = {
+                "safe": is_safe,
+                "highest_risk_bucket": highest_bucket,
+                "overall_risk_level": highest_level,
+                "reasoning": existing_verdict.get("reasoning", ""),
+            }
+
         # Render output
         if format == "table":
             render_table(
@@ -784,18 +816,8 @@ def main(
             )
             print(markdown)
 
-        # CI mode: evaluate verdict and post comment
+        # CI mode: post comment and exit
         if ci:
-            from .ci.risk_buckets import evaluate_risk_buckets
-
-            is_safe, failed_buckets, risk_assessment = evaluate_risk_buckets(
-                high_confidence_data,
-                enabled_buckets,
-                drift_threshold,
-                intent_threshold,
-                custom_thresholds=custom_thresholds,
-            )
-
             # Post comment if requested
             if post_comment:
                 raw_whatif = original_whatif_content if include_whatif else None
