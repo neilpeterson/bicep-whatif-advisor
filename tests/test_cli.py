@@ -212,7 +212,9 @@ class TestCLIMain:
         )
         mocker.patch("bicep_whatif_advisor.ci.diff.get_diff", return_value="diff content")
         whatif_input = "Resource changes: 1\n+ Microsoft.Storage/test"
-        result = runner.invoke(main, ["--ci", "--format", "json"], input=whatif_input)
+        result = runner.invoke(
+            main, ["--ci", "--format", "json", "--drift-threshold", "high"], input=whatif_input
+        )
         assert result.exit_code == 0
 
     def test_ci_mode_unsafe_exit_1(self, clean_env, monkeypatch, mocker, sample_ci_response_unsafe):

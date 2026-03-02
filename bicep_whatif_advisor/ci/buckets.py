@@ -13,7 +13,7 @@ class RiskBucket:
     description: str  # Brief description for help text
     prompt_instructions: str  # LLM prompt instructions for this bucket
     optional: bool = False  # True if bucket can be omitted (like intent when no PR metadata)
-    default_threshold: str = "high"  # Default threshold for custom agents
+    default_threshold: str = "low"  # Default threshold for custom agents
     custom: bool = False  # True for custom agents loaded from markdown files
     display: str = "summary"  # "summary", "table", or "list" — collapsible detail mode
     icon: str = ""  # Emoji for collapsible header (e.g., "💰")
