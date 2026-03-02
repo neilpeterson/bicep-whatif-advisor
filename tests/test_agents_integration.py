@@ -95,6 +95,8 @@ class TestAgentsCLIIntegration:
                 "json",
                 "--agents-dir",
                 str(agents_dir),
+                "--drift-threshold",
+                "high",
             ],
             input=WHATIF_INPUT,
         )
@@ -225,6 +227,8 @@ class TestAgentsCLIIntegration:
                 str(agents_dir),
                 "--skip-agent",
                 "compliance",
+                "--drift-threshold",
+                "high",
             ],
             input=WHATIF_INPUT,
         )
@@ -343,6 +347,8 @@ class TestAgentsCLIIntegration:
                 "markdown",
                 "--agents-dir",
                 str(agents_dir),
+                "--drift-threshold",
+                "high",
             ],
             input=WHATIF_INPUT,
         )
@@ -509,6 +515,8 @@ class TestAgentsCLIIntegration:
                 "markdown",
                 "--agents-dir",
                 str(agents_dir),
+                "--drift-threshold",
+                "high",
             ],
             input=WHATIF_INPUT,
         )

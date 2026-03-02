@@ -79,7 +79,7 @@ class TestCIModePipeline:
         mocker.patch("bicep_whatif_advisor.ci.diff.get_diff", return_value="diff content")
         result = _runner().invoke(
             main,
-            ["--ci", "--format", "json"],
+            ["--ci", "--format", "json", "--drift-threshold", "high"],
             input=create_only_fixture,
         )
         assert result.exit_code == 0
@@ -111,7 +111,19 @@ class TestCIModePipeline:
         mocker.patch("bicep_whatif_advisor.ci.diff.get_diff", return_value="diff")
         result = _runner().invoke(
             main,
-            ["--ci", "--format", "json", "--pr-title", "Add storage", "--pr-description", "test"],
+            [
+                "--ci",
+                "--format",
+                "json",
+                "--pr-title",
+                "Add storage",
+                "--pr-description",
+                "test",
+                "--drift-threshold",
+                "high",
+                "--intent-threshold",
+                "high",
+            ],
             input=create_only_fixture,
         )
         assert result.exit_code == 0
@@ -204,7 +216,7 @@ class TestNoiseFilteringPipeline:
 
         result = _runner().invoke(
             main,
-            ["--ci", "--format", "json"],
+            ["--ci", "--format", "json", "--drift-threshold", "high"],
             input=create_only_fixture,
         )
         assert result.exit_code == 0
@@ -266,7 +278,7 @@ class TestCustomAgentBackfill:
 
         result = _runner().invoke(
             main,
-            ["--ci", "--format", "json", "--agents-dir", str(tmp_path)],
+            ["--ci", "--format", "json", "--agents-dir", str(tmp_path), "--drift-threshold", "high"],
             input=create_only_fixture,
         )
         assert result.exit_code == 0
@@ -329,7 +341,15 @@ class TestCustomAgentBackfill:
 
         result = _runner().invoke(
             main,
-            ["--ci", "--format", "markdown", "--agents-dir", str(tmp_path)],
+            [
+                "--ci",
+                "--format",
+                "markdown",
+                "--agents-dir",
+                str(tmp_path),
+                "--drift-threshold",
+                "high",
+            ],
             input=create_only_fixture,
         )
         assert result.exit_code == 0
@@ -352,7 +372,9 @@ class TestPlatformAutoDetect:
             return_value=provider,
         )
         mock_get_diff = mocker.patch("bicep_whatif_advisor.ci.diff.get_diff", return_value="diff")
-        result = _runner().invoke(main, ["--format", "json"], input=create_only_fixture)
+        result = _runner().invoke(
+            main, ["--format", "json", "--drift-threshold", "high"], input=create_only_fixture
+        )
         assert result.exit_code == 0
         # CI mode was auto-enabled — get_diff was called (only happens in CI mode)
         mock_get_diff.assert_called_once()

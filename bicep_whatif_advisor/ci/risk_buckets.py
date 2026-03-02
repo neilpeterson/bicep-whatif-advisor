@@ -22,8 +22,8 @@ def _validate_risk_level(risk_level: str) -> str:
 def evaluate_risk_buckets(
     data: dict,
     enabled_buckets: List[str],
-    drift_threshold: str = "high",
-    intent_threshold: str = "high",
+    drift_threshold: str = "low",
+    intent_threshold: str = "low",
     custom_thresholds: Dict[str, str] = None,
 ) -> Tuple[bool, List[str], Dict[str, Any]]:
     """Evaluate enabled risk buckets and determine if deployment is safe.
@@ -86,7 +86,7 @@ def evaluate_risk_buckets(
             from .buckets import get_bucket
 
             bucket = get_bucket(bucket_id)
-            threshold = bucket.default_threshold if bucket else "high"
+            threshold = bucket.default_threshold if bucket else "low"
 
         if _exceeds_threshold(risk_level, threshold):
             failed_buckets.append(bucket_id)

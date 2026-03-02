@@ -272,7 +272,7 @@ class TestConfigFileCLI:
         )
         mocker.patch("bicep_whatif_advisor.ci.diff.get_diff", return_value="diff")
         cfg = tmp_path / "config.yaml"
-        cfg.write_text("ci: true\nformat: json\n")
+        cfg.write_text("ci: true\nformat: json\ndrift_threshold: high\n")
         result = runner.invoke(main, ["--config-file", str(cfg)], input=WHATIF_INPUT)
         assert result.exit_code == 0
         # CI mode prints a Rich banner to stdout before JSON, so use

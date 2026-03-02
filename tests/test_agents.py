@@ -109,11 +109,11 @@ class TestParseAgentFile:
         with pytest.raises(ValueError, match="threshold"):
             parse_agent_file(agent_file)
 
-    def test_default_threshold_defaults_to_high(self, tmp_path):
+    def test_default_threshold_defaults_to_low(self, tmp_path):
         agent_file = tmp_path / "test.md"
         agent_file.write_text("---\nid: test\ndisplay_name: Test\n---\nBody")
         bucket = parse_agent_file(agent_file)
-        assert bucket.default_threshold == "high"
+        assert bucket.default_threshold == "low"
 
     def test_optional_field(self, tmp_path):
         agent_file = tmp_path / "test.md"
