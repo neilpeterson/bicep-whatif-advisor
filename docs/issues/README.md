@@ -24,7 +24,6 @@ This directory documents bugs that were discovered and fixed across releases. Ea
 
 | Issue | Fixed In | Description |
 |-------|----------|-------------|
-| [Resource List Regression](resource-list-regression.md) | v3.5.5 | Resource table showing summary row instead of individual resources after filtering |
 | [False Drift from Hollow Modify](false-drift-hollow-modify.md) | v3.5.4 | Noise-filtered Modify blocks with no remaining properties still sent to LLM |
 | [Filtered Resources Invisible](filtered-resources-invisible.md) | v3.5.1 | Pre-LLM filtered resources vanished from all output |
 | [Risk Not Recalculated](risk-not-recalculated-after-filter.md) | v1.4.0 | Risk assessment not updated after noise filtering |
@@ -42,6 +41,13 @@ This directory documents bugs that were discovered and fixed across releases. Ea
 |-------|----------|-------------|
 | [Verdict Ignoring Thresholds](verdict-ignoring-thresholds.md) | v3.6.1 | Displayed verdict used LLM's raw assessment instead of threshold evaluation |
 | [Default Threshold Too Strict](default-threshold-too-strict.md) | v3.6.2 | Default `low` threshold made nearly all deployments fail |
+
+### Resource Listing Issues
+
+| Issue | Fixed In | Description |
+|-------|----------|-------------|
+| [Resources Grouped into Summary](resources-grouped-into-summary.md) | v3.7.2 | LLM grouping resources into summary row or inventing entries from Bicep source |
+| [Resource List Regression](resource-list-regression.md) | v3.5.5 | Resource table showing summary row instead of individual resources after filtering |
 
 ### Rendering Issues
 
