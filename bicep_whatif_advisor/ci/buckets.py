@@ -77,19 +77,36 @@ Risk levels for drift:
         description="Compares What-If output to PR title/description to catch unintended changes",
         prompt_instructions="""
 **PR Intent Alignment Risk:**
-Compare the What-If output to the PR title and description. Identify
-changes that seem unrelated to the stated intent.
+Compare the What-If output to the PR title and description in BOTH
+directions to identify mismatches:
+
+**Direction 1 — Unexpected changes (What-If has changes not in PR):**
+Look for resources or actions in the What-If output that are NOT
+mentioned or implied by the PR title/description. These are changes
+the deployment will make that the PR author did not describe.
+
+**Direction 2 — Missing promised changes (PR mentions items not in What-If):**
+Look for resources, services, or components explicitly mentioned in
+the PR title/description that do NOT appear in the What-If output.
+If the PR says it will deploy a specific resource type (e.g., "Web App",
+"Database", "Load Balancer") but no corresponding Azure resource type
+appears in the What-If output, flag this as a mismatch. The deployment
+will NOT do everything the PR claims.
 
 Risk levels for intent:
 - high: Destructive changes (Delete) not mentioned in PR
   title/description, security/authentication changes not mentioned,
-  changes that contradict PR intent
+  changes that contradict PR intent, PR explicitly promises critical
+  resources (security, identity, compute) that are completely absent
+  from What-If output
 - medium: Resource modifications not aligned with PR intent,
   unexpected resource types being modified, scope significantly
-  broader than PR description
+  broader than PR description, PR explicitly lists resources or
+  services that are missing from the What-If output
 - low: New resources not mentioned but aligned with overall intent,
   minor scope differences, additional changes that support the
-  main intent
+  main intent, trivial omissions like supporting resources (tags,
+  diagnostics) not mentioned in PR
 """,
         optional=True,  # Only evaluated if PR metadata provided
     ),
