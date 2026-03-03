@@ -10,5 +10,8 @@ param branches = [
     keyVaultName: 'akv-prd-paris-01-branch'
     nsgRulePriority: 205
     ipAddress: '71.197.100.86'
+    storagePublicNetworkAccess: 'Disabled'
+    storageAllowSharedKeyAccess: false
+    keyVaultPublicNetworkAccess: 'Disabled'
   }
 ]

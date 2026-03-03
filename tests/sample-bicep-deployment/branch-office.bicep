@@ -35,6 +35,15 @@ param nsgRulePriority int
 ])
 param networkAclsDefaultAction string = 'Deny'
 
+@description('Public network access setting for the storage account')
+param storagePublicNetworkAccess string
+
+@description('Whether shared key access is allowed on the storage account')
+param storageAllowSharedKeyAccess bool
+
+@description('Public network access setting for the Key Vault')
+param keyVaultPublicNetworkAccess string
+
 resource nsg 'Microsoft.Network/networkSecurityGroups@2024-01-01' existing = {
   name: nsgName
 }
@@ -71,8 +80,8 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
     minimumTlsVersion: 'TLS1_2'
     allowBlobPublicAccess: false
     accessTier: 'Hot'
-    publicNetworkAccess: 'Disabled'
-    allowSharedKeyAccess: false
+    publicNetworkAccess: storagePublicNetworkAccess
+    allowSharedKeyAccess: storageAllowSharedKeyAccess
     networkAcls: {
       defaultAction: networkAclsDefaultAction
       bypass: 'AzureServices'
@@ -97,7 +106,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
     enableRbacAuthorization: true
     enableSoftDelete: true
     softDeleteRetentionInDays: 90
-    publicNetworkAccess: 'Disabled'
+    publicNetworkAccess: keyVaultPublicNetworkAccess
     networkAcls: {
       defaultAction: networkAclsDefaultAction
       bypass: 'AzureServices'
