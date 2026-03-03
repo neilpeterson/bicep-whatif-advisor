@@ -252,16 +252,17 @@ Use your judgment - these are guidelines, not rigid patterns."""
 
 Respond with ONLY valid JSON matching this schema:
 
-IMPORTANT rules for the "resources" array:
-- List ONLY resources from <whatif_output>. Never add resources from other sections.
-- Each resource must be its own entry. NEVER group multiple resources into a single summary row.
-- If the What-If output contains no resource changes, return an empty array: "resources": [].
+IMPORTANT rules for the top-level "resources" array ONLY (not agent findings):
+- List ONLY resources that appear in <whatif_output>.
+- Each resource must be its own entry. NEVER group or summarize multiple resources.
+- If the What-If output has no resource changes, return "resources": [].
+- These rules do NOT apply to risk_assessment findings — agents control their own output.
 
 {{
   "resources": [
     {{
-      "resource_name": "string — the individual resource name from the What-If output",
-      "resource_type": "string — the Azure resource type from the What-If output",
+      "resource_name": "string — individual resource name from the What-If output",
+      "resource_type": "string — Azure resource type from the What-If output",
       "action": "string — Create, Modify, Delete, Deploy, NoChange, Ignore",
       "summary": "string — what this change does",
       "risk_level": "low|medium|high",
