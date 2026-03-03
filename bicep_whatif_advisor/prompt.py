@@ -154,7 +154,7 @@ def _build_ci_system_prompt(
             risk_buckets_schema.append(f'''    "{bucket_id}": {{
       "risk_level": "low|medium|high",
       "concerns": ["array of specific concerns"],
-      "concern_summary": "1-2 sentence summary of all concerns for table display, or 'None'",
+      "concern_summary": "1-2 sentence summary mentioning ALL non-compliant resources by name, or 'None'",
       "reasoning": "explanation of risk assessment",
       "findings": [
         {{
@@ -166,7 +166,7 @@ def _build_ci_system_prompt(
             risk_buckets_schema.append(f'''    "{bucket_id}": {{
       "risk_level": "low|medium|high",
       "concerns": ["array of specific concerns"],
-      "concern_summary": "1-2 sentence summary of all concerns for table display, or 'None'",
+      "concern_summary": "1-2 sentence summary mentioning ALL non-compliant resources by name, or 'None'",
       "reasoning": "explanation of risk assessment"
     }}''')
 
