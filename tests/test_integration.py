@@ -224,6 +224,154 @@ class TestNoiseFilteringPipeline:
 
 
 @pytest.mark.integration
+class TestDriftPreservedWhenNoiseFiltered:
+    """Drift detection should not be hidden when noise filtering removes all resources."""
+
+    def test_all_filtered_drift_high_overridden_to_low(
+        self, clean_env, monkeypatch, mocker, tmp_path
+    ):
+        """End-to-end: all resources filtered as noise -> drift overridden to low (safe)."""
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+
+        # LLM says high drift, but ALL resources are noise — drift on noise is unreliable
+        response = {
+            "resources": [
+                {
+                    "resource_name": "noisy-vnet",
+                    "resource_type": "Network/virtualNetworks",
+                    "action": "Modify",
+                    "summary": "etag change",
+                    "risk_level": "medium",
+                    "risk_reason": "vnet change",
+                    "confidence_level": "low",
+                    "confidence_reason": "Metadata only",
+                },
+            ],
+            "overall_summary": "1 noisy modification",
+            "risk_assessment": {
+                "drift": {
+                    "risk_level": "high",
+                    "concerns": ["VNet modified outside of code"],
+                    "reasoning": "Out-of-band change detected on VNet",
+                },
+            },
+            "verdict": {
+                "safe": False,
+                "highest_risk_bucket": "drift",
+                "overall_risk_level": "high",
+                "reasoning": "Drift detected",
+            },
+        }
+
+        mocker.patch(
+            "bicep_whatif_advisor.cli.get_provider",
+            return_value=MockProvider(response),
+        )
+        mocker.patch("bicep_whatif_advisor.ci.diff.get_diff", return_value="diff content")
+
+        noise_file = tmp_path / "noise.txt"
+        noise_file.write_text("resource: virtualNetworks\n")
+
+        whatif_input = (
+            "Resource changes: 1 to modify.\n"
+            "  ~ Microsoft.Network/virtualNetworks/myVNet [2022-07-01]\n"
+            '      ~ properties.etag: "old" => "new"\n'
+        )
+        result = _runner().invoke(
+            main,
+            [
+                "--ci",
+                "--format",
+                "json",
+                "--drift-threshold",
+                "high",
+                "--noise-file",
+                str(noise_file),
+                "--no-builtin-patterns",
+            ],
+            input=whatif_input,
+        )
+        assert result.exit_code == 0  # safe — all noise
+
+        from bicep_whatif_advisor.cli import extract_json
+
+        parsed = extract_json(result.output)
+        ra = parsed["high_confidence"]["risk_assessment"]
+        assert ra["drift"]["risk_level"] == "low"
+        assert parsed["high_confidence"]["verdict"]["safe"] is True
+
+    def test_all_filtered_drift_low_verdict_safe(self, clean_env, monkeypatch, mocker, tmp_path):
+        """Regression: all resources filtered, drift is low -> verdict safe."""
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+
+        response = {
+            "resources": [
+                {
+                    "resource_name": "noisy-vnet",
+                    "resource_type": "Network/virtualNetworks",
+                    "action": "Modify",
+                    "summary": "etag change",
+                    "risk_level": "low",
+                    "risk_reason": None,
+                    "confidence_level": "low",
+                    "confidence_reason": "Metadata only",
+                },
+            ],
+            "overall_summary": "1 noisy modification",
+            "risk_assessment": {
+                "drift": {
+                    "risk_level": "low",
+                    "concerns": [],
+                    "reasoning": "No meaningful drift",
+                },
+            },
+            "verdict": {
+                "safe": True,
+                "highest_risk_bucket": "none",
+                "overall_risk_level": "low",
+                "reasoning": "Safe",
+            },
+        }
+
+        mocker.patch(
+            "bicep_whatif_advisor.cli.get_provider",
+            return_value=MockProvider(response),
+        )
+        mocker.patch("bicep_whatif_advisor.ci.diff.get_diff", return_value="diff content")
+
+        noise_file = tmp_path / "noise.txt"
+        noise_file.write_text("resource: virtualNetworks\n")
+
+        whatif_input = (
+            "Resource changes: 1 to modify.\n"
+            "  ~ Microsoft.Network/virtualNetworks/myVNet [2022-07-01]\n"
+            '      ~ properties.etag: "old" => "new"\n'
+        )
+        result = _runner().invoke(
+            main,
+            [
+                "--ci",
+                "--format",
+                "json",
+                "--drift-threshold",
+                "high",
+                "--noise-file",
+                str(noise_file),
+                "--no-builtin-patterns",
+            ],
+            input=whatif_input,
+        )
+        assert result.exit_code == 0  # safe
+
+        from bicep_whatif_advisor.cli import extract_json
+
+        parsed = extract_json(result.output)
+        ra = parsed["high_confidence"]["risk_assessment"]
+        assert ra["drift"]["risk_level"] == "low"
+        assert parsed["high_confidence"]["verdict"]["safe"] is True
+
+
+@pytest.mark.integration
 class TestCustomAgentBackfill:
     """Ensure custom agents appear in output even if LLM omits them."""
 

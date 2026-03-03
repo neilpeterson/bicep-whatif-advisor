@@ -663,7 +663,9 @@ def main(
             )
 
             # Special case: If ALL resources were filtered as noise, skip LLM recalculation
-            # and set all risk buckets to low with no concerns
+            # and set all risk buckets to low with no concerns.
+            # Rationale: if the LLM classified every resource as noise, then drift
+            # detected on those same resources is also noise-driven and unreliable.
             if num_remaining == 0:
                 sys.stderr.write(
                     "✅ All resources filtered as noise - setting all risk buckets to low\n"

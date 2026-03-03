@@ -126,6 +126,9 @@ module branchDeployment 'branch-office.bicep' = [for branch in branches: {
     keyVaultName: branch.keyVaultName
     storageAccountName: branch.storageAccountName
     nsgRulePriority: branch.nsgRulePriority
+    storagePublicNetworkAccess: branch.storagePublicNetworkAccess
+    storageAllowSharedKeyAccess: branch.storageAllowSharedKeyAccess
+    keyVaultPublicNetworkAccess: branch.keyVaultPublicNetworkAccess
     logAnalyticsWorkspaceId: logAnalytics.id
     nsgName: nsg.name
     subnetId: vnet.properties.subnets[0].id
