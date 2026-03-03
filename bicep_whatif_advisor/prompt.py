@@ -253,7 +253,7 @@ Use your judgment - these are guidelines, not rigid patterns."""
 Respond with ONLY valid JSON matching this schema:
 
 IMPORTANT rules for the "resources" array:
-- List ONLY resources that appear in the <whatif_output>. Do NOT infer or add resources from <bicep_source> or <code_diff>.
+- List ONLY resources from <whatif_output>. Never add resources from other sections.
 - Each resource must be its own entry. NEVER group multiple resources into a single summary row.
 - If the What-If output contains no resource changes, return an empty array: "resources": [].
 
