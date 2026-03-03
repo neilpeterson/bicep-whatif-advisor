@@ -539,12 +539,20 @@ def _matches_resource_pattern_post_llm(
     value = pattern.value
 
     def _type_matches(needle: str) -> bool:
-        # Bidirectional substring: handles both shorter patterns matching longer
-        # LLM types and longer patterns (e.g., with Microsoft. prefix) matching
-        # shorter LLM types that omit the namespace prefix.
+        # Forward: pattern substring of LLM type (broad pattern matches specific type)
+        # Reverse (suffix only): LLM type is a suffix of the pattern, handling
+        # cases where the LLM abbreviates the namespace prefix (e.g., LLM returns
+        # "storageAccounts" but pattern is "Microsoft.Storage/storageAccounts").
+        # We require suffix matching to prevent a parent resource type
+        # (e.g., "storageAccounts") from matching a child resource pattern
+        # (e.g., "storageAccounts/blobServices").
         needle_lower = needle.lower()
         type_lower = resource_type.lower()
-        return needle_lower in type_lower or type_lower in needle_lower
+        if needle_lower in type_lower:
+            return True
+        if type_lower in needle_lower and needle_lower.endswith(type_lower):
+            return True
+        return False
 
     if ":" in value:
         type_part, op_part = value.rsplit(":", 1)
