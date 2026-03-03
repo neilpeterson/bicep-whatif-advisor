@@ -499,6 +499,339 @@ class TestCLIMain:
         assert "Potential Azure What-If Noise" not in result.output
         assert "Low Confidence" not in result.output
 
+    def test_all_filtered_drift_enabled_preserves_drift(
+        self, clean_env, monkeypatch, mocker, tmp_path
+    ):
+        """All resources filtered + drift enabled: preserves LLM's drift assessment."""
+        runner = self._make_runner()
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+
+        # LLM returns a response where the only resource will be filtered as noise,
+        # but drift is high because the resource was modified out-of-band
+        response = {
+            "resources": [
+                {
+                    "resource_name": "noisy-vnet",
+                    "resource_type": "Network/virtualNetworks",
+                    "action": "Modify",
+                    "summary": "etag change",
+                    "risk_level": "medium",
+                    "risk_reason": "vnet change",
+                    "confidence_level": "low",
+                    "confidence_reason": "Metadata only",
+                },
+            ],
+            "overall_summary": "1 noisy modification",
+            "risk_assessment": {
+                "drift": {
+                    "risk_level": "high",
+                    "concerns": ["VNet modified outside of code"],
+                    "reasoning": "Out-of-band change detected",
+                },
+            },
+            "verdict": {
+                "safe": False,
+                "highest_risk_bucket": "drift",
+                "overall_risk_level": "high",
+                "reasoning": "Drift detected",
+            },
+        }
+
+        mocker.patch(
+            "bicep_whatif_advisor.cli.get_provider",
+            return_value=_mock_provider(response),
+        )
+        mocker.patch("bicep_whatif_advisor.ci.diff.get_diff", return_value="diff content")
+
+        # Create noise patterns that will filter out the vnet resource block
+        noise_file = tmp_path / "noise.txt"
+        noise_file.write_text("resource: virtualNetworks\n")
+
+        # What-If input with a resource block that matches the noise pattern
+        whatif_input = (
+            "Resource changes: 1 to modify.\n"
+            "  ~ Microsoft.Network/virtualNetworks/myVNet [2022-07-01]\n"
+            '      ~ properties.etag: "old" => "new"\n'
+        )
+        result = runner.invoke(
+            main,
+            [
+                "--ci",
+                "--format",
+                "json",
+                "--drift-threshold",
+                "high",
+                "--noise-file",
+                str(noise_file),
+                "--no-builtin-patterns",
+            ],
+            input=whatif_input,
+        )
+        # Drift is high and threshold is high -> meets threshold -> exit 1
+        assert result.exit_code == 1
+        parsed = extract_json(result.output)
+        ra = parsed["high_confidence"]["risk_assessment"]
+        assert ra["drift"]["risk_level"] == "high"
+
+    def test_all_filtered_drift_skipped_all_buckets_low(
+        self, clean_env, monkeypatch, mocker, tmp_path
+    ):
+        """All resources filtered + drift skipped: all buckets set to low."""
+        runner = self._make_runner()
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+
+        response = {
+            "resources": [
+                {
+                    "resource_name": "noisy-vnet",
+                    "resource_type": "Network/virtualNetworks",
+                    "action": "Modify",
+                    "summary": "etag change",
+                    "risk_level": "low",
+                    "risk_reason": None,
+                    "confidence_level": "low",
+                    "confidence_reason": "Metadata only",
+                },
+            ],
+            "overall_summary": "1 noisy modification",
+            "risk_assessment": {
+                "intent": {
+                    "risk_level": "low",
+                    "concerns": [],
+                    "reasoning": "ok",
+                },
+            },
+            "verdict": {
+                "safe": True,
+                "highest_risk_bucket": "none",
+                "overall_risk_level": "low",
+                "reasoning": "ok",
+            },
+        }
+
+        mocker.patch(
+            "bicep_whatif_advisor.cli.get_provider",
+            return_value=_mock_provider(response),
+        )
+        mocker.patch("bicep_whatif_advisor.ci.diff.get_diff", return_value="diff content")
+
+        noise_file = tmp_path / "noise.txt"
+        noise_file.write_text("resource: virtualNetworks\n")
+
+        whatif_input = (
+            "Resource changes: 1 to modify.\n"
+            "  ~ Microsoft.Network/virtualNetworks/myVNet [2022-07-01]\n"
+            '      ~ properties.etag: "old" => "new"\n'
+        )
+        result = runner.invoke(
+            main,
+            [
+                "--ci",
+                "--format",
+                "json",
+                "--skip-drift",
+                "--pr-title",
+                "Add storage",
+                "--noise-file",
+                str(noise_file),
+                "--no-builtin-patterns",
+            ],
+            input=whatif_input,
+        )
+        assert result.exit_code == 0
+        parsed = extract_json(result.output)
+        ra = parsed["high_confidence"]["risk_assessment"]
+        # drift bucket should not exist (skipped), intent should be low
+        assert "drift" not in ra
+        assert ra["intent"]["risk_level"] == "low"
+
+    def test_all_filtered_drift_preserved_high_verdict_unsafe(
+        self, clean_env, monkeypatch, mocker, tmp_path
+    ):
+        """All filtered + drift preserved at high with medium threshold: verdict is unsafe."""
+        runner = self._make_runner()
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+
+        response = {
+            "resources": [
+                {
+                    "resource_name": "noisy-vnet",
+                    "resource_type": "Network/virtualNetworks",
+                    "action": "Modify",
+                    "summary": "etag change",
+                    "risk_level": "medium",
+                    "risk_reason": "change",
+                    "confidence_level": "low",
+                    "confidence_reason": "Metadata only",
+                },
+            ],
+            "overall_summary": "1 noisy modification",
+            "risk_assessment": {
+                "drift": {
+                    "risk_level": "high",
+                    "concerns": ["Critical drift"],
+                    "reasoning": "Manual changes detected",
+                },
+            },
+            "verdict": {
+                "safe": False,
+                "highest_risk_bucket": "drift",
+                "overall_risk_level": "high",
+                "reasoning": "Drift detected",
+            },
+        }
+
+        mocker.patch(
+            "bicep_whatif_advisor.cli.get_provider",
+            return_value=_mock_provider(response),
+        )
+        mocker.patch("bicep_whatif_advisor.ci.diff.get_diff", return_value="diff content")
+
+        noise_file = tmp_path / "noise.txt"
+        noise_file.write_text("resource: virtualNetworks\n")
+
+        whatif_input = (
+            "Resource changes: 1 to modify.\n"
+            "  ~ Microsoft.Network/virtualNetworks/myVNet [2022-07-01]\n"
+            '      ~ properties.etag: "old" => "new"\n'
+        )
+        result = runner.invoke(
+            main,
+            [
+                "--ci",
+                "--format",
+                "json",
+                "--drift-threshold",
+                "medium",
+                "--noise-file",
+                str(noise_file),
+                "--no-builtin-patterns",
+            ],
+            input=whatif_input,
+        )
+        # high drift >= medium threshold -> unsafe -> exit 1
+        assert result.exit_code == 1
+
+    def test_reanalysis_passes_unfiltered_content(self, clean_env, monkeypatch, mocker, tmp_path):
+        """Re-analysis path includes unfiltered content in the prompt (via MockProvider.calls)."""
+        runner = self._make_runner()
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+
+        # First call: mixed confidence (triggers re-analysis)
+        first_response = {
+            "resources": [
+                {
+                    "resource_name": "real-storage",
+                    "resource_type": "Storage/storageAccounts",
+                    "action": "Create",
+                    "summary": "Creates storage",
+                    "risk_level": "low",
+                    "risk_reason": None,
+                    "confidence_level": "high",
+                    "confidence_reason": "Real creation",
+                },
+                {
+                    "resource_name": "noise-vnet",
+                    "resource_type": "Network/virtualNetworks",
+                    "action": "Modify",
+                    "summary": "etag change",
+                    "risk_level": "medium",
+                    "risk_reason": "vnet change",
+                    "confidence_level": "low",
+                    "confidence_reason": "Metadata only",
+                },
+            ],
+            "overall_summary": "Mixed changes",
+            "risk_assessment": {
+                "drift": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
+            },
+            "verdict": {
+                "safe": True,
+                "highest_risk_bucket": "none",
+                "overall_risk_level": "low",
+                "reasoning": "ok",
+            },
+        }
+
+        # Second call: re-analysis response
+        second_response = {
+            "resources": [
+                {
+                    "resource_name": "real-storage",
+                    "resource_type": "Storage/storageAccounts",
+                    "action": "Create",
+                    "summary": "Creates storage",
+                    "risk_level": "low",
+                    "risk_reason": None,
+                    "confidence_level": "high",
+                    "confidence_reason": "Real creation",
+                },
+            ],
+            "overall_summary": "1 create",
+            "risk_assessment": {
+                "drift": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
+            },
+            "verdict": {
+                "safe": True,
+                "highest_risk_bucket": "none",
+                "overall_risk_level": "low",
+                "reasoning": "ok",
+            },
+        }
+
+        from conftest import MockProvider
+
+        call_count = {"n": 0}
+        responses = [first_response, second_response]
+
+        class MultiResponseProvider(MockProvider):
+            def complete(self, system_prompt, user_prompt):
+                idx = min(call_count["n"], len(responses) - 1)
+                call_count["n"] += 1
+                self.calls.append((system_prompt, user_prompt))
+                return json.dumps(responses[idx])
+
+        provider = MultiResponseProvider()
+        mocker.patch(
+            "bicep_whatif_advisor.cli.get_provider",
+            return_value=provider,
+        )
+        mocker.patch("bicep_whatif_advisor.ci.diff.get_diff", return_value="diff content")
+
+        # Create noise file that filters a property line (so filtering changes content)
+        noise_file = tmp_path / "noise.txt"
+        noise_file.write_text("etag\n")
+
+        whatif_input = (
+            "Resource changes: 2 to create/modify.\n"
+            "+ Microsoft.Storage/storageAccounts/newstorage [2023-01-01]\n"
+            "  ~ Microsoft.Network/virtualNetworks/myVNet [2022-07-01]\n"
+            '      ~ properties.etag: "old" => "new"\n'
+            '      ~ properties.addressSpace: "10.0.0.0/16" => "10.0.0.0/8"\n'
+        )
+        result = runner.invoke(
+            main,
+            [
+                "--ci",
+                "--format",
+                "json",
+                "--drift-threshold",
+                "high",
+                "--noise-file",
+                str(noise_file),
+                "--no-builtin-patterns",
+            ],
+            input=whatif_input,
+        )
+        assert result.exit_code == 0
+        assert call_count["n"] == 2  # initial + re-analysis
+
+        # Both calls should include the unfiltered content tag
+        for _, user_prompt in provider.calls:
+            assert "<whatif_output_unfiltered>" in user_prompt
+            # Unfiltered content should contain the original etag line
+            assert "etag" in user_prompt
+
     def test_provider_flag(self, clean_env, monkeypatch, mocker, sample_standard_response):
         runner = self._make_runner()
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")

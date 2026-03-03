@@ -58,6 +58,13 @@ modified in the <code_diff>, the Modify is caused by out-of-band changes
 to the live resource. This IS drift, even though the deployment will
 "fix" it — operators need to know manual changes will be reverted.
 
+IMPORTANT — unfiltered What-If data for drift:
+When a <whatif_output_unfiltered> section is present, use it INSTEAD of
+<whatif_output> for drift analysis. The <whatif_output> may have had
+entire resource blocks removed by a pre-LLM noise filter. Drift detection
+must see ALL resources (including those the noise filter removed) to
+accurately identify out-of-band changes.
+
 Risk levels for drift:
 - high: Critical resources drifting (security, identity, network access,
   stateful resources like databases/storage), broad scope drift (many

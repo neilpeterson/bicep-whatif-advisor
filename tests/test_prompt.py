@@ -156,6 +156,17 @@ class TestBuildSystemPrompt:
         finally:
             del RISK_BUCKETS["sfi"]
 
+    def test_ci_system_prompt_mentions_unfiltered(self):
+        """CI system prompt mentions whatif_output_unfiltered section."""
+        result = build_system_prompt(ci_mode=True)
+        assert "whatif_output_unfiltered" in result
+
+    def test_drift_instructions_reference_unfiltered(self):
+        """Drift bucket instructions tell LLM to prefer unfiltered data."""
+        result = build_system_prompt(ci_mode=True, enabled_buckets=["drift"])
+        assert "whatif_output_unfiltered" in result
+        assert "drift" in result.lower()
+
     def test_builtin_bucket_no_findings_in_schema(self):
         """Built-in buckets (drift) don't get findings in the schema."""
         result = build_system_prompt(ci_mode=True, enabled_buckets=["drift"])
@@ -231,3 +242,43 @@ class TestBuildUserPrompt:
     def test_standard_mode_no_pr_metadata(self):
         result = build_user_prompt(whatif_content="changes")
         assert "<pull_request_intent>" not in result
+
+    def test_ci_mode_unfiltered_tag_present_when_provided(self):
+        """<whatif_output_unfiltered> appears when parameter is provided in CI mode."""
+        result = build_user_prompt(
+            whatif_content="filtered content",
+            diff_content="diff",
+            whatif_content_unfiltered="original full content",
+        )
+        assert "<whatif_output_unfiltered>" in result
+        assert "original full content" in result
+        assert "</whatif_output_unfiltered>" in result
+
+    def test_ci_mode_unfiltered_tag_absent_when_none(self):
+        """<whatif_output_unfiltered> absent when parameter is None."""
+        result = build_user_prompt(
+            whatif_content="filtered content",
+            diff_content="diff",
+            whatif_content_unfiltered=None,
+        )
+        assert "<whatif_output_unfiltered>" not in result
+
+    def test_standard_mode_unfiltered_tag_absent_even_if_provided(self):
+        """<whatif_output_unfiltered> absent in standard mode even if parameter provided."""
+        result = build_user_prompt(
+            whatif_content="changes",
+            whatif_content_unfiltered="original full content",
+        )
+        assert "<whatif_output_unfiltered>" not in result
+
+    def test_unfiltered_tag_between_whatif_and_diff(self):
+        """<whatif_output_unfiltered> appears between </whatif_output> and <code_diff>."""
+        result = build_user_prompt(
+            whatif_content="filtered",
+            diff_content="diff",
+            whatif_content_unfiltered="original",
+        )
+        whatif_end = result.index("</whatif_output>")
+        unfiltered_start = result.index("<whatif_output_unfiltered>")
+        diff_start = result.index("<code_diff>")
+        assert whatif_end < unfiltered_start < diff_start
