@@ -68,6 +68,7 @@ class AzureOpenAIProvider(Provider):
                 response = client.chat.completions.create(
                     model=self.deployment,
                     temperature=0,
+                    max_tokens=16384,
                     messages=[
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt},
