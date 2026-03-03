@@ -499,15 +499,15 @@ class TestCLIMain:
         assert "Potential Azure What-If Noise" not in result.output
         assert "Low Confidence" not in result.output
 
-    def test_all_filtered_drift_enabled_preserves_drift(
+    def test_all_filtered_drift_enabled_all_buckets_low(
         self, clean_env, monkeypatch, mocker, tmp_path
     ):
-        """All resources filtered + drift enabled: preserves LLM's drift assessment."""
+        """All resources filtered + drift enabled: all buckets low."""
         runner = self._make_runner()
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
 
-        # LLM returns a response where the only resource will be filtered as noise,
-        # but drift is high because the resource was modified out-of-band
+        # LLM returns high drift, but the only resource is noise — all-filtered
+        # path should override to low since drift on noise is unreliable
         response = {
             "resources": [
                 {
@@ -543,11 +543,9 @@ class TestCLIMain:
         )
         mocker.patch("bicep_whatif_advisor.ci.diff.get_diff", return_value="diff content")
 
-        # Create noise patterns that will filter out the vnet resource block
         noise_file = tmp_path / "noise.txt"
         noise_file.write_text("resource: virtualNetworks\n")
 
-        # What-If input with a resource block that matches the noise pattern
         whatif_input = (
             "Resource changes: 1 to modify.\n"
             "  ~ Microsoft.Network/virtualNetworks/myVNet [2022-07-01]\n"
@@ -567,11 +565,11 @@ class TestCLIMain:
             ],
             input=whatif_input,
         )
-        # Drift is high and threshold is high -> meets threshold -> exit 1
-        assert result.exit_code == 1
+        # All resources are noise -> all buckets low -> safe
+        assert result.exit_code == 0
         parsed = extract_json(result.output)
         ra = parsed["high_confidence"]["risk_assessment"]
-        assert ra["drift"]["risk_level"] == "high"
+        assert ra["drift"]["risk_level"] == "low"
 
     def test_all_filtered_drift_skipped_all_buckets_low(
         self, clean_env, monkeypatch, mocker, tmp_path
@@ -645,10 +643,8 @@ class TestCLIMain:
         assert "drift" not in ra
         assert ra["intent"]["risk_level"] == "low"
 
-    def test_all_filtered_drift_preserved_high_verdict_unsafe(
-        self, clean_env, monkeypatch, mocker, tmp_path
-    ):
-        """All filtered + drift preserved at high with medium threshold: verdict is unsafe."""
+    def test_all_filtered_llm_high_drift_still_safe(self, clean_env, monkeypatch, mocker, tmp_path):
+        """All filtered: even if LLM said high drift, all-noise override sets it to low."""
         runner = self._make_runner()
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
 
@@ -709,8 +705,8 @@ class TestCLIMain:
             ],
             input=whatif_input,
         )
-        # high drift >= medium threshold -> unsafe -> exit 1
-        assert result.exit_code == 1
+        # All resources are noise -> all buckets low -> safe regardless of threshold
+        assert result.exit_code == 0
 
     def test_reanalysis_passes_unfiltered_content(self, clean_env, monkeypatch, mocker, tmp_path):
         """Re-analysis path includes unfiltered content in the prompt (via MockProvider.calls)."""

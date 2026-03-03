@@ -677,74 +677,43 @@ def main(
             )
 
             # Special case: If ALL resources were filtered as noise, skip LLM recalculation
-            # and set non-drift risk buckets to low with no concerns.
-            # When drift had unfiltered data, preserve its original LLM assessment.
+            # and set all risk buckets to low with no concerns.
+            # Rationale: if the LLM classified every resource as noise, then drift
+            # detected on those same resources is also noise-driven and unreliable.
             if num_remaining == 0:
+                sys.stderr.write(
+                    "✅ All resources filtered as noise - setting all risk buckets to low\n"
+                )
+
+                # Build a clean risk assessment with no concerns for enabled buckets only
                 from .ci.buckets import RISK_BUCKETS
 
-                # Preserve drift assessment from original LLM response when it
-                # had access to unfiltered What-If data
-                original_ra = data.get("risk_assessment", {})
-                preserve_drift = whatif_content_unfiltered is not None and "drift" in original_ra
-
-                if preserve_drift:
-                    sys.stderr.write(
-                        "✅ All resources filtered as noise - preserving"
-                        " drift assessment (used unfiltered data)\n"
-                    )
-                else:
-                    sys.stderr.write(
-                        "✅ All resources filtered as noise - setting all risk buckets to low\n"
-                    )
-
-                # Build risk assessment: preserve drift if it used unfiltered data,
-                # set all other buckets to low
                 high_confidence_data["risk_assessment"] = {}
 
                 for bucket_id in enabled_buckets:
-                    if bucket_id == "drift" and preserve_drift:
-                        high_confidence_data["risk_assessment"]["drift"] = original_ra["drift"]
-                    else:
-                        bucket = RISK_BUCKETS[bucket_id]
-                        high_confidence_data["risk_assessment"][bucket_id] = {
-                            "risk_level": "low",
-                            "concerns": [],
-                            "reasoning": (
-                                f"All detected changes were flagged as"
-                                f" low-confidence noise. No high-confidence"
-                                f" {bucket.display_name.lower()}"
-                                f" concerns to evaluate."
-                            ),
-                        }
+                    bucket = RISK_BUCKETS[bucket_id]
+                    high_confidence_data["risk_assessment"][bucket_id] = {
+                        "risk_level": "low",
+                        "concerns": [],
+                        "reasoning": (
+                            f"All detected changes were flagged as"
+                            f" low-confidence noise. No high-confidence"
+                            f" {bucket.display_name.lower()}"
+                            f" concerns to evaluate."
+                        ),
+                    }
 
-                # Update verdict — check preserved drift level against threshold
-                if preserve_drift:
-                    drift_level = original_ra["drift"].get("risk_level", "low")
-                    level_order = ["low", "medium", "high"]
-                    drift_exceeds = level_order.index(drift_level) >= level_order.index(
-                        drift_threshold
-                    )
-                    high_confidence_data["verdict"] = {
-                        "safe": not drift_exceeds,
-                        "highest_risk_bucket": "drift" if drift_exceeds else "none",
-                        "overall_risk_level": drift_level,
-                        "reasoning": (
-                            "All detected changes were filtered as noise, but"
-                            " drift analysis used unfiltered data."
-                            f" Drift risk: {drift_level}."
-                        ),
-                    }
-                else:
-                    high_confidence_data["verdict"] = {
-                        "safe": True,
-                        "highest_risk_bucket": "none",
-                        "overall_risk_level": "low",
-                        "reasoning": (
-                            "All detected changes were identified as Azure"
-                            " What-If noise and excluded from risk analysis."
-                            " No meaningful infrastructure changes detected."
-                        ),
-                    }
+                # Update verdict
+                high_confidence_data["verdict"] = {
+                    "safe": True,
+                    "highest_risk_bucket": "none",
+                    "overall_risk_level": "low",
+                    "reasoning": (
+                        "All detected changes were identified as Azure"
+                        " What-If noise and excluded from risk analysis."
+                        " No meaningful infrastructure changes detected."
+                    ),
+                }
             else:
                 # Re-prompt the LLM with the already noise-filtered What-If
                 # content (real format, blocks already stripped) for accurate

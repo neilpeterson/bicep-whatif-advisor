@@ -227,10 +227,13 @@ class TestNoiseFilteringPipeline:
 class TestDriftPreservedWhenNoiseFiltered:
     """Drift detection should not be hidden when noise filtering removes all resources."""
 
-    def test_all_filtered_drift_high_verdict_unsafe(self, clean_env, monkeypatch, mocker, tmp_path):
-        """End-to-end: all resources filtered as noise but drift is high -> verdict unsafe."""
+    def test_all_filtered_drift_high_overridden_to_low(
+        self, clean_env, monkeypatch, mocker, tmp_path
+    ):
+        """End-to-end: all resources filtered as noise -> drift overridden to low (safe)."""
         monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
 
+        # LLM says high drift, but ALL resources are noise — drift on noise is unreliable
         response = {
             "resources": [
                 {
@@ -288,14 +291,14 @@ class TestDriftPreservedWhenNoiseFiltered:
             ],
             input=whatif_input,
         )
-        assert result.exit_code == 1  # unsafe due to drift
+        assert result.exit_code == 0  # safe — all noise
 
         from bicep_whatif_advisor.cli import extract_json
 
         parsed = extract_json(result.output)
         ra = parsed["high_confidence"]["risk_assessment"]
-        assert ra["drift"]["risk_level"] == "high"
-        assert parsed["high_confidence"]["verdict"]["safe"] is False
+        assert ra["drift"]["risk_level"] == "low"
+        assert parsed["high_confidence"]["verdict"]["safe"] is True
 
     def test_all_filtered_drift_low_verdict_safe(self, clean_env, monkeypatch, mocker, tmp_path):
         """Regression: all resources filtered, drift is low -> verdict safe."""
