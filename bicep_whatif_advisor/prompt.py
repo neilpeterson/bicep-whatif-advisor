@@ -76,6 +76,11 @@ Use your judgment - these are guidelines, not rigid patterns."""
     prompt = f"""You are an Azure infrastructure expert. You analyze Azure Resource Manager
 What-If deployment output and produce concise, accurate summaries.
 
+IMPORTANT rules for the "resources" array:
+- List ONLY resources that appear in the What-If output. Each resource must be its own entry.
+- NEVER group multiple resources into a single summary row.
+- If the What-If output contains no resource changes, return an empty array: "resources": [].
+
 You must respond with ONLY valid JSON matching this schema, no other text:
 
 {base_schema}"""
@@ -247,11 +252,16 @@ Use your judgment - these are guidelines, not rigid patterns."""
 
 Respond with ONLY valid JSON matching this schema:
 
+IMPORTANT rules for the "resources" array:
+- List ONLY resources that appear in the <whatif_output>. Do NOT infer or add resources from <bicep_source> or <code_diff>.
+- Each resource must be its own entry. NEVER group multiple resources into a single summary row.
+- If the What-If output contains no resource changes, return an empty array: "resources": [].
+
 {{
   "resources": [
     {{
-      "resource_name": "string",
-      "resource_type": "string",
+      "resource_name": "string — the individual resource name from the What-If output",
+      "resource_type": "string — the Azure resource type from the What-If output",
       "action": "string — Create, Modify, Delete, Deploy, NoChange, Ignore",
       "summary": "string — what this change does",
       "risk_level": "low|medium|high",
