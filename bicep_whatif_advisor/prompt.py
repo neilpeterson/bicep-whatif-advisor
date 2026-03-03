@@ -198,9 +198,9 @@ risk_level "low" with an empty concerns array."""
                 ]
             col_descriptions = ", ".join(f'"{c["key"]}" ({c["description"]})' for c in cols)
             bucket_text += f"""
-For the "{bucket_id}" bucket, also populate the "findings" array with per-resource details.
+For the "{bucket_id}" bucket, populate the "findings" array as described in the instructions above.
 Each finding should have {col_descriptions}.
-Include one finding per affected resource. If no issues found, return an empty array."""
+Include ALL checks or items described in the agent instructions, not just failing ones."""
         bucket_instructions_list.append(bucket_text)
 
     bucket_instructions = "\n".join(bucket_instructions_list)

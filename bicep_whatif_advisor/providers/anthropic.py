@@ -57,7 +57,7 @@ class AnthropicProvider(Provider):
             try:
                 response = client.messages.create(
                     model=self.model,
-                    max_tokens=4096,
+                    max_tokens=16384,
                     temperature=0,
                     system=system_prompt,
                     messages=[{"role": "user", "content": user_prompt}],
