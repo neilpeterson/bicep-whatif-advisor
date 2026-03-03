@@ -114,10 +114,7 @@ def _build_ci_system_prompt(
         enabled_buckets = get_enabled_buckets(has_pr_metadata=bool(pr_title or pr_description))
 
     base_prompt = """You are an Azure infrastructure deployment safety reviewer. You are given:
-1. The Azure What-If output showing planned infrastructure changes \
-(may have noisy property lines pre-filtered; an optional \
-<whatif_output_unfiltered> section provides the original unfiltered \
-output for drift analysis)
+1. The Azure What-If output showing planned infrastructure changes
 2. The source code diff (Bicep/ARM template changes) that produced these changes"""
 
     # Add PR intent context if available and intent bucket is enabled
@@ -287,18 +284,15 @@ def build_user_prompt(
     bicep_content: str = None,
     pr_title: str = None,
     pr_description: str = None,
-    whatif_content_unfiltered: str = None,
 ) -> str:
     """Build the user prompt with What-If output and optional context.
 
     Args:
-        whatif_content: Azure What-If output text (possibly noise-filtered)
+        whatif_content: Azure What-If output text
         diff_content: Git diff content (CI mode only)
         bicep_content: Bicep source files content (CI mode only)
         pr_title: Pull request title (CI mode only)
         pr_description: Pull request description (CI mode only)
-        whatif_content_unfiltered: Original unfiltered What-If output for drift analysis
-                                   (CI mode only, included only when filtering changed content)
 
     Returns:
         User prompt string
@@ -320,16 +314,7 @@ Description: {pr_description or "Not provided"}
 
 <whatif_output>
 {whatif_content}
-</whatif_output>"""
-
-        if whatif_content_unfiltered is not None:
-            prompt += f"""
-
-<whatif_output_unfiltered>
-{whatif_content_unfiltered}
-</whatif_output_unfiltered>"""
-
-        prompt += f"""
+</whatif_output>
 
 <code_diff>
 {diff_content}

@@ -561,19 +561,6 @@ def main(
                     f"🔕 Pre-filtered {num_lines} known-noisy line(s) from What-If output\n"
                 )
 
-        # Compute unfiltered What-If content for drift analysis (CI mode only).
-        # Only set when: CI mode + drift enabled + filtering actually changed content.
-        # This gives drift detection the full unfiltered view while other buckets
-        # benefit from noise filtering. When None, zero extra tokens are sent.
-        whatif_content_unfiltered = None
-        if (
-            ci
-            and enabled_buckets
-            and "drift" in enabled_buckets
-            and whatif_content != original_whatif_content
-        ):
-            whatif_content_unfiltered = original_whatif_content
-
         # Get provider
         llm_provider = get_provider(provider, model)
 
@@ -591,7 +578,6 @@ def main(
             bicep_content=bicep_content,
             pr_title=pr_title,
             pr_description=pr_description,
-            whatif_content_unfiltered=whatif_content_unfiltered,
         )
 
         # Call LLM
@@ -733,7 +719,6 @@ def main(
                     bicep_content=bicep_content,
                     pr_title=pr_title,
                     pr_description=pr_description,
-                    whatif_content_unfiltered=whatif_content_unfiltered,
                 )
 
                 # Re-call LLM with filtered resources
