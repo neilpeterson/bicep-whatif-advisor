@@ -1208,6 +1208,69 @@ class TestReclassifyResourceNoise:
         assert count == 1
         assert resources[0]["confidence_level"] == "low"
 
+    def test_child_pattern_does_not_match_parent_resource(self):
+        """A blobServices pattern must not demote the parent storageAccounts resource."""
+        resources = [
+            {
+                "resource_name": "stgprdparisbranch",
+                "resource_type": "Microsoft.Storage/storageAccounts",
+                "action": "Modify",
+                "confidence_level": "high",
+            },
+        ]
+        patterns = [
+            ParsedPattern(
+                raw="resource: Microsoft.Storage/storageAccounts/blobServices:Modify",
+                pattern_type="resource",
+                value="Microsoft.Storage/storageAccounts/blobServices:Modify",
+            ),
+        ]
+        count = reclassify_resource_noise(resources, patterns)
+        assert count == 0
+        assert resources[0]["confidence_level"] == "high"
+
+    def test_child_pattern_still_matches_child_resource(self):
+        """A blobServices pattern should still match the actual blobServices resource."""
+        resources = [
+            {
+                "resource_name": "default",
+                "resource_type": "Microsoft.Storage/storageAccounts/blobServices",
+                "action": "Modify",
+                "confidence_level": "high",
+            },
+        ]
+        patterns = [
+            ParsedPattern(
+                raw="resource: Microsoft.Storage/storageAccounts/blobServices:Modify",
+                pattern_type="resource",
+                value="Microsoft.Storage/storageAccounts/blobServices:Modify",
+            ),
+        ]
+        count = reclassify_resource_noise(resources, patterns)
+        assert count == 1
+        assert resources[0]["confidence_level"] == "low"
+
+    def test_abbreviated_llm_type_matches_via_suffix(self):
+        """LLM returning abbreviated type (no namespace) still matches via suffix."""
+        resources = [
+            {
+                "resource_name": "pe1",
+                "resource_type": "privateEndpoints",
+                "action": "Modify",
+                "confidence_level": "high",
+            },
+        ]
+        patterns = [
+            ParsedPattern(
+                raw="resource: Microsoft.Network/privateEndpoints:Modify",
+                pattern_type="resource",
+                value="Microsoft.Network/privateEndpoints:Modify",
+            ),
+        ]
+        count = reclassify_resource_noise(resources, patterns)
+        assert count == 1
+        assert resources[0]["confidence_level"] == "low"
+
 
 # ---------------------------------------------------------------------------
 # Pattern loading
