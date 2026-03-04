@@ -189,7 +189,8 @@ def _build_ci_system_prompt(
 IMPORTANT: For the "{bucket_id}" bucket, ONLY evaluate the specific checks described above. \
 Do NOT flag issues outside the scope of these instructions, even if they are legitimate \
 security or operational concerns. If no resources match the defined checks, return \
-risk_level "low" with an empty concerns array."""
+risk_level "low" with an empty concerns array. You MUST still include finding rows for every \
+check, marking non-matching checks as not-applicable."""
         # Add findings instructions for custom agents with table/list display
         if bucket.custom and bucket.display in ("table", "list"):
             if bucket.columns:
@@ -203,9 +204,11 @@ risk_level "low" with an empty concerns array."""
                 ]
             col_descriptions = ", ".join(f'"{c["key"]}" ({c["description"]})' for c in cols)
             bucket_text += f"""
-For the "{bucket_id}" bucket, populate the "findings" array as described in the instructions above.
-Each finding should have {col_descriptions}.
-Include ALL checks or items described in the agent instructions, not just failing ones."""
+For the "{bucket_id}" bucket, populate the "findings" array as described above.
+Each finding MUST have {col_descriptions}.
+You MUST include one finding for EVERY check defined in the agent instructions, \
+not just failing ones. Skipping checks is not acceptable. \
+The findings array count must equal the total number of checks."""
         bucket_instructions_list.append(bucket_text)
 
     bucket_instructions = "\n".join(bucket_instructions_list)
