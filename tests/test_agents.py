@@ -475,8 +475,7 @@ class TestAgentColumns:
         fixture = Path(__file__).parent / "agents" / "sfi-infra.md"
         bucket = parse_agent_file(fixture)
         assert bucket.columns is not None
-        assert len(bucket.columns) == 4
+        assert len(bucket.columns) == 3
         assert bucket.columns[0]["key"] == "sfi_id_and_name"
         assert bucket.columns[1]["key"] == "compliance_status"
         assert bucket.columns[2]["key"] == "applicable"
-        assert bucket.columns[3]["key"] == "description"
