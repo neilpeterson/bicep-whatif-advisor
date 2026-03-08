@@ -15,6 +15,7 @@ class RiskBucket:
     optional: bool = False  # True if bucket can be omitted (like intent when no PR metadata)
     default_threshold: str = "medium"  # Default threshold for custom agents
     custom: bool = False  # True for custom agents loaded from markdown files
+    review_only: bool = False  # True if bucket can only trigger "review", never "unsafe"
     display: str = "summary"  # "summary", "table", or "list" — collapsible detail mode
     icon: str = ""  # Emoji for collapsible header (e.g., "💰")
     columns: list = None  # Custom column definitions for table/list display

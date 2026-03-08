@@ -568,6 +568,44 @@ inlineScript: |
       --agent-threshold compliance=medium
 ```
 
+### Review-Only Agents
+
+Custom agents can be marked as `review_only: true` so they recommend review but never block the pipeline. This is useful for advisory checks like cost review or best practices:
+
+```markdown
+---
+id: cost-review
+display_name: Cost Review
+default_threshold: medium
+review_only: true
+---
+
+Evaluate cost implications of infrastructure changes.
+
+Risk levels:
+- high: Major SKU upgrades, new premium-tier resources
+- medium: Scaling changes, reserved capacity modifications
+- low: Minor configuration updates
+```
+
+When a review-only agent exceeds its threshold, the verdict is "review" (exit code 0) instead of "unsafe" (exit code 1). The PR comment still shows the concerns for human review.
+
+**GitHub Actions example with review-only agent:**
+
+```yaml
+- env:
+    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  run: |
+    az deployment group what-if \
+      --resource-group ${{ vars.AZURE_RESOURCE_GROUP }} \
+      --template-file main.bicep \
+      --exclude-change-types NoChange Ignore \
+      | bicep-whatif-advisor \
+        --agents-dir ./agents \
+        --agent-threshold cost-review=medium
+```
+
 ### Custom Agent Flags
 
 | Flag | Description |

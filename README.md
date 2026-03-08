@@ -16,7 +16,7 @@ Pipe Azure What-If output to the tool in your CI/CD pipeline. It auto-detects th
 
 You can also add **custom risk assessment agents** via markdown files to evaluate additional dimensions like compliance, cost, risky operations, or naming conventions. See [Custom Agents](#custom-agents) below.
 
-Known Azure What-If noise (etag, provisioningState, etc.) is filtered before LLM analysis. Results are posted as a PR comment and the pipeline exits with code 0 (safe) or 1 (unsafe) based on configurable thresholds.
+Known Azure What-If noise (etag, provisioningState, etc.) is filtered before LLM analysis. Results are posted as a PR comment and the pipeline exits with code 0 (safe or review) or 1 (unsafe) based on configurable thresholds. Custom agents can be marked `review_only: true` to trigger a "review" verdict that recommends attention without blocking the pipeline.
 
 **Example PR Comment:**
 

@@ -98,11 +98,47 @@ class TestRenderMarkdown:
         data = {
             "resources": [],
             "overall_summary": "",
-            "verdict": {"safe": False, "reasoning": "Dangerous operation"},
+            "verdict": {
+                "safe": False,
+                "verdict_status": "unsafe",
+                "reasoning": "Dangerous operation",
+            },
         }
         md = render_markdown(data, ci_mode=True)
         assert "UNSAFE" in md
         assert "Dangerous operation" in md
+
+    def test_review_verdict_markdown(self):
+        data = {
+            "resources": [],
+            "overall_summary": "",
+            "verdict": {
+                "safe": True,
+                "verdict_status": "review",
+                "reasoning": "Cost review needed",
+                "review_buckets": ["cost-review"],
+            },
+        }
+        md = render_markdown(data, ci_mode=True)
+        assert "REVIEW" in md
+        assert "cost-review" in md
+        assert "SAFE" not in md
+        assert "UNSAFE" not in md
+
+    def test_review_verdict_no_review_buckets_field(self):
+        """Backward compat: verdict_status=safe without review_buckets."""
+        data = {
+            "resources": [],
+            "overall_summary": "",
+            "verdict": {
+                "safe": True,
+                "verdict_status": "safe",
+                "reasoning": "All good",
+            },
+        }
+        md = render_markdown(data, ci_mode=True)
+        assert "SAFE" in md
+        assert "Review recommended" not in md
 
     def test_low_confidence_noise_section(self):
         data = {"resources": [], "overall_summary": ""}
@@ -256,6 +292,47 @@ class TestRenderMarkdown:
         raw = "Resource changes: 1\n+ Microsoft.Storage/test"
         md = render_markdown(data, whatif_content=raw)
         assert "```\n" + raw + "\n```" in md
+
+    def test_review_only_label_in_risk_table(self):
+        """Review-only buckets should be labeled in the risk assessment table."""
+        from bicep_whatif_advisor.ci.buckets import RISK_BUCKETS, RiskBucket
+
+        RISK_BUCKETS["cost-review-md"] = RiskBucket(
+            id="cost-review-md",
+            display_name="Cost Review",
+            description="Review-only cost agent",
+            prompt_instructions="Check cost.",
+            custom=True,
+            review_only=True,
+        )
+        try:
+            data = {
+                "resources": [],
+                "overall_summary": "",
+                "_enabled_buckets": ["drift", "cost-review-md"],
+                "risk_assessment": {
+                    "drift": {
+                        "risk_level": "low",
+                        "concerns": [],
+                        "concern_summary": "None",
+                        "reasoning": "ok",
+                    },
+                    "cost-review-md": {
+                        "risk_level": "medium",
+                        "concerns": ["moderate cost"],
+                        "concern_summary": "Moderate cost increase",
+                        "reasoning": "cost",
+                    },
+                },
+                "verdict": {"safe": True, "verdict_status": "review"},
+            }
+            md = render_markdown(data, ci_mode=True)
+            assert "Cost Review (review only)" in md
+            assert "Infrastructure Drift" in md
+            # Drift should NOT have (review only)
+            assert "Infrastructure Drift (review only)" not in md
+        finally:
+            RISK_BUCKETS.pop("cost-review-md", None)
 
     def test_footer_in_ci_mode(self):
         data = {"resources": [], "overall_summary": "", "verdict": {}}

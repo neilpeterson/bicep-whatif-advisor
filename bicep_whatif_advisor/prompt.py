@@ -217,6 +217,7 @@ The findings array count must equal the total number of checks."""
     bucket_options = "|".join(enabled_buckets)
     verdict_schema = f'''"verdict": {{
     "safe": true/false,
+    "verdict_status": "safe|review|unsafe",
     "highest_risk_bucket": "{bucket_options}|none",
     "overall_risk_level": "low|medium|high",
     "reasoning": "string — 2-3 sentence explanation considering all buckets"

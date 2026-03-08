@@ -140,6 +140,7 @@ def parse_agent_file(file_path: Path) -> Optional[RiskBucket]:
         )
 
     optional = bool(metadata.get("optional", False))
+    review_only = bool(metadata.get("review_only", False))
 
     # Validate display mode
     display = str(metadata.get("display", "summary")).lower()
@@ -198,6 +199,7 @@ def parse_agent_file(file_path: Path) -> Optional[RiskBucket]:
         optional=optional,
         default_threshold=default_threshold,
         custom=True,
+        review_only=review_only,
         display=display,
         icon=icon,
         columns=columns,

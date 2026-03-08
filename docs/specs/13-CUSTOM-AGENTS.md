@@ -46,6 +46,7 @@ Risk levels for compliance:
 | `display_name` | Yes | — | User-facing name shown in tables and PR comments. |
 | `default_threshold` | No | `high` | Default threshold if no `--agent-threshold` override. Must be `low`, `medium`, or `high`. |
 | `optional` | No | `false` | If `true`, agent can be conditionally skipped. |
+| `review_only` | No | `false` | If `true`, agent can only trigger a "review" verdict, never "unsafe". The pipeline exits with code 0 even if this agent exceeds its threshold. Useful for advisory agents (e.g., cost review, best practices) that should inform but not block deployments. |
 
 ### Markdown Body
 

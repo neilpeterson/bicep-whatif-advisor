@@ -379,6 +379,7 @@ Risk levels for compliance:
 | `display_name` | Yes | — | Name shown in tables and PR comments |
 | `default_threshold` | No | `high` | Default threshold: `low`, `medium`, or `high` |
 | `optional` | No | `false` | If `true`, can be conditionally skipped |
+| `review_only` | No | `false` | If `true`, agent triggers "review" verdict instead of "unsafe" when exceeding threshold (exit code 0) |
 
 #### Writing Instructions
 
@@ -487,8 +488,8 @@ For CI/CD pipelines. Automatically enabled when running in GitHub Actions or Azu
 - Two built-in risk buckets (drift, intent) plus custom agents
 - Git diff analysis
 - PR intent validation
-- Deployment verdicts with configurable thresholds
-- Exit codes: 0 (safe), 1 (unsafe), 2 (input error), 130 (interrupted)
+- Three-state deployment verdicts (safe/review/unsafe) with configurable thresholds
+- Exit codes: 0 (safe or review), 1 (unsafe), 2 (input error), 130 (interrupted)
 - Automatic PR comment posting
 
 **Use Cases:**
@@ -777,7 +778,7 @@ If running in GitHub Actions or Azure DevOps but CI mode doesn't activate:
 
 | Code | Meaning | Resolution |
 |------|---------|------------|
-| 0 | Success/Safe | Deployment can proceed |
+| 0 | Success/Safe/Review | Deployment can proceed (check PR comment if review verdict) |
 | 1 | Unsafe/Error | Review PR comment, fix issues, or adjust thresholds |
 | 2 | Input error | Check command syntax and input |
 | 130 | Interrupted | User pressed Ctrl+C |

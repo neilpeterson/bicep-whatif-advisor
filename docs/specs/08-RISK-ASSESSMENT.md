@@ -21,7 +21,19 @@ Additional risk dimensions can be added via custom agents (e.g., risky operation
 
 **Key Design:** Buckets are **independent** - each has its own threshold and evaluation criteria.
 
-**Safety Contract:** Deployment blocked if **ANY** bucket exceeds threshold (AND logic).
+**Safety Contract:** Deployment blocked if **ANY** non-review-only bucket exceeds threshold. Review-only buckets can trigger a "review" verdict but never block the pipeline.
+
+### Three-State Verdict Model
+
+The verdict system uses three states instead of a binary safe/unsafe:
+
+| Verdict | Meaning | Exit Code |
+|---------|---------|-----------|
+| **Safe** | All buckets pass | `0` |
+| **Review** | Only review-only buckets exceeded thresholds | `0` |
+| **Unsafe** | One or more blocking buckets exceeded thresholds | `1` |
+
+The `review` state allows custom agents marked with `review_only: true` to flag concerns that warrant human attention without blocking the deployment pipeline. This is useful for advisory agents (e.g., cost review, best practices) that should inform but not gate deployments.
 
 ### Why Multiple Buckets?
 
@@ -67,7 +79,7 @@ def evaluate_risk_buckets(
     drift_threshold: str,
     intent_threshold: str,
     custom_thresholds: dict = None
-) -> Tuple[bool, List[str], Dict[str, Any]]:
+) -> Tuple[bool, List[str], List[str], Dict[str, Any]]:
     """Evaluate risk buckets and determine if deployment is safe.
 
     NOTE: This function expects pre-filtered data containing only medium/high-confidence
@@ -82,7 +94,7 @@ def evaluate_risk_buckets(
         custom_thresholds: Dict of custom agent thresholds (agent_id -> level)
 
     Returns:
-        Tuple of (is_safe: bool, failed_buckets: list, risk_assessment: dict)
+        Tuple of (is_safe: bool, failed_buckets: list, review_buckets: list, risk_assessment: dict)
     """
 ```
 
@@ -99,7 +111,8 @@ def evaluate_risk_buckets(
 **Returns:** Tuple of:
 1. `is_safe` (`bool`) - Whether deployment is safe to proceed
 2. `failed_buckets` (`List[str]`) - List of bucket names that failed (empty if safe)
-3. `risk_assessment` (`dict`) - Complete risk assessment data
+3. `review_buckets` (`List[str]`) - List of review-only bucket names that exceeded thresholds (trigger "review" verdict but not "unsafe")
+4. `risk_assessment` (`dict`) - Complete risk assessment data
 
 **Critical Note:** Expects **pre-filtered data** (high-confidence resources only).
 - Called after `filter_by_confidence()` in CLI
@@ -253,7 +266,7 @@ def _validate_risk_level(risk_level: str) -> str:
 if ci:
     from .ci.risk_buckets import evaluate_risk_buckets
 
-    is_safe, failed_buckets, risk_assessment = evaluate_risk_buckets(
+    is_safe, failed_buckets, review_buckets, risk_assessment = evaluate_risk_buckets(
         high_confidence_data, enabled_buckets, drift_threshold, intent_threshold,
         custom_thresholds=custom_thresholds,
     )
@@ -296,11 +309,12 @@ if ci:
 
 ### Exit Codes
 
-| Scenario | Exit Code | Meaning |
-|----------|-----------|---------|
-| All buckets pass | `0` | Safe to deploy |
-| Any bucket fails + `--no-block` | `0` | Report only, don't block |
-| Any bucket fails + no `--no-block` | `1` | Unsafe, block deployment |
+| Scenario | Exit Code | Verdict | Meaning |
+|----------|-----------|---------|---------|
+| All buckets pass | `0` | Safe | Safe to deploy |
+| Only review-only buckets exceed thresholds | `0` | Review | Recommend review, don't block |
+| Any blocking bucket fails + `--no-block` | `0` | Unsafe | Report only, don't block |
+| Any blocking bucket fails + no `--no-block` | `1` | Unsafe | Block deployment |
 
 **Note:** Exit code `1` used for unsafe deployments (not `2`).
 
@@ -357,6 +371,7 @@ class RiskBucket:
     prompt_instructions: str    # LLM prompt instructions for this bucket
     optional: bool = False      # True if bucket can be omitted (like intent)
     custom: bool = False        # True for user-created agents
+    review_only: bool = False   # True if bucket can only trigger "review", never "unsafe"
 
 RISK_BUCKETS: Dict[str, RiskBucket] = {
     "drift": RiskBucket(...),

@@ -254,10 +254,15 @@ def _print_risk_bucket_summary(
             _, risk_color = RISK_STYLES.get(risk_level, ("?", "white"))
             concern_text = bucket_data.get("concern_summary") or "None"
 
+            # Label review-only buckets in the status column
+            status_text = "●"
+            if bucket.review_only:
+                status_text = "● (review only)"
+
             bucket_table.add_row(
                 bucket.display_name,
                 _colorize(risk_level.capitalize(), risk_color, use_color),
-                _colorize("●", risk_color, use_color),
+                _colorize(status_text, risk_color, use_color),
                 concern_text,
             )
 
@@ -291,19 +296,30 @@ def _print_ci_verdict(console: Console, verdict: dict, use_color: bool) -> None:
     if not verdict:
         return
 
-    safe = verdict.get("safe", True)
+    fallback = "safe" if verdict.get("safe", True) else "unsafe"
+    verdict_status = verdict.get("verdict_status", fallback)
     reasoning = verdict.get("reasoning", "")
 
     # Verdict header
-    if safe:
-        verdict_text = "✅ SAFE"
-        verdict_style = "green bold"
-    else:
+    if verdict_status == "review":
+        verdict_text = "👀 REVIEW"
+        verdict_style = "yellow bold"
+    elif verdict_status == "unsafe":
         verdict_text = "❌ UNSAFE"
         verdict_style = "red bold"
+    else:
+        verdict_text = "✅ SAFE"
+        verdict_style = "green bold"
 
     verdict_display = _colorize(f"Verdict: {verdict_text}", verdict_style, use_color)
     console.print(verdict_display)
+
+    # Show review buckets
+    review_buckets = verdict.get("review_buckets", [])
+    if review_buckets:
+        bucket_names = ", ".join(review_buckets)
+        review_label = _colorize("Review recommended:", "yellow bold", use_color)
+        console.print(f"{review_label} {bucket_names}")
 
     # Reasoning
     if reasoning:
@@ -482,7 +498,10 @@ def render_markdown(
                 if bucket_data:
                     risk_level = bucket_data.get("risk_level", "low").capitalize()
                     concern_text = bucket_data.get("concern_summary") or "None"
-                    lines.append(f"| {bucket.display_name} | {risk_level} | {concern_text} |")
+                    name = bucket.display_name
+                    if bucket.review_only:
+                        name = f"{name} (review only)"
+                    lines.append(f"| {name} | {risk_level} | {concern_text} |")
 
             lines.append("")
 
@@ -594,12 +613,24 @@ def render_markdown(
     if ci_mode:
         verdict = data.get("verdict", {})
         if verdict:
-            safe = verdict.get("safe", True)
+            verdict_status = verdict.get(
+                "verdict_status", "safe" if verdict.get("safe", True) else "unsafe"
+            )
             reasoning = verdict.get("reasoning", "")
 
             # Verdict header
-            verdict_text = "✅ SAFE" if safe else "❌ UNSAFE"
+            if verdict_status == "review":
+                verdict_text = "👀 REVIEW"
+            elif verdict_status == "unsafe":
+                verdict_text = "❌ UNSAFE"
+            else:
+                verdict_text = "✅ SAFE"
             lines.append(f"### Verdict: {verdict_text}")
+            # Show review buckets
+            review_buckets = verdict.get("review_buckets", [])
+            if review_buckets:
+                bucket_names = ", ".join(review_buckets)
+                lines.append(f"**Review recommended:** {bucket_names}")
             if reasoning:
                 lines.append(f"**Reasoning:** {reasoning}")
             lines.append("")

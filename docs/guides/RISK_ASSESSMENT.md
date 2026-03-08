@@ -43,7 +43,7 @@ Azure What-If Output + Code Diff
            ↓
     Deployment Verdict
            ↓
-    Exit Code (0 or 1)
+    Exit Code (0 for safe/review, 1 for unsafe)
 ```
 
 ## Two Built-in Risk Buckets
@@ -559,15 +559,42 @@ Result: Deployment BLOCKED (exit code 1)
 - Maximum safety
 - Good for learning or high-security environments
 
+## Review Verdict
+
+The verdict system uses three states: **safe**, **review**, and **unsafe**.
+
+The **review** state sits between safe and unsafe. It is triggered when a **review-only** agent exceeds its threshold but no blocking buckets fail. Review-only agents are custom agents with `review_only: true` in their frontmatter:
+
+```markdown
+---
+id: cost-review
+display_name: Cost Review
+default_threshold: medium
+review_only: true
+---
+
+Evaluate cost implications of infrastructure changes...
+```
+
+**How review differs from safe and unsafe:**
+
+| Verdict | Blocking buckets failed? | Review-only buckets exceeded? | Exit code | Pipeline blocked? |
+|---------|--------------------------|-------------------------------|-----------|-------------------|
+| Safe | No | No | 0 | No |
+| Review | No | Yes | 0 | No |
+| Unsafe | Yes | Any | 1 | Yes |
+
+The review verdict is designed for advisory agents that should flag concerns for human review without blocking the deployment pipeline. The PR comment will show the review verdict and the concerns raised by the review-only agent, but the pipeline continues.
+
 ## Exit Codes
 
 The tool uses standard exit codes to communicate results:
 
 | Code | Meaning | When it happens | What to do |
 |------|---------|-----------------|------------|
-| **0** | Success / Safe | All risk buckets below thresholds | Deploy safely ✅ |
-| **1** | Unsafe / Blocked | One or more buckets exceed thresholds | Review PR comment, fix issues ⚠️ |
-| **2** | Error / Invalid | Bad input or tool error | Check logs, fix command ❌ |
+| **0** | Success / Safe / Review | All blocking buckets below thresholds | Deploy safely (review PR comment if review verdict) |
+| **1** | Unsafe / Blocked | One or more blocking buckets exceed thresholds | Review PR comment, fix issues |
+| **2** | Error / Invalid | Bad input or tool error | Check logs, fix command |
 | **130** | Interrupted | User pressed Ctrl+C | Re-run when ready |
 
 ### How CI/CD Pipelines Use Exit Codes
@@ -740,7 +767,7 @@ The LLM reasoning is transparent - you can always see why it made each decision.
 2. **Each gets a risk level** (low, medium, high)
 3. **You set thresholds** for each check
 4. **Deployment blocked** if ANY check exceeds its threshold
-5. **Exit code 0** = safe, **1** = blocked, **2** = error
+5. **Exit code 0** = safe or review, **1** = blocked, **2** = error
 6. **PR comment** explains everything
 
 **Default behavior (recommended):**

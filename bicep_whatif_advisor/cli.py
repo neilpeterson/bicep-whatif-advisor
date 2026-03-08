@@ -775,16 +775,26 @@ def main(
         # CI mode: evaluate thresholds and override LLM verdict before rendering
         is_safe = True
         failed_buckets = []
+        review_buckets = []
         if ci:
             from .ci.risk_buckets import evaluate_risk_buckets
+            from .ci.verdict import VERDICT_REVIEW, VERDICT_SAFE, VERDICT_UNSAFE
 
-            is_safe, failed_buckets, risk_assessment = evaluate_risk_buckets(
+            is_safe, failed_buckets, review_buckets, risk_assessment = evaluate_risk_buckets(
                 high_confidence_data,
                 enabled_buckets,
                 drift_threshold,
                 intent_threshold,
                 custom_thresholds=custom_thresholds,
             )
+
+            # Compute verdict_status: unsafe > review > safe
+            if failed_buckets:
+                verdict_status = VERDICT_UNSAFE
+            elif review_buckets:
+                verdict_status = VERDICT_REVIEW
+            else:
+                verdict_status = VERDICT_SAFE
 
             # Override LLM verdict with threshold evaluation result
             highest_bucket = failed_buckets[0] if failed_buckets else "none"
@@ -799,10 +809,13 @@ def main(
             existing_verdict = high_confidence_data.get("verdict", {})
             high_confidence_data["verdict"] = {
                 "safe": is_safe,
+                "verdict_status": verdict_status,
                 "highest_risk_bucket": highest_bucket,
                 "overall_risk_level": highest_level,
                 "reasoning": existing_verdict.get("reasoning", ""),
             }
+            if review_buckets:
+                high_confidence_data["verdict"]["review_buckets"] = review_buckets
 
         # Render output
         if format == "table":
@@ -844,9 +857,14 @@ def main(
                 )
                 _post_pr_comment(markdown, pr_url)
 
+            # Show review buckets if any
+            if review_buckets:
+                review_names = ", ".join(review_buckets)
+                sys.stderr.write(f"👀 Review recommended: {review_names}\n")
+
             # Exit with appropriate code
             if is_safe:
-                sys.exit(0)  # Safe to deploy
+                sys.exit(0)  # Safe (or review) to deploy
             else:
                 # Show which buckets failed
                 if failed_buckets:

@@ -170,7 +170,7 @@ CI mode evaluates independent risk categories:
 2. **PR Intent Alignment** (built-in): Compares What-If output to PR title/description to catch unintended changes (optional - skipped if no PR metadata)
 3. **Custom Agents** (user-created via `--agents-dir`): Additional risk dimensions defined as markdown files with YAML frontmatter
 
-Each bucket has an independent configurable threshold (low, medium, high). Deployment fails if ANY bucket exceeds its threshold.
+Each bucket has an independent configurable threshold (low, medium, high). Deployment fails if ANY blocking bucket exceeds its threshold. Custom agents with `review_only: true` can only trigger a "review" verdict (exit code 0), never "unsafe".
 
 ### LLM Provider Interface
 
@@ -235,6 +235,8 @@ Multi-bucket risk assessment:
   },
   "verdict": {
     "safe": true|false,
+    "verdict_status": "safe|review|unsafe",
+    "review_buckets": ["..."],
     "highest_risk_bucket": "drift|intent|none",
     "overall_risk_level": "low|medium|high",
     "reasoning": "..."
@@ -335,7 +337,7 @@ When implementing CI mode (`--ci` flag):
 2. Include source code context in prompt
 3. Return structured safety verdict with multi-bucket risk assessment
 4. Post formatted markdown comments to GitHub/Azure DevOps PRs
-5. Exit with code 0 (safe) or 1 (unsafe) based on independent thresholds:
+5. Exit with code 0 (safe/review) or 1 (unsafe) based on independent thresholds:
    - `--drift-threshold` (default: high)
    - `--intent-threshold` (default: high)
    - `--agent-threshold <agent_id>=<level>` (for custom agents)
