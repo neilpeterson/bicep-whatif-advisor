@@ -194,17 +194,13 @@ class TestParseAgentFile:
 
     def test_review_only_true(self, tmp_path):
         agent_file = tmp_path / "test.md"
-        agent_file.write_text(
-            "---\nid: test\ndisplay_name: Test\nreview_only: true\n---\nBody"
-        )
+        agent_file.write_text("---\nid: test\ndisplay_name: Test\nreview_only: true\n---\nBody")
         bucket = parse_agent_file(agent_file)
         assert bucket.review_only is True
 
     def test_review_only_false_explicit(self, tmp_path):
         agent_file = tmp_path / "test.md"
-        agent_file.write_text(
-            "---\nid: test\ndisplay_name: Test\nreview_only: false\n---\nBody"
-        )
+        agent_file.write_text("---\nid: test\ndisplay_name: Test\nreview_only: false\n---\nBody")
         bucket = parse_agent_file(agent_file)
         assert bucket.review_only is False
 
