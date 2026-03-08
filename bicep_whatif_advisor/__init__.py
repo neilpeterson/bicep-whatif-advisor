@@ -1,3 +1,3 @@
 """bicep-whatif-advisor: Azure What-If deployment analyzer using LLMs."""
 
-__version__ = "3.7.8"
+__version__ = "3.8.0"

@@ -3,7 +3,6 @@ id: sfi-infra
 display_name: SFI Secure Infrastructure
 default_threshold: high
 display: table
-enabled: true
 icon: "🔒"
 columns:
   - name: SFI ID and Name

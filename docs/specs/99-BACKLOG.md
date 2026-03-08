@@ -126,3 +126,15 @@ Current output formats are table, JSON, and markdown. Teams that want a standalo
 ### Resolution
 
 Removed operations as a built-in risk bucket. The core tool now provides two built-in buckets (drift and intent) plus user-created custom agents via `--agents-dir`. Users who want risky operations analysis can create their own agent markdown file. The `--skip-operations` and `--operations-threshold` CLI flags were removed.
+
+---
+
+## F-08: Review Verdict State
+
+**Status:** ✅ Implemented
+**Area:** CI Mode / Risk Assessment
+**Related spec:** 08-RISK-ASSESSMENT.md, 13-CUSTOM-AGENTS.md
+
+### Resolution
+
+Three-state verdict model (safe/review/unsafe) for CI mode. Custom agents can be marked `review_only: true` so they recommend review but never block the pipeline. Exit code 0 for both safe and review states.

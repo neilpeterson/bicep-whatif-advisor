@@ -56,7 +56,7 @@ class TestEvaluateRiskBuckets:
                 "compliance": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
             }
         }
-        is_safe, failed, ra = evaluate_risk_buckets(
+        is_safe, failed, review, ra = evaluate_risk_buckets(
             data, ["drift", "compliance"], "high", "high", custom_thresholds={"compliance": "high"}
         )
         assert is_safe is True
@@ -69,7 +69,7 @@ class TestEvaluateRiskBuckets:
                 "compliance": {"risk_level": "high", "concerns": ["db delete"], "reasoning": "bad"},
             }
         }
-        is_safe, failed, ra = evaluate_risk_buckets(
+        is_safe, failed, review, ra = evaluate_risk_buckets(
             data,
             ["drift", "compliance"],
             "high",
@@ -90,7 +90,7 @@ class TestEvaluateRiskBuckets:
                 "compliance": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
             }
         }
-        is_safe, failed, ra = evaluate_risk_buckets(
+        is_safe, failed, review, ra = evaluate_risk_buckets(
             data,
             ["drift", "compliance"],
             "medium",
@@ -107,7 +107,7 @@ class TestEvaluateRiskBuckets:
                 "compliance": {"risk_level": "high", "concerns": [], "reasoning": ""},
             }
         }
-        is_safe, failed, ra = evaluate_risk_buckets(
+        is_safe, failed, review, ra = evaluate_risk_buckets(
             data,
             ["drift", "compliance"],
             "high",
@@ -119,7 +119,9 @@ class TestEvaluateRiskBuckets:
 
     def test_no_risk_assessment_defaults_safe(self):
         data = {}
-        is_safe, failed, ra = evaluate_risk_buckets(data, ["drift", "compliance"], "high", "high")
+        is_safe, failed, review, ra = evaluate_risk_buckets(
+            data, ["drift", "compliance"], "high", "high"
+        )
         assert is_safe is True
         assert failed == []
         # Default assessment should contain enabled buckets
@@ -132,7 +134,7 @@ class TestEvaluateRiskBuckets:
                 "compliance": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
             }
         }
-        is_safe, failed, ra = evaluate_risk_buckets(
+        is_safe, failed, review, ra = evaluate_risk_buckets(
             data, ["drift", "compliance"], "high", "high", custom_thresholds={"compliance": "high"}
         )
         assert is_safe is True
@@ -145,7 +147,7 @@ class TestEvaluateRiskBuckets:
                 "compliance": {"risk_level": "low", "concerns": [], "reasoning": ""},
             }
         }
-        is_safe, failed, ra = evaluate_risk_buckets(
+        is_safe, failed, review, ra = evaluate_risk_buckets(
             data,
             ["drift", "intent", "compliance"],
             "high",
@@ -161,7 +163,7 @@ class TestEvaluateRiskBuckets:
                 "drift": {"risk_level": "EXTREME", "concerns": [], "reasoning": ""},
             }
         }
-        is_safe, failed, ra = evaluate_risk_buckets(data, ["drift"], "high", "high")
+        is_safe, failed, review, ra = evaluate_risk_buckets(data, ["drift"], "high", "high")
         assert is_safe is True  # Invalid -> "low" -> below "high" threshold
 
     def test_custom_threshold_overrides_default(self):
@@ -175,7 +177,7 @@ class TestEvaluateRiskBuckets:
                 },
             }
         }
-        is_safe, failed, ra = evaluate_risk_buckets(
+        is_safe, failed, review, ra = evaluate_risk_buckets(
             data,
             ["drift", "compliance"],
             "high",
@@ -195,7 +197,7 @@ class TestEvaluateRiskBuckets:
                 },
             }
         }
-        is_safe, failed, ra = evaluate_risk_buckets(
+        is_safe, failed, review, ra = evaluate_risk_buckets(
             data,
             ["compliance"],
             "high",
@@ -218,7 +220,9 @@ class TestEvaluateRiskBuckets:
         }
         # No custom_thresholds provided, bucket not in built-in map
         # Falls back to "medium" default — medium meets medium threshold
-        is_safe, failed, ra = evaluate_risk_buckets(data, ["custom_bucket"], "medium", "medium")
+        is_safe, failed, review, ra = evaluate_risk_buckets(
+            data, ["custom_bucket"], "medium", "medium"
+        )
         assert is_safe is False
         assert failed == ["custom_bucket"]
 
@@ -228,7 +232,116 @@ class TestEvaluateRiskBuckets:
                 "drift": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
             }
         }
-        is_safe, failed, ra = evaluate_risk_buckets(
+        is_safe, failed, review, ra = evaluate_risk_buckets(
             data, ["drift"], "high", "high", custom_thresholds=None
         )
         assert is_safe is True
+
+    def test_review_only_bucket_exceeds_threshold(self):
+        """Review-only bucket exceeding threshold goes to review_buckets, not failed."""
+        from bicep_whatif_advisor.ci.buckets import RISK_BUCKETS, RiskBucket
+
+        RISK_BUCKETS["cost-review"] = RiskBucket(
+            id="cost-review",
+            display_name="Cost Review",
+            description="Review-only cost agent",
+            prompt_instructions="Check cost.",
+            custom=True,
+            review_only=True,
+            default_threshold="medium",
+        )
+        data = {
+            "risk_assessment": {
+                "drift": {"risk_level": "low", "concerns": [], "reasoning": "ok"},
+                "cost-review": {
+                    "risk_level": "high",
+                    "concerns": ["expensive"],
+                    "reasoning": "high cost",
+                },
+            }
+        }
+        is_safe, failed, review, ra = evaluate_risk_buckets(
+            data,
+            ["drift", "cost-review"],
+            "high",
+            "high",
+            custom_thresholds={"cost-review": "medium"},
+        )
+        assert is_safe is True
+        assert failed == []
+        assert "cost-review" in review
+
+    def test_mixed_blocking_and_review_only(self):
+        """When both blocking and review-only buckets exceed, result is unsafe."""
+        from bicep_whatif_advisor.ci.buckets import RISK_BUCKETS, RiskBucket
+
+        RISK_BUCKETS["cost-review2"] = RiskBucket(
+            id="cost-review2",
+            display_name="Cost Review",
+            description="Review-only cost agent",
+            prompt_instructions="Check cost.",
+            custom=True,
+            review_only=True,
+            default_threshold="medium",
+        )
+        data = {
+            "risk_assessment": {
+                "drift": {
+                    "risk_level": "high",
+                    "concerns": ["drift found"],
+                    "reasoning": "drift",
+                },
+                "cost-review2": {
+                    "risk_level": "high",
+                    "concerns": ["expensive"],
+                    "reasoning": "high cost",
+                },
+            }
+        }
+        is_safe, failed, review, ra = evaluate_risk_buckets(
+            data,
+            ["drift", "cost-review2"],
+            "high",
+            "high",
+            custom_thresholds={"cost-review2": "medium"},
+        )
+        assert is_safe is False
+        assert "drift" in failed
+        assert "cost-review2" in review
+
+    def test_review_only_below_threshold_not_in_review(self):
+        """Review-only bucket below threshold should not appear in review_buckets."""
+        from bicep_whatif_advisor.ci.buckets import RISK_BUCKETS, RiskBucket
+
+        RISK_BUCKETS["cost-review3"] = RiskBucket(
+            id="cost-review3",
+            display_name="Cost Review",
+            description="Review-only cost agent",
+            prompt_instructions="Check cost.",
+            custom=True,
+            review_only=True,
+            default_threshold="high",
+        )
+        data = {
+            "risk_assessment": {
+                "cost-review3": {
+                    "risk_level": "low",
+                    "concerns": [],
+                    "reasoning": "ok",
+                },
+            }
+        }
+        is_safe, failed, review, ra = evaluate_risk_buckets(
+            data,
+            ["cost-review3"],
+            "high",
+            "high",
+        )
+        assert is_safe is True
+        assert failed == []
+        assert review == []
+
+    def test_no_risk_assessment_returns_empty_review_buckets(self):
+        data = {}
+        is_safe, failed, review, ra = evaluate_risk_buckets(data, ["drift"], "high", "high")
+        assert review == []

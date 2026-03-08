@@ -192,6 +192,33 @@ class TestParseAgentFile:
         assert bucket is not None
         assert bucket.id == "test"
 
+    def test_review_only_true(self, tmp_path):
+        agent_file = tmp_path / "test.md"
+        agent_file.write_text("---\nid: test\ndisplay_name: Test\nreview_only: true\n---\nBody")
+        bucket = parse_agent_file(agent_file)
+        assert bucket.review_only is True
+
+    def test_review_only_false_explicit(self, tmp_path):
+        agent_file = tmp_path / "test.md"
+        agent_file.write_text("---\nid: test\ndisplay_name: Test\nreview_only: false\n---\nBody")
+        bucket = parse_agent_file(agent_file)
+        assert bucket.review_only is False
+
+    def test_review_only_default_false(self, tmp_path):
+        agent_file = tmp_path / "test.md"
+        agent_file.write_text("---\nid: test\ndisplay_name: Test\n---\nBody")
+        bucket = parse_agent_file(agent_file)
+        assert bucket.review_only is False
+
+    def test_review_only_fixture(self):
+        """The review_only_example.md fixture should parse with review_only=True."""
+        from pathlib import Path
+
+        fixture = Path(__file__).parent / "agents" / "review_only_example.md"
+        bucket = parse_agent_file(fixture)
+        assert bucket.review_only is True
+        assert bucket.id == "cost-review"
+
 
 # -------------------------------------------------------------------
 # load_agents_from_directory

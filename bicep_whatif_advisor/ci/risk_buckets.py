@@ -25,7 +25,7 @@ def evaluate_risk_buckets(
     drift_threshold: str = "medium",
     intent_threshold: str = "medium",
     custom_thresholds: Dict[str, str] = None,
-) -> Tuple[bool, List[str], Dict[str, Any]]:
+) -> Tuple[bool, List[str], List[str], Dict[str, Any]]:
     """Evaluate enabled risk buckets and determine if deployment is safe.
 
     NOTE: This function expects pre-filtered data containing only medium/high-confidence
@@ -42,7 +42,11 @@ def evaluate_risk_buckets(
                           Falls back to bucket's default_threshold if not specified.
 
     Returns:
-        Tuple of (is_safe: bool, failed_buckets: list, risk_assessment: dict)
+        Tuple of (is_safe: bool, failed_buckets: list, review_buckets: list, risk_assessment: dict)
+        - is_safe: True if no blocking buckets exceeded their threshold
+        - failed_buckets: List of blocking bucket IDs that exceeded threshold
+        - review_buckets: List of review-only bucket IDs that exceeded threshold
+        - risk_assessment: The risk assessment dict from the data
     """
     risk_assessment = data.get("risk_assessment", {})
 
@@ -55,7 +59,7 @@ def evaluate_risk_buckets(
                 "concerns": [],
                 "reasoning": "No risk assessment provided",
             }
-        return True, [], default_assessment
+        return True, [], [], default_assessment
 
     # Threshold map for built-in buckets
     thresholds = {
@@ -69,6 +73,7 @@ def evaluate_risk_buckets(
 
     # Evaluate each enabled bucket
     failed_buckets = []
+    review_buckets = []
 
     for bucket_id in enabled_buckets:
         bucket_data = risk_assessment.get(bucket_id)
@@ -89,12 +94,19 @@ def evaluate_risk_buckets(
             threshold = bucket.default_threshold if bucket else "medium"
 
         if _exceeds_threshold(risk_level, threshold):
-            failed_buckets.append(bucket_id)
+            # Check if this is a review-only bucket
+            from .buckets import get_bucket
 
-    # Overall safety: all enabled buckets must pass
+            bucket = get_bucket(bucket_id)
+            if bucket and bucket.review_only:
+                review_buckets.append(bucket_id)
+            else:
+                failed_buckets.append(bucket_id)
+
+    # Overall safety: all blocking buckets must pass
     is_safe = len(failed_buckets) == 0
 
-    return is_safe, failed_buckets, risk_assessment
+    return is_safe, failed_buckets, review_buckets, risk_assessment
 
 
 def _exceeds_threshold(risk_level: str, threshold: str) -> bool:
